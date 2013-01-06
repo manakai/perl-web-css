@@ -1,17 +1,16 @@
-package Message::DOM::SelectorsAPI;
+package Web::CSS::Selectors::API;
 use strict;
 use warnings;
 our $VERSION = '1.12';
+use Web::CSS::Selectors::Parser;
 
-require Message::DOM::DOMException;
+sub new ($) {
+  return bless {}, $_[0];
+} # new
 
 ## NOTE: This implementation does no optimization at all.  Future
 ## revisions are expected to do it, but the current focus is
 ## implementing the features rather than tuning some of them.
-
-package Message::DOM::Document;
-
-use Whatpm::CSS::SelectorsParser qw(:match :combinator :selector);
 
 my $sss_match;
 $sss_match = sub ($$$$) {
@@ -187,11 +186,9 @@ $sss_match = sub ($$$$) {
                 $sss_matched = 0;
               }
             } else {
-              ## NOTE: New match type.
-              report Message::DOM::DOMException
-                  -object => $self,
-                  -type => 'SYNTAX_ERR',
-                  -subtype => 'INVALID_SELECTORS_ERR';
+              ## New matching type, supported by the parser but not by
+              ## this Selectors API implementation.
+              $sss_matched = 0;
             }
           }
         }
@@ -298,11 +295,9 @@ $sss_match = sub ($$$$) {
     } elsif ($simple_selector->[0] == PSEUDO_ELEMENT_SELECTOR) {
       $sss_matched = 0;
     } else {
-      ## NOTE: New simple selector type.
-      report Message::DOM::DOMException
-          -object => $self,
-          -type => 'SYNTAX_ERR',
-          -subtype => 'INVALID_SELECTORS_ERR';
+      ## New simple selector type, supported by the parser but not
+      ## supported by this Selectors API implementation.
+      $sss_matched = 0;
     }
   }
   return $sss_matched;
@@ -311,7 +306,7 @@ $sss_match = sub ($$$$) {
 my $get_elements_by_selectors = sub {
   # $node, $selectors, $resolver, $node_conds, $is_html, $all, $current
 
-  my $p = Whatpm::CSS::SelectorsParser->new;
+  my $p = Web::CSS::Selectors::Parser->new;
 
   my $selectors;
   if (ref $_[1] eq 'ARRAY') {
@@ -322,12 +317,10 @@ my $get_elements_by_selectors = sub {
   if (UNIVERSAL::can ($_[2], 'lookup_namespace_uri')) {
     my $re = $resolver;
     $resolver = sub {
-      local $Error::Depth = $Error::Depth + 1;
       return $re->lookup_namespace_uri ($_[0]);
     };
   }
   $p->{lookup_namespace_uri} = sub {
-    local $Error::Depth = $Error::Depth + 2;
     ## NOTE: MAY assume that $resolver returns consistent results.
     ## NOTE: MUST be case-sensitive.
     if (defined $_[0] and $_[0] ne '') {
@@ -376,10 +369,11 @@ my $get_elements_by_selectors = sub {
     after before first-letter first-line
   /;
 
-  $selectors = $p->parse_string (''.$_[1]);
+  $selectors = $p->parse_char_string (''.$_[1]);
   unless (defined $selectors) {
-    local $Error::Depth = $Error::Depth - 1;
     # MUST
+
+# XXX
     if (defined $ns_error) {
       report Message::DOM::DOMException
           -object => $_[0],
@@ -401,7 +395,6 @@ my $get_elements_by_selectors = sub {
   
   my @node_cond = map {$_->[1] = [@$selectors]; $_} @{$_[3]};
   while (@node_cond) {
-    $Message::DOM::SelectorsAPI::NodeCount++;
     my $node_cond = shift @node_cond;
     if ($node_cond->[0]->node_type == 1) { # ELEMENT_NODE
       my @new_cond;
@@ -433,19 +426,15 @@ my $get_elements_by_selectors = sub {
                  $selector->[0] == ADJACENT_SIBLING_COMBINATOR) {
           #
         } else {
-          ## NOTE: New combinator.
-          report Message::DOM::DOMException
-              -object => $_[0],
-              -type => 'SYNTAX_ERR',
-              -subtype => 'INVALID_SELECTORS_ERR';
+          ## New combinator supported by the parser but not by this
+          ## Selectors API implementation.
         }
       }
 
       if (@new_cond) {
         unless ($node_cond->[3]) {
-          my @children = grep { # ELEMENT_NODE or ENTITY_REFERENCE_NODE
-            $_->node_type == 1 or $_->node_type == 5
-          } @{$node_cond->[0]->child_nodes};
+          my @children = grep { $_->node_type == 1 } # ELEMENT_NODE
+              @{$node_cond->[0]->child_nodes};
           my $next_sibling_cond;
           for (reverse @children) {
             my $new_node_cond = [$_, [@new_cond], $next_sibling_cond];
@@ -459,111 +448,19 @@ my $get_elements_by_selectors = sub {
           $node_cond->[4]->[0]->[1] = \@new_cond if @{$node_cond->[4]};
         }
       }
-    } elsif ($node_cond->[0]->node_type == 5) { # ENTITY_REFERENCE_NODE
-      my @new_cond = @{$node_cond->[1]};
-      my @new_cond2 = grep {
-        $_->[0] != ADJACENT_SIBLING_COMBINATOR and
-        $_->[0] != GENERAL_SIBLING_COMBINATOR
-      } @new_cond;
-      unless ($node_cond->[3]) {
-        my @children = grep { # ELEMENT_NODE or ENTITY_REFERENCE_NODE
-          $_->node_type == 1 or $_->node_type == 5
-        } @{$node_cond->[0]->child_nodes};
-        my $next_sibling_cond;
-        for (reverse @children) {
-          my $new_node_cond = [$_, [@new_cond2], $next_sibling_cond];
-          unshift @node_cond, $new_node_cond;
-          $next_sibling_cond = $new_node_cond;
-        }
-        $next_sibling_cond->[1] = \@new_cond;
-      } else {
-        for (@{$node_cond->[4]}) {
-          $_->[1] = [@new_cond2];
-        }
-        $node_cond->[4]->[0]->[1] = \@new_cond if @{$node_cond->[4]};
-      }
     }
-  }
-
-  if ($r) {
-    require Message::DOM::NodeList;
-    $r = Message::DOM::NodeList::StaticNodeList->____new_from_arrayref ($r);
   }
 
   return $r;
 }; # $get_elements_by_selectors
-
-sub query_selector ($$;$) {
-  local $Error::Depth = $Error::Depth + 1;
-
-  ## Children of the Element.
-  my @node_cond;
-  my @children = grep { # ELEMENT_NODE or ENTITY_REFERENCE_NODE
-    $_->node_type == 1 or $_->node_type == 5
-  } @{$_[0]->child_nodes};
-  my $next_sibling_cond;
-  for (reverse @children) {
-    my $new_node_cond = [$_, undef, $next_sibling_cond];
-    unshift @node_cond, $new_node_cond;
-    $next_sibling_cond = $new_node_cond;
-  }
-
-  return $get_elements_by_selectors
-      ->($_[0], ''.$_[1], $_[2], \@node_cond,
-         $_[0]->manakai_is_html, 0, 0);
-} # query_selector
-
-sub query_selector_all ($$;$) {
-  local $Error::Depth = $Error::Depth + 1;
-
-  ## Children of the Element.
-  my @node_cond;
-  my @children = grep { # ELEMENT_NODE or ENTITY_REFERENCE_NODE
-    $_->node_type == 1 or $_->node_type == 5
-  } @{$_[0]->child_nodes};
-  my $next_sibling_cond;
-  for (reverse @children) {
-    my $new_node_cond = [$_, undef, $next_sibling_cond];
-    unshift @node_cond, $new_node_cond;
-    $next_sibling_cond = $new_node_cond;
-  }
-
-  return $get_elements_by_selectors
-      ->($_[0], ''.$_[1], $_[2], \@node_cond,
-         $_[0]->manakai_is_html, 1, 0);
-} # query_selector_all
-
-## NOTE: For internal use - $_[1] is a selectors object.
-sub ___query_selector_all ($$) {
-  local $Error::Depth = $Error::Depth + 1;
-
-  ## Children of the Element.
-  my @node_cond;
-  my @children = grep { # ELEMENT_NODE or ENTITY_REFERENCE_NODE
-    $_->node_type == 1 or $_->node_type == 5
-  } @{$_[0]->child_nodes};
-  my $next_sibling_cond;
-  for (reverse @children) {
-    my $new_node_cond = [$_, undef, $next_sibling_cond];
-    unshift @node_cond, $new_node_cond;
-    $next_sibling_cond = $new_node_cond;
-  }
-
-  return $get_elements_by_selectors
-      ->($_[0], $_[1], undef, \@node_cond,
-         $_[0]->manakai_is_html, 1, 0);
-} # ___query_selector_all
-
-package Message::DOM::Element;
 
 my $get_node_cond = sub {
   my @node_cond;
   my $child_conds = [];
 
   ## Children of the Element.
-  my @children = grep { # ELEMENT_NODE or ENTITY_REFERENCE_NODE
-    $_->node_type == 1 or $_->node_type == 5
-  } @{$_[0]->child_nodes};
+  my @children = grep { $_->node_type == 1 } # ELEMENT_NODE
+      @{$_[0]->child_nodes};
   my $next_sibling_cond;
   for (reverse @children) {
     my $new_node_cond = [$_, undef, $next_sibling_cond];
@@ -577,9 +474,7 @@ my $get_node_cond = sub {
   my $parent = $node->parent_node;
   while (defined $parent) {
     my $conds = [];
-    for (grep { # ELEMENT_NODE or ENTITY_REFERENCE_NODE
-      $_->node_type == 1 or $_->node_type == 5
-    } @{$parent->child_nodes}) {
+    for (grep { $_->node_type == 1 } @{$parent->child_nodes}) { # ELEMENT_NODE
       push @$conds, my $cond = [$_, undef, undef, 1, $child_conds];
       if ($_ eq $node) {
         $child_conds = $conds;
@@ -601,21 +496,32 @@ my $get_node_cond = sub {
   return \@node_cond;
 }; # $get_node_cond
 
-sub query_selector ($$;$) {
-  local $Error::Depth = $Error::Depth + 1;
-
+sub query_selector ($$$;$) {
+  my $self = shift;
+  my $od = $_[0]->owner_document || $_[0];
   return $get_elements_by_selectors
       ->($_[0], ''.$_[1], $_[2], $get_node_cond->($_[0]),
-         $_[0]->owner_document->manakai_is_html, 0, $_[0]);
+         $od->manakai_is_html, 0, $_[0]->node_type == 1 ? $_[0] : 0);
 } # query_selector
 
-sub query_selector_all ($$;$) {
-  local $Error::Depth = $Error::Depth + 1;
-
+sub query_selector_all ($$$;$) {
+  my $self = shift;
+  my $od = $_[0]->owner_document || $_[0];
   return $get_elements_by_selectors
       ->($_[0], ''.$_[1], $_[2], $get_node_cond->($_[0]),
-         $_[0]->owner_document->manakai_is_html, 1, $_[0]);
+         $od->manakai_is_html, 1, $_[0]->node_type == 1 ? $_[0] : 0);
 } # query_selector_all
+
+# XXX
+## NOTE: For internal use - $_[1] is a selectors object.
+sub ___query_selector_all ($$) {
+  my $od = $_[0]->owner_document || $_[0];
+  return $get_elements_by_selectors
+      ->($_[0], $_[1], undef, $get_node_cond->($_[0]),
+         $od->manakai_is_html, 1, $_[0]->node_type == 1 ? $_[0] : 0);
+} # ___query_selector_all
+
+1;
 
 =head1 SEE ALSO
 
@@ -629,11 +535,9 @@ manakai Selectors Extensions
 
 =head1 LICENSE
 
-Copyright 2007-2011 Wakaba <w@suika.fam.cx>.
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-1;

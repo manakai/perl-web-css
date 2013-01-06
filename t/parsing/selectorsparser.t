@@ -6,6 +6,7 @@ use Path::Class;
 use lib file (__FILE__)->dir->parent->parent->subdir ('lib')->stringify;
 use lib file (__FILE__)->dir->parent->parent->subdir ('t_deps', 'modules', 'testdataparser', 'lib')->stringify;
 use base qw(Test::Class);
+use Test::More;
 use Test::Differences;
 use Test::HTCT::Parser;
 use Web::CSS::Selectors::Parser;
@@ -161,8 +162,12 @@ sub _parse_char_string : Tests {
 
     my $selectors = $parser->parse_char_string ($test->{data}->[0]);
 
-    my $serialized_selectors = serialize_selector_object $selectors;
-    eq_or_diff $serialized_selectors, $test->{parsed}->[0];
+    if (defined $selectors) {
+      my $serialized_selectors = serialize_selector_object $selectors;
+      eq_or_diff $serialized_selectors, $test->{parsed}->[0];
+    } else {
+      is $selectors, undef;
+    }
 
     my $aerrors = join "\n", sort { $a cmp $b } @error;
     my $xerrors = join "\n", sort { $a cmp $b } @{$test->{errors}->[0] or []};

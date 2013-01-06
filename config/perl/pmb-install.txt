@@ -11,9 +11,11 @@ Algorithm::Diff~1.1902
 Text::Diff~1.41
 Test::Differences~0.61
 Test::More~0.98
+Exporter~5.67
+Exporter::Lite~0.02
 AnyEvent~7.04
 Filter::Util::Call~1.45
 Carp~1.26
 Scalar::Util~1.27
 Term::ANSIColor~4.01
-Exporter::Lite~0.02
+Encode~2.47

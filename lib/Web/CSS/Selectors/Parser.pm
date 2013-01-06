@@ -5,6 +5,10 @@ our $VERSION = '1.13';
 use Web::CSS::Tokenizer;
 use Carp;
 
+## XXX API of this module is not stable yet; You should not rely on
+## it.  Use $root_node->query_selector and
+## $root_node->query_selector_all instead.
+
 sub new ($) {
   my $self = bless {
     onerror => sub { },

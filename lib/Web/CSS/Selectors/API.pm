@@ -8,6 +8,10 @@ sub new ($) {
   return bless {}, $_[0];
 } # new
 
+## XXX API of this module is not stable yet; You should not rely on
+## it.  Use $root_node->query_selector and
+## $root_node->query_selector_all instead.
+
 # XXX Need to match Selectors 4...
 
 ## NOTE: This implementation does no optimization at all.  Future

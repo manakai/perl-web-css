@@ -1,0 +1,6 @@
+[submodule "t_deps/modules/testdataparser"]
+	path = t_deps/modules/testdataparser
+	url = git://github.com/wakaba/testdataparser.git
+[submodule "t_deps/tests"]
+	path = t_deps/tests
+	url = git://github.com/wakaba/tests-web.git

@@ -14,8 +14,112 @@ sub new ($) {
 ## revisions are expected to do it, but the current focus is
 ## implementing the features rather than tuning some of them.
 
-sub _sss_match ($$$$$) {
-  my ($self, $sss, $node, $current_node, $is_html) = @_;
+sub is_html ($;$) {
+  if (@_ > 1) {
+    $_[0]->{is_html} = !!$_[1];
+  }
+  return $_[0]->{is_html};
+} # is_html
+
+sub root_node ($;$) {
+  if (@_ > 1) {
+    $_[0]->{root_node} = $_[1];
+  }
+  return $_[0]->{root_node};
+} # root_node
+
+sub return_all ($;$) {
+  if (@_ > 1) {
+    $_[0]->{return_all} = $_[1];
+  }
+  return $_[0]->{return_all};
+} # return_all
+
+sub selectors ($) {
+  return $_[0]->{selectors};
+} # selectors
+
+sub set_selectors ($$$) {
+  #my ($self, $selectors, $ns_resolver) = @_;
+  my $self = $_[0];
+  if (ref $_[1] eq 'ARRAY') {
+    $self->{selectors} = $_[1];
+  } else {
+    my $ns_error;
+    my $resolver = $_[2] || sub { return undef };
+    if (UNIVERSAL::can ($_[2], 'lookup_namespace_uri')) {
+      my $re = $resolver;
+      $resolver = sub {
+        return $re->lookup_namespace_uri ($_[0]);
+      };
+    }
+    my $p = Web::CSS::Selectors::Parser->new;
+    $p->{lookup_namespace_uri} = sub {
+      ## NOTE: MAY assume that $resolver returns consistent results.
+      ## NOTE: MUST be case-sensitive.
+      if (defined $_[0] and $_[0] ne '') {
+        my $uri = $resolver->($_[0]);
+        if (defined $uri) {
+          $uri = ''.$uri;
+          if ($uri eq '') {
+            return '';
+          } else {
+            return $uri;
+          }
+        } else {
+          $ns_error = $_[0];
+          return undef;
+        }
+      } else {
+        my $uri = $resolver->(undef);
+        if (defined $uri) {
+          $uri = ''.$uri;
+          if ($uri eq '') {
+            return '';
+          } else {
+            return $uri;
+          }
+        } else {
+          return undef;
+        }
+      }
+    }; # lookup_namespace_uri
+
+    ## NOTE: SHOULD ensure to remain stable when facing a hostile $_[2].
+
+    $p->{pseudo_class}->{$_} = 1 for qw/
+      root nth-child nth-last-child nth-of-type nth-last-of-type
+      first-child first-of-type last-child last-of-type
+      only-child only-of-type empty
+      not
+      -manakai-contains -manakai-current
+    /;
+#      active checked disabled enabled focus hover indeterminate link
+#      target visited lang
+
+    ## NOTE: MAY treat all links as :link rather than :visited
+
+    $p->{pseudo_element}->{$_} = 1 for qw/
+      after before first-letter first-line
+    /;
+
+    $self->{selectors} = $p->parse_char_string (''.$_[1]);
+
+    # XXX
+    unless (defined $self->{selectors}) {
+      # XXX
+      if (defined $ns_error) {
+        die "Namespace error";
+      } else { 
+        die "Syntax error";
+      }
+    }
+  }
+} # set_selectors
+
+sub _sss_match ($$$) {
+  my ($self, $sss, $node) = @_;
+  my $is_html = $self->is_html;
 
   my $sss_matched = 1;
   for my $simple_selector (@{$sss}) {
@@ -198,7 +302,7 @@ sub _sss_match ($$$$$) {
       my $class_name = $simple_selector->[1];
       if ($class_name eq 'not') {
         if ($self->_sss_match ([@$simple_selector[2..$#$simple_selector]],
-                               $node, $current_node, $is_html)) {
+                               $node)) {
           $sss_matched = 0;
         }
       } elsif ({
@@ -284,7 +388,9 @@ sub _sss_match ($$$$$) {
         $sss_matched = 0
             unless $parent->node_type == 9; # DOCUMENT_NODE
       } elsif ($class_name eq '-manakai-current') {
-        $sss_matched = 0 if $current_node ne $node;
+        ## $self->root_node can be non-element, but $node is always an
+        ## Element.
+        $sss_matched = 0 if $self->root_node ne $node;
       } elsif ($class_name eq '-manakai-contains') {
         $sss_matched = 0
             if index ($node->text_content,
@@ -304,105 +410,21 @@ sub _sss_match ($$$$$) {
   return $sss_matched;
 } # _sss_match
 
-sub _get_elements_by_selectors ($$$$$$$$) {
-  my $self = shift;
-  # $node, $selectors, $resolver, $node_conds, $is_html, $all, $current
+sub get_elements ($) {
+  my ($self) = @_;
+  my $selectors = $self->selectors;
 
-  my $p = Web::CSS::Selectors::Parser->new;
-
-  my $selectors;
-  if (ref $_[1] eq 'ARRAY') {
-    $selectors = $_[1];
-  } else {
-    my $ns_error;
-    my $resolver = $_[2] || sub { return undef };
-  if (UNIVERSAL::can ($_[2], 'lookup_namespace_uri')) {
-    my $re = $resolver;
-    $resolver = sub {
-      return $re->lookup_namespace_uri ($_[0]);
-    };
-  }
-  $p->{lookup_namespace_uri} = sub {
-    ## NOTE: MAY assume that $resolver returns consistent results.
-    ## NOTE: MUST be case-sensitive.
-    if (defined $_[0] and $_[0] ne '') {
-      my $uri = $resolver->($_[0]);
-      if (defined $uri) {
-        $uri = ''.$uri;
-        if ($uri eq '') {
-          return '';
-        } else {
-          return $uri;
-        }
-      } else {
-        $ns_error = $_[0];
-        return undef;
-      }
-    } else {
-      my $uri = $resolver->(undef);
-      if (defined $uri) {
-        $uri = ''.$uri;
-        if ($uri eq '') {
-          return '';
-        } else {
-          return $uri;
-        }
-      } else {
-        return undef;
-      }
-    }
-  }; # lookup_namespace_uri
-
-  ## NOTE: SHOULD ensure to remain stable when facing a hostile $_[2].
-
-  $p->{pseudo_class}->{$_} = 1 for qw/
-    root nth-child nth-last-child nth-of-type nth-last-of-type
-    first-child first-of-type last-child last-of-type
-    only-child only-of-type empty
-    not
-    -manakai-contains -manakai-current
-  /;
-#    active checked disabled enabled focus hover indeterminate link
-#    target visited lang
-
-  ## NOTE: MAY treat all links as :link rather than :visited
-
-  $p->{pseudo_element}->{$_} = 1 for qw/
-    after before first-letter first-line
-  /;
-
-  $selectors = $p->parse_char_string (''.$_[1]);
-  unless (defined $selectors) {
-    # MUST
-
-# XXX
-    if (defined $ns_error) {
-      report Message::DOM::DOMException
-          -object => $_[0],
-          -type => 'NAMESPACE_ERR',
-          -subtype => 'UNDECLARED_PREFIX_ERR',
-          namespace_prefix => $ns_error;
-    } else { 
-      report Message::DOM::DOMException
-          -object => $_[0],
-          -type => 'SYNTAX_ERR',
-          -subtype => 'INVALID_SELECTORS_ERR';
-    }
-  }
-  }
-
-  my $is_html = $_[4];
   my $r;
-  $r = [] if $_[5];
+  $r = [] if $self->return_all;
   
-  my @node_cond = map {$_->[1] = [@$selectors]; $_} @{$_[3]};
+  my @node_cond = map {$_->[1] = [@$selectors]; $_} @{$self->_get_node_cond};
   while (@node_cond) {
     my $node_cond = shift @node_cond;
     if ($node_cond->[0]->node_type == 1) { # ELEMENT_NODE
       my @new_cond;
       my $matched;
       for my $selector (@{$node_cond->[1]}) {
-        if ($self->_sss_match ($selector->[1], $node_cond->[0], $_[6], $is_html)) {
+        if ($self->_sss_match ($selector->[1], $node_cond->[0])) {
           if (@$selector == 2) {
             unless ($node_cond->[3]) {
               return $node_cond->[0] unless defined $r;
@@ -451,12 +473,11 @@ sub _get_elements_by_selectors ($$$$$$$$) {
       }
     }
   }
-
   return $r;
-} # _get_elements_by_selectors
+} # get_elements
 
-sub _get_node_cond ($$) {
-  my (undef, $node) = @_;
+sub _get_node_cond ($) {
+  my $node = $_[0]->root_node;
   my @node_cond;
   my $child_conds = [];
 
@@ -495,32 +516,6 @@ sub _get_node_cond ($$) {
 
   return \@node_cond;
 } # _get_node_cond
-
-sub query_selector ($$$;$) {
-  my $self = shift;
-  my $od = $_[0]->owner_document || $_[0];
-  return $self->_get_elements_by_selectors
-      ($_[0], ''.$_[1], $_[2], $self->_get_node_cond ($_[0]),
-       $od->manakai_is_html, 0, $_[0]->node_type == 1 ? $_[0] : 0);
-} # query_selector
-
-sub query_selector_all ($$$;$) {
-  my $self = shift;
-  my $od = $_[0]->owner_document || $_[0];
-  return $self->_get_elements_by_selectors
-      ($_[0], ''.$_[1], $_[2], $self->_get_node_cond ($_[0]),
-       $od->manakai_is_html, 1, $_[0]->node_type == 1 ? $_[0] : 0);
-} # query_selector_all
-
-# XXX
-## NOTE: For internal use - $_[1] is a selectors object.
-sub ___query_selector_all ($$$) {
-  my $self = shift;
-  my $od = $_[0]->owner_document || $_[0];
-  return $self->_get_elements_by_selectors
-      ($_[0], $_[1], undef, $self->_get_node_cond ($_[0]),
-       $od->manakai_is_html, 1, $_[0]->node_type == 1 ? $_[0] : 0);
-} # ___query_selector_all
 
 1;
 

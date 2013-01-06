@@ -95,7 +95,6 @@ for my $file_name (map { $data_d->file ($_)->stringify } qw(
       my $lookup_ns = sub {
         return $ns{$_[0] // ''};
       }; # lookup_namespace_uri
-      my $api = Web::CSS::Selectors::API->new;
       
       for my $result (@{$test->{result} or []}) {
         my $label = $result->[1]->[0];
@@ -103,18 +102,23 @@ for my $file_name (map { $data_d->file ($_)->stringify } qw(
         
         my $doc = $documents->{$label} or die "Test |$label| not found\n";
         my $root_node = get_node_by_path ($doc, $root);
+        my $api = Web::CSS::Selectors::API->new;
+        $api->is_html ($doc->manakai_is_html);
+        $api->root_node ($root_node);
+        $api->set_selectors ($test->{data}->[0], $lookup_ns);
         
         test {
+          $api->return_all (1);
           my $expected = join "\n", @{$result->[0]};
-          my $actual = join "\n", map {
-            get_node_path ($_)
-          } @{$api->query_selector_all ($root_node, $test->{data}->[0], $lookup_ns)};
+          my $actual = join "\n",
+              map { get_node_path ($_) } @{$api->get_elements};
           eq_or_diff $actual, $expected, "$test->{data}->[0] $label $root all";
         } $c, n => 1, name => 'query_selector_all';
         
         test {
+          $api->return_all (0);
           my $expected = $result->[0]->[0];
-          my $node = $api->query_selector ($root_node, $test->{data}->[0], $lookup_ns);
+          my $node = $api->get_elements;
           my $actual = defined $node ? get_node_path ($node) : undef;
           eq_or_diff $actual, $expected, "$test->{data}->[0] $label $root one";
         } $c, n => 1, name => 'query_selector';

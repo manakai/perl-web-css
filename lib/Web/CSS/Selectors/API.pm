@@ -43,11 +43,16 @@ sub selectors ($) {
   return $_[0]->{selectors};
 } # selectors
 
+sub selectors_has_ns_error ($) {
+  return $_[0]->{selectors_has_ns_error};
+} # selectors_has_ns_error
+
 sub set_selectors ($$$) {
   #my ($self, $selectors, $ns_resolver) = @_;
   my $self = $_[0];
   if (ref $_[1] eq 'ARRAY') {
     $self->{selectors} = $_[1];
+    delete $self->{selectors_has_ns_error};
   } else {
     my $ns_error;
     my $resolver = $_[2] || sub { return undef };
@@ -108,16 +113,7 @@ sub set_selectors ($$$) {
     /;
 
     $self->{selectors} = $p->parse_char_string (''.$_[1]);
-
-    # XXX
-    unless (defined $self->{selectors}) {
-      # XXX
-      if (defined $ns_error) {
-        die "Namespace error";
-      } else { 
-        die "Syntax error";
-      }
-    }
+    $self->{selectors_has_ns_error} = $ns_error;
   }
 } # set_selectors
 
@@ -532,7 +528,7 @@ Selectors API Editor's Draft 29 August 2007
 
 Selectors API Level 2 <http://dev.w3.org/2006/webapi/selectors-api2/>.
 
-DOM Standard -Selectors API
+DOM Standard - Selectors API
 <https://github.com/whatwg/dom/pull/4/files>.
 
 manakai Selectors Extensions

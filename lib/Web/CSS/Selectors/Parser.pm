@@ -1,18 +1,15 @@
-package Whatpm::CSS::SelectorsParser;
+package Web::CSS::Selectors::Parser;
 use strict;
 use warnings;
 our $VERSION = '1.13';
-
-require Exporter;
-push our @ISA, 'Exporter';
-
-use Whatpm::CSS::Tokenizer qw(:token);
+use Web::CSS::Tokenizer;
+use Carp;
 
 sub new ($) {
   my $self = bless {
     onerror => sub { },
 
-    ## See |Whatpm::CSS::Parser| for usage.
+    ## See |Web::CSS::Parser| for usage.
     lookup_namespace_uri => sub {
       return undef;
     },
@@ -76,7 +73,7 @@ sub PREFIX_MATCH () { PREFIXMATCH_TOKEN }
 sub SUFFIX_MATCH () { SUFFIXMATCH_TOKEN }
 sub SUBSTRING_MATCH () { SUBSTRINGMATCH_TOKEN }
 
-our @EXPORT_OK = qw(NAMESPACE_SELECTOR LOCAL_NAME_SELECTOR ID_SELECTOR
+our @EXPORT = qw(NAMESPACE_SELECTOR LOCAL_NAME_SELECTOR ID_SELECTOR
     CLASS_SELECTOR PSEUDO_CLASS_SELECTOR PSEUDO_ELEMENT_SELECTOR
     ATTRIBUTE_SELECTOR
     DESCENDANT_COMBINATOR CHILD_COMBINATOR
@@ -84,17 +81,18 @@ our @EXPORT_OK = qw(NAMESPACE_SELECTOR LOCAL_NAME_SELECTOR ID_SELECTOR
     EXISTS_MATCH EQUALS_MATCH INCLUDES_MATCH DASH_MATCH PREFIX_MATCH
     SUFFIX_MATCH SUBSTRING_MATCH);
 
-our %EXPORT_TAGS = (
-  selector => [qw(NAMESPACE_SELECTOR LOCAL_NAME_SELECTOR ID_SELECTOR
-      CLASS_SELECTOR PSEUDO_CLASS_SELECTOR PSEUDO_ELEMENT_SELECTOR
-      ATTRIBUTE_SELECTOR)],
-  combinator => [qw(DESCENDANT_COMBINATOR CHILD_COMBINATOR
-      ADJACENT_SIBLING_COMBINATOR GENERAL_SIBLING_COMBINATOR)],
-  match => [qw(EXISTS_MATCH EQUALS_MATCH INCLUDES_MATCH DASH_MATCH
-      PREFIX_MATCH SUFFIX_MATCH SUBSTRING_MATCH)],
-);
+sub import ($;@) {
+  my $from_class = shift;
+  my ($to_class, $file, $line) = caller;
+  for (@_ ? @_ : @EXPORT) {
+    my $code = $from_class->can ($_)
+        or croak qq{"$_" is not exported by the $from_class module at $file line $line};
+    no strict 'refs';
+    *{$to_class . '::' . $_} = $code;
+  }
+} # import
 
-sub parse_string ($$) {
+sub parse_char_string ($$) {
   my $self = $_[0];
   
   my $s = $_[1];
@@ -102,7 +100,7 @@ sub parse_string ($$) {
   my $line = 1;
   my $column = 0;
 
-  my $tt = Whatpm::CSS::Tokenizer->new;
+  my $tt = Web::CSS::Tokenizer->new;
   $tt->{onerror} = $self->{onerror};
   $tt->{href} = $self->{href};
   $tt->{level} = $self->{level};
@@ -142,7 +140,7 @@ sub parse_string ($$) {
   my ($next_token, $selectors)
       = $self->_parse_selectors_with_tokenizer ($tt, EOF_TOKEN);
   return $selectors; # or undef
-} # parse_string
+} # parse_char_string
 
 our $IdentOnlyPseudoClasses = {
   active => 1,
@@ -1167,13 +1165,13 @@ sub get_selector_specificity ($$) {
   return $r;
 } # get_selector_specificity
 
+1;
+
 =head1 LICENSE
 
-Copyright 2007-2012 Wakaba <w@suika.fam.cx>.
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-1;

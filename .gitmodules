@@ -4,3 +4,6 @@
 [submodule "t_deps/tests"]
 	path = t_deps/tests
 	url = git://github.com/wakaba/tests-web.git
+[submodule "t_deps/modules/test-x1"]
+	path = t_deps/modules/test-x1
+	url = git://github.com/wakaba/perl-test-x1

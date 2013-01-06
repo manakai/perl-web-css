@@ -1,29 +1,27 @@
-package test::Whatpm::CSS::Tokenizer;
+package test::Web::CSS::Tokenizer;
 use strict;
 use warnings;
+no warnings 'utf8';
 use Path::Class;
-use lib file (__FILE__)->dir->parent->subdir ('lib')->stringify;
+use lib file (__FILE__)->dir->parent->parent->subdir ('lib')->stringify;
 use base qw(Test::Class);
 use Test::Differences;
+use JSON::XS;
 
-my $test_dir_name = 't/';
-
-use JSON;
-{
-  no warnings 'once';
-  $JSON::UnMapping = 1;
-  $JSON::UTF8 = 1;
-}
+my $test_dir_name = file (__FILE__)->dir->parent->parent->subdir ('t_deps', 'tests', 'css', 'parsing', 'manakai') . '/';
 
 use Data::Dumper;
 $Data::Dumper::Useqq = 1;
-sub Data::Dumper::qquote {
-  my $s = shift;
-  $s =~ s/([^\x20\x21-\x26\x28-\x5B\x5D-\x7E])/sprintf '\x{%02X}', ord $1/ge;
-  return q<qq'> . $s . q<'>;
-} # Data::Dumper::qquote
+{
+  no warnings 'redefine';
+  sub Data::Dumper::qquote {
+    my $s = shift;
+    $s =~ s/([^\x20\x21-\x26\x28-\x5B\x5D-\x7E])/sprintf '\x{%02X}', ord $1/ge;
+    return q<qq'> . $s . q<'>;
+  } # Data::Dumper::qquote
+}
 
-use Whatpm::CSS::Tokenizer;
+use Web::CSS::Tokenizer;
 
 sub _test : Tests {
 for my $file_name (grep {$_} split /\s+/, qq[
@@ -36,21 +34,11 @@ for my $file_name (grep {$_} split /\s+/, qq[
   close $file;
 
   print "# $file_name\n";
-  $js =~ s{\\u[Dd]([89A-Fa-f][0-9A-Fa-f][0-9A-Fa-f])
-      \\u[Dd]([89A-Fa-f][0-9A-Fa-f][0-9A-Fa-f])}{
-    ## NOTE: JSON::Parser does not decode surrogate pair escapes
-    ## NOTE: In older version of JSON::Parser, utf8 string will be broken
-    ## by parsing.  Use latest version!
-    ## NOTE: Encode.pm is broken; it converts e.g. U+10FFFF to U+FFFD.
-    my $c = 0x10000;
-    $c += ((((hex $1) & 0b1111111111) << 10) | ((hex $2) & 0b1111111111));
-    chr $c;
-  }gex;
-  my $tests = from_json ($js)->{tests};
+  my $tests = JSON::XS->new->decode ($js)->{tests};
   TEST: for my $test (@$tests) {
     my $s = $test->{input};
 
-    my $p = Whatpm::CSS::Tokenizer->new;
+    my $p = Web::CSS::Tokenizer->new;
     $p->{onerror} = sub { };
     
     my $pos = 0;
@@ -62,15 +50,19 @@ for my $file_name (grep {$_} split /\s+/, qq[
         return -1;
       }
     };
+    $p->{line_prev} = 1;
+    $p->{column_prev} = 0;
+    $p->{line} = 1;
+    $p->{column} = 1;
     $p->init;
 
     my @token;
     while (1) {
       my $token = $p->get_next_token;
-      last if $token->{type} == Whatpm::CSS::Tokenizer::EOF_TOKEN ();
+      last if $token->{type} == Web::CSS::Tokenizer::EOF_TOKEN ();
 
       my $test_token;
-      $test_token->[0] = $Whatpm::CSS::Tokenizer::TokenName[$token->{type}] ||
+      $test_token->[0] = $Web::CSS::Tokenizer::TokenName[$token->{type}] ||
           $token->{type};
       if ({
            NUMBER => 1,

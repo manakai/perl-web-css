@@ -1,9 +1,10 @@
-package Whatpm::CSS::SelectorsSerializer;
+package Web::CSS::Selectors::Serializer;
 use strict;
 use warnings;
 our $VERSION = '1.9';
-use Whatpm::CSS::SelectorsParser qw(:selector :combinator :match);
+use Web::CSS::Selectors::Parser;
 
+# XXX obsolete?
 sub serialize_test ($$;$) {
   my (undef, $selectors, $lookup_prefix) = @_;
   my $i = 0;
@@ -92,7 +93,7 @@ sub serialize_test ($$;$) {
           if ($v->[1] eq 'lang') {
             ':lang(' . $ident->($v->[2]) . ')';
           } elsif ($v->[1] eq 'not') {
-            my $v = Whatpm::CSS::SelectorsSerializer->serialize_test
+            my $v = Web::CSS::Selectors::Serializer->serialize_test
                 ([[DESCENDANT_COMBINATOR, [@{$v}[2..$#{$v}]]]]);
             $v =~ s/^    \*\|\*(?!$)/    /;
             ":not(\n    " . $v . "    )";
@@ -215,7 +216,7 @@ sub serialize_selector_text ($$$) {
             if ($vv->[1] eq 'lang') {
               ':lang(' . $ident->($vv->[2]) . ')';
             } elsif ($vv->[1] eq 'not') {
-              my $vvv = Whatpm::CSS::SelectorsSerializer
+              my $vvv = Web::CSS::Selectors::Serializer
                   ->serialize_selector_text
                   ([[DESCENDANT_COMBINATOR, [@{$vv}[2..$#{$vv}]]]]);
               $vvv =~ s/^\*\|\*(?!$)//;
@@ -262,7 +263,7 @@ sub serialize_selector_text ($$$) {
 
 =head1 LICENSE
 
-Copyright 2007-2012 Wakaba <w@suika.fam.cx>.
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

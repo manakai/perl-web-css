@@ -1,11 +1,11 @@
-package Whatpm::CSS::Tokenizer;
+package Web::CSS::Tokenizer;
 use strict;
 use warnings;
 no warnings 'utf8';
 our $VERSION = '1.21';
+use Carp;
 
-require Exporter;
-push our @ISA, 'Exporter';
+# XXX Need to be updated based on the latest css3-syntax standard
 
 sub BEFORE_TOKEN_STATE () { 0 }
 sub BEFORE_NMSTART_STATE () { 1 }
@@ -82,7 +82,7 @@ our @TokenName = qw(
   COMMENT_INVALID EOF MINUS STAR VBAR DOT COLON MATCH EXCLAMATION
 );
 
-our @EXPORT_OK = qw(
+our @EXPORT = qw(
   IDENT_TOKEN ATKEYWORD_TOKEN HASH_TOKEN FUNCTION_TOKEN URI_TOKEN
   URI_INVALID_TOKEN URI_PREFIX_TOKEN URI_PREFIX_INVALID_TOKEN
   STRING_TOKEN INVALID_TOKEN NUMBER_TOKEN DIMENSION_TOKEN PERCENTAGE_TOKEN
@@ -95,7 +95,16 @@ our @EXPORT_OK = qw(
   EXCLAMATION_TOKEN
 );
 
-our %EXPORT_TAGS = ('token' => [@EXPORT_OK]);
+sub import ($;@) {
+  my $from_class = shift;
+  my ($to_class, $file, $line) = caller;
+  for (@_ ? @_ : @EXPORT) {
+    my $code = $from_class->can ($_)
+        or croak qq{"$_" is not exported by the $from_class module at $file line $line};
+    no strict 'refs';
+    *{$to_class . '::' . $_} = $code;
+  }
+} # import
 
 sub new ($) {
   my $self = bless {token => [], get_char => sub { -1 }}, shift;
@@ -1367,13 +1376,13 @@ sub normalize_surrogate {
   }ge if defined $_[1];
 } # _normalize_surrogate
 
+1;
+
 =head1 LICENSE
 
-Copyright 2007-2011 Wakaba <w@suika.fam.cx>.
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-1;

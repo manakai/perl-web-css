@@ -1,16 +1,16 @@
 =head1 NAME
 
-Whatpm::CSS::SelectorsParser - A Selectors Parser
+Web::CSS::Selectors::Parser - A Selectors parser
 
 =head1 SYNOPSIS
 
-  use Whatpm::CSS::SelectorsParser;
-  my $parser = Whatpm::CSS::SelectorsParser->new;
-  $parsed_selectors = $parser->parse_string ($selectors);
+  use Web::CSS::Selectors::Parser;
+  my $parser = Web::CSS::Selectors::Parser->new;
+  $parsed_selectors = $parser->parse_char_string ($selectors);
 
 =head1 DESCRIPTION
 
-The C<Whatpm::CSS::SelectorsParser> is a parser for Selectors, the
+The C<Web::CSS::Selectors::Parser> is a parser for Selectors, the
 element pattern language used in CSS.  It parses a Selectors string
 into parsed data structure, if the input is valid, or reports a parse
 error, otherwise.  In addition, it provides a method to compute the
@@ -20,11 +20,11 @@ specificity of a parsed selector.
 
 =over 4
 
-=item $parser = Whatpm::CSS::SelectorsParser->new
+=item $parser = Whatpm::CSS::Selectors::Parser->new
 
 Creates a new instance of the Selectors parser.
 
-=item $parsed = $parser->parse_string ($selectors)
+=item $parsed = $parser->parse_char_string ($selectors)
 
 Parses a character string.  If it is a valid group of selectors, the
 method returns the parsed group of selectors data structure.
@@ -97,7 +97,7 @@ warning), and C<i> (an informational notification).
 
 =item token (always specified)
 
-A L<Whatpm::CSS::Tokenizer> token where the error is detected.
+A L<Web::CSS::Tokenizer> token where the error is detected.
 
 =item uri (a reference to string, possibly missing)
 
@@ -134,11 +134,14 @@ considered I<invalid> for the purpose of parsing.
 
 =head1 DATA STRUCTURES
 
+See also:
+<http://suika.fam.cx/www/manakai-core/lib/Whatpm/CSS/selectors-object.en.html>.
+
 =head2 A group of selectors
 
-The C<parse_string> method returns an array reference, which contains
-one or more selector data structures.  They corresponds to selectors
-in the original group of selectors string, in order.
+The C<parse_char_string> method returns an array reference, which
+contains one or more selector data structures.  They corresponds to
+selectors in the original group of selectors string, in order.
 
 =head2 A selector
 
@@ -170,11 +173,6 @@ An adjacent sibling combinator.
 A general sibling combinator.
 
 =back
-
-The exporter tag C<:combinator> can be used to export all of these
-constants:
-
-  use Whatpm::CSS::SelectorsParser qw(:combinator);
 
 =head2 A sequence of simple selectors
 
@@ -284,17 +282,12 @@ value.
 
 =back
 
-The exporter tag C<:match> can be used to export all of these
-constants:
-
-  use Whatpm::CSS::SelectorsParser qw(:match);
-
 =back
 
-The exporter tag C<:selector> can be used to export all of these
-constants:
+The constants mentioned in this section can be exported by C<use>ing
+the module:
 
-  use Whatpm::CSS::SelectorsParser qw(:selector);
+  use Web::CSS::Selectors::Parser;
 
 =head1 SEE ALSO
 
@@ -310,11 +303,11 @@ Supported standards - Selectors
 
 =head1 AUTHOR
 
-Wakaba <w@suika.fam.cx>.
+Wakaba <wakaba@suikawiki.org>.
 
 =head1 LICENSE
 
-Copyright 2007-2011 Wakaba <w@suika.fam.cx>.
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

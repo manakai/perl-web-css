@@ -8,12 +8,13 @@ sub new ($) {
   return bless {}, $_[0];
 } # new
 
+# XXX Need to match Selectors 4...
+
 ## NOTE: This implementation does no optimization at all.  Future
 ## revisions are expected to do it, but the current focus is
 ## implementing the features rather than tuning some of them.
 
-my $sss_match;
-$sss_match = sub ($$$$) {
+sub _sss_match ($$$$$) {
   my ($self, $sss, $node, $current_node, $is_html) = @_;
 
   my $sss_matched = 1;
@@ -55,7 +56,7 @@ $sss_match = sub ($$$$) {
             }
     } elsif ($simple_selector->[0] == CLASS_SELECTOR) {
       M: {
-        my $class_name = $node->can('class_name') ? $node->class_name : '';
+        my $class_name = $node->class_name;
         $class_name = '' unless defined $class_name;
         for (grep length, split /[\x09\x0A\x0C\x0D\x20]/, $class_name, -1) {
           if ($simple_selector->[1] eq $_) {
@@ -196,8 +197,8 @@ $sss_match = sub ($$$$) {
     } elsif ($simple_selector->[0] == PSEUDO_CLASS_SELECTOR) {
       my $class_name = $simple_selector->[1];
       if ($class_name eq 'not') {
-        if ($sss_match->($self, [@$simple_selector[2..$#$simple_selector]],
-                         $node, $current_node, $is_html)) {
+        if ($self->_sss_match ([@$simple_selector[2..$#$simple_selector]],
+                               $node, $current_node, $is_html)) {
           $sss_matched = 0;
         }
       } elsif ({
@@ -301,9 +302,10 @@ $sss_match = sub ($$$$) {
     }
   }
   return $sss_matched;
-}; # $sss_match
+} # _sss_match
 
-my $get_elements_by_selectors = sub {
+sub _get_elements_by_selectors ($$$$$$$$) {
+  my $self = shift;
   # $node, $selectors, $resolver, $node_conds, $is_html, $all, $current
 
   my $p = Web::CSS::Selectors::Parser->new;
@@ -400,8 +402,7 @@ my $get_elements_by_selectors = sub {
       my @new_cond;
       my $matched;
       for my $selector (@{$node_cond->[1]}) {
-        if ($sss_match->($_[0], $selector->[1], $node_cond->[0], $_[6],
-                         $is_html)) {
+        if ($self->_sss_match ($selector->[1], $node_cond->[0], $_[6], $is_html)) {
           if (@$selector == 2) {
             unless ($node_cond->[3]) {
               return $node_cond->[0] unless defined $r;
@@ -452,15 +453,15 @@ my $get_elements_by_selectors = sub {
   }
 
   return $r;
-}; # $get_elements_by_selectors
+} # _get_elements_by_selectors
 
-my $get_node_cond = sub {
+sub _get_node_cond ($$) {
+  my (undef, $node) = @_;
   my @node_cond;
   my $child_conds = [];
 
   ## Children of the Element.
-  my @children = grep { $_->node_type == 1 } # ELEMENT_NODE
-      @{$_[0]->child_nodes};
+  my @children = grep { $_->node_type == 1 } @{$node->child_nodes};
   my $next_sibling_cond;
   for (reverse @children) {
     my $new_node_cond = [$_, undef, $next_sibling_cond];
@@ -470,7 +471,6 @@ my $get_node_cond = sub {
   @$child_conds = @node_cond;
 
   ## Ancestors and previous siblings of ancestors
-  my $node = $_[0];
   my $parent = $node->parent_node;
   while (defined $parent) {
     my $conds = [];
@@ -494,44 +494,50 @@ my $get_node_cond = sub {
   }
 
   return \@node_cond;
-}; # $get_node_cond
+} # _get_node_cond
 
 sub query_selector ($$$;$) {
   my $self = shift;
   my $od = $_[0]->owner_document || $_[0];
-  return $get_elements_by_selectors
-      ->($_[0], ''.$_[1], $_[2], $get_node_cond->($_[0]),
-         $od->manakai_is_html, 0, $_[0]->node_type == 1 ? $_[0] : 0);
+  return $self->_get_elements_by_selectors
+      ($_[0], ''.$_[1], $_[2], $self->_get_node_cond ($_[0]),
+       $od->manakai_is_html, 0, $_[0]->node_type == 1 ? $_[0] : 0);
 } # query_selector
 
 sub query_selector_all ($$$;$) {
   my $self = shift;
   my $od = $_[0]->owner_document || $_[0];
-  return $get_elements_by_selectors
-      ->($_[0], ''.$_[1], $_[2], $get_node_cond->($_[0]),
-         $od->manakai_is_html, 1, $_[0]->node_type == 1 ? $_[0] : 0);
+  return $self->_get_elements_by_selectors
+      ($_[0], ''.$_[1], $_[2], $self->_get_node_cond ($_[0]),
+       $od->manakai_is_html, 1, $_[0]->node_type == 1 ? $_[0] : 0);
 } # query_selector_all
 
 # XXX
 ## NOTE: For internal use - $_[1] is a selectors object.
-sub ___query_selector_all ($$) {
+sub ___query_selector_all ($$$) {
+  my $self = shift;
   my $od = $_[0]->owner_document || $_[0];
-  return $get_elements_by_selectors
-      ->($_[0], $_[1], undef, $get_node_cond->($_[0]),
-         $od->manakai_is_html, 1, $_[0]->node_type == 1 ? $_[0] : 0);
+  return $self->_get_elements_by_selectors
+      ($_[0], $_[1], undef, $self->_get_node_cond ($_[0]),
+       $od->manakai_is_html, 1, $_[0]->node_type == 1 ? $_[0] : 0);
 } # ___query_selector_all
 
 1;
 
-=head1 SEE ALSO
+=head1 SPECIFICATIONS
 
-Selectors <http://www.w3.org/TR/selectors/>.
+Selectors Level 4 <http://dev.w3.org/csswg/selectors4/>.
 
 Selectors API Editor's Draft 29 August 2007
-<http://dev.w3.org/cvsweb/~checkout~/2006/webapi/selectors-api/Overview.html?rev=1.28&content-type=text/html;%20charset=utf-8>
+<http://dev.w3.org/cvsweb/~checkout~/2006/webapi/selectors-api/Overview.html?rev=1.28&content-type=text/html;%20charset=utf-8>.
+
+Selectors API Level 2 <http://dev.w3.org/2006/webapi/selectors-api2/>.
+
+DOM Standard -Selectors API
+<https://github.com/whatwg/dom/pull/4/files>.
 
 manakai Selectors Extensions
-<http://suika.fam.cx/gate/2005/sw/manakai/Selectors%20Extensions>
+<http://suika.fam.cx/gate/2005/sw/manakai/Selectors%20Extensions>.
 
 =head1 LICENSE
 

@@ -1,0 +1,31 @@
+=head1 NAME
+
+Whatpm::CSS::Tokenizer - CSS Tokenizer
+
+=head1 DESCRIPTION
+
+The C<Whatpm::CSS::Tokenizer> module provides a CSS syntax tokenizer.
+It can tokenize a string written in a language using the CSS syntax,
+such as CSS, Selectors, and Media Queries.
+
+=head1 SEE ALSO
+
+CSS 2.1 <http://www.w3.org/TR/CSS2/>.
+
+Selectors <http://www.w3.org/TR/selectors>.
+
+L<Whatpm::CSS::Parser>, L<Whatpm::CSS::SelectorsParser>,
+L<Whatpm::CSS::MediaQueryParser>.
+
+=head1 AUTHOR
+
+Wakaba <w@suika.fam.cx>.
+
+=head1 LICENSE
+
+Copyright 2007-2011 Wakaba <w@suika.fam.cx>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

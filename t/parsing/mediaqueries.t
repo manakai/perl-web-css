@@ -40,13 +40,11 @@ for my $file_name (qw(mq-1.dat)) {
 
       eq_or_diff \@actual_error, $test->{errors}->[0] // [], "#result";
 
-      if (defined $test->{mediatext}) {
-        my $mt = $s->serialize_media_query ($mq);
-        eq_or_diff $mt, [split /\n/, $test->{mediatext}->[0]], "#mediatext";
-      }
+      my $mt = $s->serialize_media_query ($mq);
+      eq_or_diff $mt, $test->{mediatext}->[0], "#mediatext";
 
       done $c;
-    } n => 1 + defined $test->{mediatext}, name => ['p/s', $test->{data}->[0]];
+    } n => 2, name => ['p/s', $test->{data}->[0]];
   };
 }
 

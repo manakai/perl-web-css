@@ -9,6 +9,7 @@ sub new ($) {
 
 sub serialize_media_query ($$) {
   my (undef, $mq) = @_;
+  return undef unless defined $mq;
 
   return join ', ', map {
     do {

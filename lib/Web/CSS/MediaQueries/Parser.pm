@@ -66,7 +66,8 @@ sub _parse_mq_with_tokenizer ($$$) {
     ## is covnerted to '3' with unit 'd').
 
     if ($t->{type} == IDENT_TOKEN) {
-      my $type = lc $t->{value}; ## TODO: case
+      my $type = $t->{value};
+      $type =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
       if ({
         all => 1, braille => 1, embossed => 1, handheld => 1, print => 1,
         projection => 1, screen => 1, tty => 1, tv => 1,

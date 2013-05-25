@@ -1,0 +1,53 @@
+=head1 NAME
+
+Web::CSS::Colors - CSS Color Definitions
+
+=head1 SYNOPSIS
+
+  use Web::CSS::Colors;
+  my $rgb = $Web::CSS::Colors::X11Colors->{yellow};
+  my $found = $Web::CSS::Colors::SystemColors->{activeborder};
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::Colors> module contains definition of CSS colors.
+
+=head1 VARIABLES
+
+=over 4
+
+=item $Web::CSS::Colors::X11Colors = {$name => [$r, $g, $b], ...}
+
+A hash reference, which contains so-called X11 color keywords and
+their RGB definitions as described in the CSS Color specification.
+Color keywords and RGBs are represented as hash keys and values, where
+values are array references representing red-, green-, and
+blue-component of the RGB.  Keywords are in the lowercase canonical
+form.  Note that HTML's 12 color keywords, as well as CSS 2.1's
+C<orange> keyword, are subset of the X11 color keyword set.
+
+=item $Web::CSS::Colors::SystemColors = {$name => true}
+
+A hash reference, which contains CSS system color keywords as defined
+in the CSS Color specification.  Color keywords are represented as
+hash keys, where values are always true.  Keywords are in the
+lowercase canonical form.
+
+=back
+
+=head1 SEE ALSO
+
+CSS Color <http://dev.w3.org/csswg/css-color/>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

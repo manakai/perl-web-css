@@ -1,0 +1,52 @@
+=head1 NAME
+
+Web::CSS::MediaQueries::Serializer - Serialize parsed representation of media queries
+
+=head1 SYNOPSIS
+
+  use Web::CSS::MediaQueries::Serializer;
+  my $s = Web::CSS::MediaQueries::Serializer->new;
+  warn $s->serialize_media_query ($mq)
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::MediaQueries::Serializer> object can be used to
+serialize the parsed representation of media queries (as returned by
+the L<Web::CSS::MediaQueries::Parser> object) into the canonical
+string representation of it.
+
+=head1 METHODS
+
+=over 4
+
+=item $serializer = Web::CSS::MediaQueries::Serializer->new
+
+Return a new instance of the serializer.
+
+=item $string = $serializer->serialize_media_query ($mq)
+
+Serialize a media query object into character string.
+
+=back
+
+=head1 BUGS
+
+The current implementation only supports serialization of a list of
+media types.
+
+=head1 SEE ALSO
+
+L<Web::CSS::MediaQueries::Parser>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2008-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

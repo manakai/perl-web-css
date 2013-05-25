@@ -1,0 +1,60 @@
+=head1 NAME
+
+Web::CSS::MediaQueries::Parser - Parse media queries
+
+=head1 SYNOPSIS
+
+  use Web::CSS::MediaQueries::Parser;
+  my $s = Web::CSS::MediaQueries::Parser->new;
+  $parsed = $s->parse_char_string ($string)
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::MediaQueries::Parser> object can be used to parse
+media queries.
+
+=head1 METHODS
+
+=over 4
+
+=item $parser = Web::CSS::MediaQueries::Parser->new
+
+Return a new instance of the parser.
+
+=item $parsed = $parser->parse_char_string ($string)
+
+Parse the specified character string as a media query.  If the string
+represents a valid media query, the parsed representation of the query
+is returned.  Otherwise, C<undef> is returned.
+
+=back
+
+=head1 PARAMETERS
+
+XXX
+
+=head1 DATA STRUCTURES
+
+XXX
+
+=head1 BUGS
+
+The current implementation only supports parsing of a list of media
+types.
+
+=head1 SEE ALSO
+
+L<Web::CSS::MediaQueries::Serializer>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2008-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

@@ -9,6 +9,8 @@ use Carp;
 ## it.  Use $root_node->query_selector and
 ## $root_node->query_selector_all instead.
 
+# XXX href -> urlref
+
 sub new ($) {
   my $self = bless {
     onerror => sub { },

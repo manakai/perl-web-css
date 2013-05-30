@@ -4,6 +4,10 @@ use warnings;
 our $VERSION = '1.9';
 use Web::CSS::Selectors::Parser;
 
+sub new ($) {
+  return bless {}, $_[0];
+} # new
+
 # XXX obsolete?
 sub serialize_test ($$;$) {
   my (undef, $selectors, $lookup_prefix) = @_;

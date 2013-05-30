@@ -7,6 +7,8 @@ use Carp;
 
 # XXX Need to be updated based on the latest css3-syntax standard
 
+# XXX href -> urlref
+
 sub BEFORE_TOKEN_STATE () { 0 }
 sub BEFORE_NMSTART_STATE () { 1 }
 sub NAME_STATE () { 2 }

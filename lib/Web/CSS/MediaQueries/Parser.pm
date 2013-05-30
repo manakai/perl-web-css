@@ -12,7 +12,7 @@ sub new ($) {
       uncertain => 'u',
     },
   }, shift;
-  # XXX href
+  # XXX urlref
   return $self;
 } # new
 

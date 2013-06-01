@@ -401,7 +401,7 @@ sub parse_char_string ($$;%) {
                        media => $q,
                        rules => []};
                 push @$current_rules, $rule_id;
-                push @$open_rules, $current_rules = $v;
+                push @$open_rules, $current_rules = $v->{rules};
                 $t = $tt->get_next_token;
                 ## Stay in the state.
                 redo S;

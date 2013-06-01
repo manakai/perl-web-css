@@ -67,21 +67,21 @@ return '' if not defined $value; # XXX
           #if ($rule) {
           #  my $ss = $rule->parent_style_sheet;
           #  if ($ss) {
-          #    my $map = $$ss->{_nsmap};
-          #    my $prefix = [grep { length } @{$map->{uri_to_prefixes}->{$_->[1]} or []}]->[0];
-          #    if (defined $prefix) {
-          #      'attr(' . $prefix . $_->[2] . ')';
-          #    } else {
-          #      ## Not serializable!
-          #      'attr(' . $_->[2] . ')';
-          #    }
+              my $map = $self->{nsmap};
+              my $prefix = [grep { length } @{$map->{uri_to_prefixes}->{$_->[1]} or []}]->[0];
+              if (defined $prefix) {
+                'attr(' . $prefix . $_->[2] . ')';
+              } else {
+                ## Not serializable!
+                'attr(' . $_->[2] . ')';
+              }
           #  } else {
           #    ## Not serializable!
           #    'attr(' . $_->[2] . ')';
           #  }
           #} else {
-            ## Not serializable!
-            'attr(' . $_->[2] . ')';
+          #  ## Not serializable!
+          #  'attr(' . $_->[2] . ')';
           #}
         } else {
           'attr(' . $_->[2] . ')';
@@ -176,11 +176,21 @@ sub serialize_prop_value ($$$) {
 sub serialize_prop_priority ($$$) {
   my ($self, $style, $css_name) = @_;
   my $prop_def = $Web::CSS::Props::Prop->{$css_name};
-  if ($prop_def and defined $prop_def->{key}) {
-    my $value = $style->{props}->{$css_name};
+  if (not defined $prop_def) {
+    return '';
+  } elsif (defined $prop_def->{key}) {
+    my $value = $style->{props}->{$prop_def->{key}};
     return $value->[1] if defined $value;
+  } elsif (defined $prop_def->{serialize_shorthand} or
+           defined $prop_def->{serialize_multiple}) {
+    my $v = ($prop_def->{serialize_shorthand} or
+             $prop_def->{serialize_multiple})->($self, $style);
+    if (defined $v->{$prop_def->{css}}) {
+      return $v->{$prop_def->{css}}->[1];
+    } else {
+      return '';
+    }
   }
-  # XXX for shorthand
   return '';
 } # serialize_prop_priority
 

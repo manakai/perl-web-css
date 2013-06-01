@@ -1656,7 +1656,7 @@ $Prop->{'-manakai-border-spacing-x'} = {
     my $yi = $se->serialize_prop_priority ($st, '-manakai-border-spacing-y');
     if (length $x) {
       if (length $y) {
-        if ($xi eq $yi) {
+        if ($xi eq $yi) { 
           if ($x eq $y) {
             return {'border-spacing' => [$x, $xi]};
           } else {

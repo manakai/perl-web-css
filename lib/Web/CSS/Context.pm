@@ -42,6 +42,17 @@ sub base_urlref ($) {
   return defined $_[0]->{base_url} ? \($_[0]->{base_url}) : $_[0]->urlref;
 } # base_urlref
 
+sub manakai_compat_mode ($;$) {
+  if (@_ > 1) {
+    $_[0]->{compat_mode} = $_[1];
+  }
+  return $_[0]->{compat_mode} || 'no quirks';
+} # manakai_compat_mode
+
+sub quirks ($) {
+  return 'quirks' eq ($_[0]->{compat_mode} || 'no quirks');
+} # quirks
+
 sub has_namespace ($) {
   return 1 if $_[0]->{callback};
   return 1 if keys %{$_[0]->{prefix_to_url} or {}};

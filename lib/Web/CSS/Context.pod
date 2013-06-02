@@ -81,6 +81,24 @@ Return the reference to the base URL.
 
 =back
 
+=head2 Quirksness methods
+
+=over 4
+
+=item $string = $context->manakai_compat_mode
+
+=item $context->manakai_compat_mode ($string)
+
+Return or specify the quirksness of the document for which the style
+sheet is parsed.  It must be one of C<quirks>, C<limited quirks>, or
+C<no quirks>.
+
+=item $boolean = $context->quirks
+
+Return whether the C<manakai_compat_mode> is C<quirks> or not.
+
+=back
+
 =head2 Namespace methods
 
 =over 4

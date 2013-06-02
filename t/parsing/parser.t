@@ -479,8 +479,7 @@ sub get_parser ($) {
 
   $p->init;
   if ($parse_mode and $parse_mode eq 'q') {
-    $p->{unitless_px} = 1;
-    $p->{hashless_color} = 1;
+    $p->context->manakai_compat_mode ('quirks');
   }
   $p->{href} = 'thismessage:/';
 

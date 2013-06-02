@@ -20,10 +20,6 @@ sub new ($) {
   ## The base URL.
   # $self->{base_url}
 
-  # XXX quirks mode
-  # $self->{unitless_px} = 1/0
-  # $self->{hashless_rgb} = 1/0
-
   ## Default error handler
   $self->{onerror} = sub {
     my %opt = @_;
@@ -53,8 +49,6 @@ sub init ($) {
   my $self = shift;
   $self->{onerror} = sub { }; # XXX
   delete $self->{parsed};
-  delete $self->{unitless_px};
-  delete $self->{hashless_rgb};
   delete $self->{media_resolver};
   delete $self->{context};
 } # init

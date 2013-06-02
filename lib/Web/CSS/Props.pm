@@ -67,7 +67,7 @@ my $parse_color = sub {
   }
 
   if ($t->{type} == HASH_TOKEN or
-      ($self->{hashless_rgb} and {
+      ($self->context->quirks and {
         IDENT_TOKEN, 1,
         NUMBER_TOKEN, 1,
         DIMENSION_TOKEN, 1,
@@ -1400,7 +1400,7 @@ my $length_percentage_keyword_parser = sub ($$$$$) {
         return ($t, {$prop_name => ['PERCENTAGE', $value]});
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       if ($allow_negative or $value >=0) {
         $t = $tt->get_next_token;
@@ -1452,7 +1452,7 @@ my $length_keyword_parser = sub {
         return ($t, {$prop_name => ['DIMENSION', $value, $unit]});
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       if ($allow_negative or $value >= 0) {
         $t = $tt->get_next_token;
@@ -3598,7 +3598,7 @@ $Prop->{margin} = {
       $t = $tt->get_next_token;
       $prop_value{'margin-top'} = ['PERCENTAGE', $value];
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'margin-top'} = ['DIMENSION', $value, 'px'];
@@ -3661,7 +3661,7 @@ $Prop->{margin} = {
       $t = $tt->get_next_token;
       $prop_value{'margin-right'} = ['PERCENTAGE', $value];
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'margin-right'} = ['DIMENSION', $value, 'px'];
@@ -3719,7 +3719,7 @@ $Prop->{margin} = {
       $t = $tt->get_next_token;
       $prop_value{'margin-bottom'} = ['PERCENTAGE', $value];
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'margin-bottom'} = ['DIMENSION', $value, 'px'];
@@ -3776,7 +3776,7 @@ $Prop->{margin} = {
       $t = $tt->get_next_token;
       $prop_value{'margin-left'} = ['PERCENTAGE', $value];
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'margin-left'} = ['DIMENSION', $value, 'px'];
@@ -3848,7 +3848,7 @@ $Prop->{padding} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'padding-top'} = ['DIMENSION', $value, 'px'];
@@ -3918,7 +3918,7 @@ $Prop->{padding} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'padding-right'} = ['DIMENSION', $value, 'px'];
@@ -3973,7 +3973,7 @@ $Prop->{padding} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'padding-bottom'} = ['DIMENSION', $value, 'px'];
@@ -4027,7 +4027,7 @@ $Prop->{padding} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'padding-left'} = ['DIMENSION', $value, 'px'];
@@ -4087,7 +4087,7 @@ $Prop->{'border-spacing'} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $prop_value{'-manakai-border-spacing-x'} = ['DIMENSION', $value, 'px'];
       if ($value >= 0) {
@@ -4150,7 +4150,7 @@ $Prop->{'border-spacing'} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $prop_value{'-manakai-border-spacing-y'} = ['DIMENSION', $value, 'px'];
       if ($value >= 0) {
@@ -4221,7 +4221,7 @@ $Prop->{'background-position'} = {
       $prop_value{'background-position-x'} = ['PERCENTAGE', $value];
       $prop_value{'background-position-y'} = ['PERCENTAGE', 50];
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'background-position-x'} = ['DIMENSION', $value, 'px'];
@@ -4314,7 +4314,7 @@ $Prop->{'background-position'} = {
       $t = $tt->get_next_token;
       $prop_value{'background-position-y'} = ['PERCENTAGE', $value];
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       $t = $tt->get_next_token;
       $prop_value{'background-position-y'} = ['DIMENSION', $value, 'px'];
@@ -4464,7 +4464,7 @@ $Prop->{background} = {
             $t = $tt->get_next_token;
             $prop_value{'background-position-y'} = ['PERCENTAGE', $value];
           } elsif ($t->{type} == NUMBER_TOKEN and
-                   ($self->{unitless_px} or $t->{number} == 0)) {
+                   ($self->context->quirks or $t->{number} == 0)) {
             my $value = $t->{number} * $sign;
             $t = $tt->get_next_token;
             $prop_value{'background-position-y'} = ['DIMENSION', $value, 'px'];
@@ -4514,7 +4514,7 @@ $Prop->{background} = {
       } elsif (($t->{type} == DIMENSION_TOKEN or
                 $t->{type} == PERCENTAGE_TOKEN or
                 ($t->{type} == NUMBER_TOKEN and
-                 ($t->{unitless_px} or $t->{number} == 0))) and
+                 ($self->context->quirks or $t->{number} == 0))) and
                not defined $prop_value{'background-position-x'}) {
         if ($t->{type} == DIMENSION_TOKEN) {
           my $value = $t->{number} * $sign;
@@ -4535,7 +4535,7 @@ $Prop->{background} = {
           $t = $tt->get_next_token;
           $prop_value{'background-position-x'} = ['PERCENTAGE', $value];
         } elsif ($t->{type} == NUMBER_TOKEN and
-                 ($self->{unitless_px} or $t->{number} == 0)) {
+                 ($self->context->quirks or $t->{number} == 0)) {
           my $value = $t->{number} * $sign;
           $t = $tt->get_next_token;
           $prop_value{'background-position-x'} = ['DIMENSION', $value, 'px'];
@@ -4576,7 +4576,7 @@ $Prop->{background} = {
           $t = $tt->get_next_token;
           $prop_value{'background-position-y'} = ['PERCENTAGE', $value];
         } elsif ($t->{type} == NUMBER_TOKEN and
-                 ($self->{unitless_px} or $t->{number} == 0)) {
+                 ($self->context->quirks or $t->{number} == 0)) {
           my $value = $t->{number} * $sign;
           $t = $tt->get_next_token;
           $prop_value{'background-position-y'} = ['DIMENSION', $value, 'px'];
@@ -4854,7 +4854,7 @@ $Prop->{'border-width'} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       if ($value >= 0) {
         $prop_value{'border-top-width'} = ['DIMENSION', $value, 'px'];
@@ -4924,7 +4924,7 @@ $Prop->{'border-width'} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       if ($value >= 0) {
         $t = $tt->get_next_token;
@@ -4982,7 +4982,7 @@ $Prop->{'border-width'} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       if ($value >= 0) {
         $t = $tt->get_next_token;
@@ -5039,7 +5039,7 @@ $Prop->{'border-width'} = {
         return ($t, undef);
       }
     } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->{unitless_px} or $t->{number} == 0)) {
+             ($self->context->quirks or $t->{number} == 0)) {
       my $value = $t->{number} * $sign;
       if ($value >= 0) {
         $t = $tt->get_next_token;
@@ -5743,7 +5743,7 @@ $Prop->{clip} = {
               return ($t, undef);
             }
           } elsif ($t->{type} == NUMBER_TOKEN and
-                   ($self->{unitless_px} or $t->{number} == 0)) {
+                   ($self->context->quirks or $t->{number} == 0)) {
             my $value = $t->{number} * $sign;
             $t = $tt->get_next_token;
             push @$prop_value, ['DIMENSION', $value, 'px'];
@@ -5920,7 +5920,7 @@ $Prop->{size} = {
           return ($t, undef);
         }
       } elsif ($t->{type} == NUMBER_TOKEN and
-               ($self->{unitless_px} or $t->{number} == 0)) {
+               ($self->context->quirks or $t->{number} == 0)) {
         my $value = $t->{number} * $sign;
         $t = $tt->get_next_token;
         push @$prop_value, ['DIMENSION', $value, 'px'];

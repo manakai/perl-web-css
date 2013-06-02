@@ -103,15 +103,14 @@ my $data_d = file (__FILE__)->dir->parent->parent
         my ($p, $css_options) = get_parser ($test->{option}->{parse_mode});
 
         my @actual_error;
-        $p->{onerror} = sub {
+        $p->onerror (sub {
           my (%opt) = @_;
-          my $uri = ''; # XXX
           push @actual_error, join ';',
-              $uri, $opt{token}->{line}, $opt{token}->{column},
+              '', $opt{token}->{line}, $opt{token}->{column},
               $opt{level},
               $opt{type} .
               (defined $opt{text} ? ';'.$opt{text} : '');
-        };
+        });
 
         $p->parse_char_string ($test->{data});
         my $set = $p->parsed;
@@ -481,7 +480,6 @@ sub get_parser ($) {
   if ($parse_mode and $parse_mode eq 'q') {
     $p->context->manakai_compat_mode ('quirks');
   }
-  $p->{href} = 'thismessage:/';
 
   return ($p, $css_options);
 } # get_parser

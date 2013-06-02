@@ -28,13 +28,13 @@ for my $file_name (qw(mq-1.dat)) {
       my $c = shift;
 
       my @actual_error;
-      $p->{onerror} = sub {
+      $p->onerror (sub {
         my (%opt) = @_;
         push @actual_error, join ';',
             '', $opt{token}->{line}, $opt{token}->{column},
             $opt{level},
             $opt{type} . (defined $opt{value} ? ';'.$opt{value} : '');
-      };
+      });
 
       my $mq = $p->parse_char_string ($test->{data}->[0]);
 

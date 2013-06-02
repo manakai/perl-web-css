@@ -20,7 +20,7 @@ specificity of a parsed selector.
 
 =over 4
 
-=item $parser = Whatpm::CSS::Selectors::Parser->new
+=item $parser = Web::CSS::Selectors::Parser->new
 
 Creates a new instance of the Selectors parser.
 
@@ -30,6 +30,47 @@ Creates a new instance of the Selectors parser.
 
 Return or specify the L<Web::CSS::Context> object used to resolve
 namespaces in Selectors.
+
+=item $code = $parser->onerror
+
+=item $parser->onerror ($code)
+
+Return or specify the code reference to which any errors and warnings
+during the parsing is reported.  The code would receive the following
+name-value pairs:
+
+=over 4
+
+=item type (string, always specified)
+
+A short string describing the kind of the error.  Descriptions of
+error types are available at
+<http://suika.suikawiki.org/gate/2007/html/error-description#{type}>,
+where I<{type}> is an error type string.
+
+For the list of error types, see
+<http://suika.suikawiki.org/gate/2007/html/error-description>.
+
+=item level (string, always specified)
+
+A character representing the level or severity of the error, which is
+one of the following characters: C<m> (violation to a MUST-level
+requirement), C<s> (violation to a SHOULD-level requirement), C<w> (a
+warning), and C<i> (an informational notification).
+
+=item token (always specified)
+
+A L<Web::CSS::Tokenizer> token where the error is detected.
+
+=item uri (a reference to string)
+
+The URL in which the input selectors string is found.
+
+=item value (string, possibly missing)
+
+A part of the input, in which an error is detected.
+
+=back
 
 =item $parsed = $parser->parse_char_string ($selectors)
 
@@ -52,46 +93,6 @@ attribute flag (always C<0>), I<a>, I<b>, and I<c>.
 Following parameters can be specified on a parser object:
 
 =over 4
-
-=item $parser->{onerror} = CODE
-
-The C<CODE> reference to which any errors and warnings during the
-parsing is reported.  The code would receive the following name-value
-pairs:
-
-=over 4
-
-=item type (string, always specified)
-
-A short string describing the kind of the error.  Descriptions of
-error types are available at
-<http://suika.fam.cx/gate/2007/html/error-description#{type}>, where
-I<{type}> is an error type string.
-
-For the list of error types, see
-<http://suika.fam.cx/gate/2007/html/error-description#langtag-errors>.
-
-=item level (string, always specified)
-
-A character representing the level or severity of the error, which is
-one of the following characters: C<m> (violation to a MUST-level
-requirement), C<s> (violation to a SHOULD-level requirement), C<w> (a
-warning), and C<i> (an informational notification).
-
-=item token (always specified)
-
-A L<Web::CSS::Tokenizer> token where the error is detected.
-
-=item uri (a reference to string, possibly missing)
-
-The URL in which the input selectors string is found.  The value is
-always same as C<< $parser->{href} >> in this parser.
-
-=item value (string, possibly missing)
-
-A part of the input, in which an error is detected.
-
-=back
 
 =item $parser->{pseudo_class} = {class_name => 1, class_name => 1, ...}
 

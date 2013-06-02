@@ -130,7 +130,7 @@ sub _parse_char_string : Tests {
     my @error;
 
     my $parser = Web::CSS::Selectors::Parser->new;
-    $parser->{onerror} = sub {
+    $parser->onerror (sub {
       my %args = @_;
       push @error, join ';', map { defined $_ ? $_ : '' }
           $args{token}->{line} // $args{line},
@@ -139,7 +139,7 @@ sub _parse_char_string : Tests {
           $args{text},
           $args{value},
           $args{level};
-    }; # onerror
+    }); # onerror
 
     for (@{$test->{supported}->[0] or []}) {
       if (/^::(\S+)$/) {

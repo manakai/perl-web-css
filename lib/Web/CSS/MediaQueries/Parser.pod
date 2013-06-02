@@ -21,6 +21,15 @@ media queries.
 
 Return a new instance of the parser.
 
+=item $code = $parser->onerror
+
+=item $parser->onerror ($code)
+
+Return or specify the code reference to which any errors and warnings
+during the parsing is reported.
+
+XXX
+
 =item $parsed = $parser->parse_char_string ($string)
 
 Parse the specified character string as a media query.  If the string

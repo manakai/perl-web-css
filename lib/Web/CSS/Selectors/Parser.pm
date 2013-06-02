@@ -13,8 +13,6 @@ use Carp;
 
 sub new ($) {
   my $self = bless {
-    onerror => sub { },
-
     #pseudo_class => {supported_class_name => 1, ...},
     #pseudo_element => {supported_class_name => 1, ...},
   }, shift;
@@ -23,8 +21,8 @@ sub new ($) {
 
 sub init ($) {
   my $self = $_[0];
-  $self->{onerror} = sub { };
   delete $self->{context};
+  delete $self->{onerror};
 } # init
 
 sub context ($;$) {
@@ -36,6 +34,13 @@ sub context ($;$) {
     Web::CSS::Context->new_empty;
   };
 } # context
+
+sub onerror ($;$) {
+  if (@_ > 1) {
+    $_[0]->{onerror} = $_[1];
+  }
+  return $_[0]->{onerror} ||= sub { };
+} # onerror
 
 sub BEFORE_TYPE_SELECTOR_STATE () { 1 }
 sub AFTER_NAME_STATE () { 2 }
@@ -110,8 +115,9 @@ sub parse_char_string ($$) {
   my $column = 0;
 
   my $tt = Web::CSS::Tokenizer->new;
-  $tt->{onerror} = $self->{onerror};
-  $tt->{href} = $self->{href};
+  $tt->init;
+  $tt->context ($self->context);
+  $tt->onerror ($self->onerror); # setting $self->{onerror}
   $tt->{get_char} = sub ($) {
     if (pos $s < length $s) {
       my $c = ord substr $s, pos ($s)++, 1;
@@ -143,7 +149,7 @@ sub parse_char_string ($$) {
   }; # $tt->{get_char}
   $tt->{line} = $line;
   $tt->{column} = $column;
-  $tt->init;
+  $tt->init_tokenizer;
 
   my ($next_token, $selectors)
       = $self->_parse_selectors_with_tokenizer ($tt, EOF_TOKEN);

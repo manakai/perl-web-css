@@ -112,6 +112,13 @@ sub new ($) {
 } # new
 
 sub init ($) {
+  my $self = $_[0];
+  delete $self->{get_char};
+  delete $self->{context};
+  delete $self->{onerror};
+} # init
+
+sub init_tokenizer ($) {
   my $self = shift;
   $self->{state} = BEFORE_TOKEN_STATE;
   $self->{c} = $self->{get_char}->($self);
@@ -122,8 +129,7 @@ sub init ($) {
   #              hyphen => bool,
   #              not_ident => bool, # HASH_TOKEN does not contain an identifier
   #              eos => bool};
-  delete $self->{context};
-} # init
+} # init_tokenizer
 
 sub context ($;$) {
   if (@_ > 1) {
@@ -134,6 +140,13 @@ sub context ($;$) {
     Web::CSS::Context->new_empty;
   };
 } # context
+
+sub onerror ($;$) {
+  if (@_ > 1) {
+    $_[0]->{onerror} = $_[1];
+  }
+  return $_[0]->{onerror} ||= sub { };
+} # onerror
 
 sub get_next_token ($) {
   my $self = shift;
@@ -1361,18 +1374,18 @@ sub serialize_token ($$) {
 
 sub _escaped_char {
   if ($_[1] == 0x0000) {
-    $_[0]->{onerror}->(type => 'css:escape:null',
-                       level => 'm',
-                       uri => $_[0]->context->urlref,
-                       line => $_[0]->{line_prev},
-                       column => $_[0]->{column_prev});
+    $_[0]->onerror->(type => 'css:escape:null',
+                     level => 'm',
+                     uri => $_[0]->context->urlref,
+                     line => $_[0]->{line_prev},
+                     column => $_[0]->{column_prev});
     return chr $_[1];
   } elsif ($_[1] > 0x10FFFF) {
-    $_[0]->{onerror}->(type => 'css:escape:not unicode',
-                       level => 's',
-                       uri => $_[0]->context->urlref,
-                       line => $_[0]->{line_prev},
-                       column => $_[0]->{column_prev});
+    $_[0]->onerror->(type => 'css:escape:not unicode',
+                     level => 's',
+                     uri => $_[0]->context->urlref,
+                     line => $_[0]->{line_prev},
+                     column => $_[0]->{column_prev});
     return "\x{FFFD}";
   } else {
     return chr $_[1];

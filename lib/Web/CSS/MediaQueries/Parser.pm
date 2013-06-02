@@ -5,16 +5,13 @@ our $VERSION = '1.4';
 use Web::CSS::Tokenizer;
 
 sub new ($) {
-  my $self = bless {
-    onerror => sub { },
-  }, shift;
-  return $self;
+  return bless {}, $_[0];
 } # new
 
 sub init ($) {
   my $self = $_[0];
-  $self->{onerror} = sub { };
   delete $self->{context};
+  delete $self->{onerror};
 } # init
 
 sub context ($;$) {
@@ -27,6 +24,13 @@ sub context ($;$) {
   };
 } # context
 
+sub onerror ($;$) {
+  if (@_ > 1) {
+    $_[0]->{onerror} = $_[1];
+  }
+  return $_[0]->{onerror} ||= sub { };
+} # onerror
+
 sub parse_char_string ($$) {
   my $self = $_[0];
 
@@ -34,8 +38,9 @@ sub parse_char_string ($$) {
   pos ($s) = 0;
 
   my $tt = Web::CSS::Tokenizer->new;
+  $tt->init;
   $tt->context ($self->context);
-  $tt->{onerror} = $self->{onerror};
+  $tt->onerror ($self->onerror);
   $tt->{line} = 1;
   $tt->{column} = 1;
   $tt->{get_char} = sub {
@@ -46,7 +51,7 @@ sub parse_char_string ($$) {
       return -1;
     }
   }; # $tt->{get_char}
-  $tt->init;
+  $tt->init_tokenizer;
 
   my $t = $tt->get_next_token;
   $t = $tt->get_next_token while $t->{type} == S_TOKEN;
@@ -56,10 +61,10 @@ sub parse_char_string ($$) {
   return undef unless defined $r;
 
   if ($t->{type} != EOF_TOKEN) {
-    $self->{onerror}->(type => 'mq syntax error',
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
+    $self->onerror->(type => 'mq syntax error',
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $t);
     return undef;
   }
 
@@ -91,24 +96,24 @@ sub _parse_mq_with_tokenizer ($$$) {
         push @$r, [['#type', $type]];
       } else {
         push @$r, [['#type', 'unknown']];
-        $self->{onerror}->(type => 'unknown media type',
-                           level => 'u',
-                           uri => $self->context->urlref,
-                           token => $t);
+        $self->onerror->(type => 'unknown media type',
+                         level => 'u',
+                         uri => $self->context->urlref,
+                         token => $t);
       }
       $t = $tt->get_next_token;
     } elsif ($t->{type} == NUMBER_TOKEN or $t->{type} == DIMENSION_TOKEN) {
       push @$r, [['#type', 'unknown']];
-      $self->{onerror}->(type => 'unknown media type',
-                         level => 'u',
-                         uri => $self->context->urlref,
-                         token => $t);
+      $self->onerror->(type => 'unknown media type',
+                       level => 'u',
+                       uri => $self->context->urlref,
+                       token => $t);
       $t = $tt->get_next_token;
     } else {
-      $self->{onerror}->(type => 'mq syntax error',
-                         level => 'm',
-                         uri => $self->context->urlref,
-                         token => $t);    
+      $self->onerror->(type => 'mq syntax error',
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       token => $t);    
       return ($t, undef);
     }
 

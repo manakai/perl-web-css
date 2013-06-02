@@ -17,23 +17,6 @@ sub new ($) {
     },
   }, shift;
 
-  ## The base URL.
-  # $self->{base_url}
-
-  ## Default error handler
-  $self->{onerror} = sub {
-    my %opt = @_;
-    require Carp;
-    Carp::carp
-        (sprintf 'Document <%s>: Line %d column %d (token %s): %s%s',
-             defined $opt{uri} ? ${$opt{uri}} : 'thisdocument:/',
-             $opt{token}->{line},
-             $opt{token}->{column},
-             Web::CSS::Tokenizer->serialize_token ($opt{token}),
-             $opt{type},
-             defined $opt{value} ? " (value $opt{value})" : '');
-  }; # onerror
-
   #$self->{parsed}
   #$self->{current_sheet_id}
 
@@ -47,7 +30,7 @@ sub IGNORED_DECLARATION_STATE () { 3 }
 
 sub init ($) {
   my $self = shift;
-  $self->{onerror} = sub { }; # XXX
+  delete $self->{onerror};
   delete $self->{parsed};
   delete $self->{media_resolver};
   delete $self->{context};
@@ -73,6 +56,25 @@ sub media_resolver ($;$) {
   };
 } # media_resolver
 
+sub onerror ($;$) {
+  if (@_ > 1) {
+    $_[0]->{onerror} = $_[1];
+  }
+
+  return $_[0]->{onerror} ||= sub {
+    my %opt = @_;
+    require Carp;
+    Carp::carp
+        (sprintf 'Document <%s>: Line %d column %d (token %s): %s%s',
+             ${$opt{uri}},
+             $opt{token}->{line},
+             $opt{token}->{column},
+             Web::CSS::Tokenizer->serialize_token ($opt{token}),
+             $opt{type},
+             defined $opt{value} ? " (value $opt{value})" : '');
+  }; # onerror
+} # onerror
+
 # XXX sync with new css-syntax definition
 
 # XXX stream mode
@@ -88,8 +90,10 @@ sub parse_char_string ($$;%) {
   my $column = 0;
 
   my $tt = Web::CSS::Tokenizer->new;
-  my $onerror = $tt->{onerror} = $self->{onerror};
+  my $onerror = $self->onerror;
+  $tt->init;
   $tt->context ($self->context);
+  $tt->onerror ($onerror);
   $tt->{get_char} = sub ($) {
     if (pos $s < length $s) {
       my $c = ord substr $s, pos ($s)++, 1;
@@ -121,17 +125,17 @@ sub parse_char_string ($$;%) {
   }; # $tt->{get_char}
   $tt->{line} = $line;
   $tt->{column} = $column;
-  $tt->init;
+  $tt->init_tokenizer;
 
   my $sp = Web::CSS::Selectors::Parser->new;
-  $sp->{onerror} = $self->{onerror};
   $sp->{pseudo_element} = $self->{pseudo_element};
   $sp->{pseudo_class} = $self->{pseudo_class};
   $sp->context ($self->context);
+  $sp->onerror ($onerror);
 
   my $mp = Web::CSS::MediaQueries::Parser->new;
-  $mp->{onerror} = $self->{onerror};
   $mp->context ($self->context);
+  $mp->onerror ($onerror);
 
   my $state = BEFORE_STATEMENT_STATE;
   my $t = $tt->get_next_token;

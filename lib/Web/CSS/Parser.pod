@@ -24,6 +24,15 @@ Return or specify the L<Web::CSS::Context> object for parsing.
 
 Return or specify the L<Web::CSS::MediaResolver> object for parsing.
 
+=item $code = $parser->onerror
+
+=item $parser->onerror ($code)
+
+Return or specify the code reference to which any errors and warnings
+during the parsing is reported.
+
+XXX
+
 =back
 
 =head1 SUPPORTED STANDARDS

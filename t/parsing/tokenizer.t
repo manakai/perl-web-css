@@ -39,7 +39,7 @@ for my $file_name (grep {$_} split /\s+/, qq[
     my $s = $test->{input};
 
     my $p = Web::CSS::Tokenizer->new;
-    $p->{onerror} = sub { };
+    $p->onerror (sub { });
     
     my $pos = 0;
     my $length = length $s;
@@ -54,7 +54,7 @@ for my $file_name (grep {$_} split /\s+/, qq[
     $p->{column_prev} = 0;
     $p->{line} = 1;
     $p->{column} = 1;
-    $p->init;
+    $p->init_tokenizer;
 
     my @token;
     while (1) {

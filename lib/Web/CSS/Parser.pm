@@ -131,14 +131,12 @@ sub parse_char_string ($$;%) {
 
   my $sp = Web::CSS::Selectors::Parser->new;
   $sp->{onerror} = $self->{onerror};
-  $sp->{level} = $self->{level};
   $sp->{pseudo_element} = $self->{pseudo_element};
   $sp->{pseudo_class} = $self->{pseudo_class};
   $sp->context ($self->context);
 
   my $mp = Web::CSS::MediaQueries::Parser->new;
   $mp->{onerror} = $self->{onerror};
-  $mp->{level} = $self->{level};
   $mp->context ($self->context);
 
   my $state = BEFORE_STATEMENT_STATE;
@@ -835,7 +833,6 @@ sub parse_char_string_as_inline ($$) {
             $onerror->(type => 'unknown property',
                        level => 'u',
                        uri => $self->context->urlref,
-                       level => $self->{level}->{uncertain},
                        token => $prop_name_t, value => $prop_name);
 
             #

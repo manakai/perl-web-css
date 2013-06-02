@@ -112,7 +112,6 @@ sub parse_char_string ($$) {
   my $tt = Web::CSS::Tokenizer->new;
   $tt->{onerror} = $self->{onerror};
   $tt->{href} = $self->{href};
-  $tt->{level} = $self->{level};
   $tt->{get_char} = sub ($) {
     if (pos $s < length $s) {
       my $c = ord substr $s, pos ($s)++, 1;

@@ -54,6 +54,33 @@ or the C<undef> value, representing the lack of the namespace binding.
 
 =back
 
+=head2 URL methods
+
+=over 4
+
+=item $url = $context->url
+
+=item $context->url ($url)
+
+Return or specify the URL in which the style sheet, selectors, or
+media queries is contained.
+
+=item $scalarref = $context->urlref
+
+Return the reference to the URL.
+
+=item $url = $context->base_url
+
+=item $context->base_url ($url)
+
+Return or specify the base URL for the style sheet.
+
+=item $scalarref = $context->base_urlref
+
+Return the reference to the base URL.
+
+=back
+
 =head2 Namespace methods
 
 =over 4

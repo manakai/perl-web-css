@@ -51,6 +51,7 @@ sub IGNORED_DECLARATION_STATE () { 3 }
 
 sub init ($) {
   my $self = shift;
+  $self->{onerror} = sub { }; # XXX
   delete $self->{parsed};
   delete $self->{unitless_px};
   delete $self->{hashless_rgb};
@@ -99,14 +100,9 @@ sub parse_char_string ($$;%) {
   my $line = 1;
   my $column = 0;
 
-  my $url = defined $args{url} ? $args{url} : 'about:blank';
-  $self->{urlref} = \$url;
-  $self->{base_url} = defined $args{base_url} ? $args{base_url} : $url;
-  
   my $tt = Web::CSS::Tokenizer->new;
   my $onerror = $tt->{onerror} = $self->{onerror};
-  $tt->{href} = $url;
-  $tt->{level} = $self->{level};
+  $tt->context ($self->context);
   $tt->{get_char} = sub ($) {
     if (pos $s < length $s) {
       my $c = ord substr $s, pos ($s)++, 1;
@@ -145,14 +141,12 @@ sub parse_char_string ($$;%) {
   $sp->{level} = $self->{level};
   $sp->{pseudo_element} = $self->{pseudo_element};
   $sp->{pseudo_class} = $self->{pseudo_class};
-  $sp->{href} = $url;
+  $sp->context ($self->context);
 
   my $mp = Web::CSS::MediaQueries::Parser->new;
   $mp->{onerror} = $self->{onerror};
   $mp->{level} = $self->{level};
-  $mp->{urlref} = \$url;
-
-  $sp->context ($self->context);
+  $mp->context ($self->context);
 
   my $state = BEFORE_STATEMENT_STATE;
   my $t = $tt->get_next_token;
@@ -237,8 +231,8 @@ sub parse_char_string ($$;%) {
                   if (defined $self->context->get_url_by_prefix ($prefix)) {
                     $onerror->(type => 'duplicate @namespace',
                                value => $prefix,
-                               level => $self->{level}->{must},
-                               uri => \$self->{href},
+                               level => 'm',
+                               uri => $self->context->urlref,
                                token => $t_at);
                   }
                   $self->context->{prefix_to_url}->{$prefix} = $uri;
@@ -246,8 +240,8 @@ sub parse_char_string ($$;%) {
                 } else {
                   if (defined $self->context->get_url_by_prefix ('')) {
                     $onerror->(type => 'duplicate @namespace',
-                               level => $self->{level}->{must},
-                               uri => \$self->{href},
+                               level => 'm',
+                               uri => $self->context->urlref,
                                token => $t_at);
                   }
                   $self->context->{prefix_to_url}->{''} = $uri;
@@ -275,8 +269,8 @@ sub parse_char_string ($$;%) {
               } else {
                 $onerror->(type => 'at-rule not allowed',
                            text => 'namespace',
-                           level => $self->{level}->{must},
-                           uri => \$self->{href},
+                           level => 'm',
+                           uri => $self->context->urlref,
                            token => $t);
               }
               
@@ -292,8 +286,8 @@ sub parse_char_string ($$;%) {
 
           $onerror->(type => 'at-rule syntax error',
                      text => 'namespace',
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           #
         } elsif ($at_rule_name eq 'import') {
@@ -342,8 +336,8 @@ sub parse_char_string ($$;%) {
 
             $onerror->(type => 'at-rule syntax error',
                        text => 'import',
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t)
                 if defined $mq; ## NOTE: Otherwise, already raised in MQ parser
             
@@ -351,8 +345,8 @@ sub parse_char_string ($$;%) {
           } else {
             $onerror->(type => 'at-rule not allowed',
                        text => 'import',
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             
             #
@@ -384,8 +378,8 @@ sub parse_char_string ($$;%) {
               } else {
                 $onerror->(type => 'at-rule syntax error',
                            text => 'media',
-                           level => $self->{level}->{must},
-                           uri => \$self->{href},
+                           level => 'm',
+                           uri => $self->context->urlref,
                            token => $t);
               }
 
@@ -396,8 +390,8 @@ sub parse_char_string ($$;%) {
           } else { ## Nested @media rule
             $onerror->(type => 'at-rule not allowed',
                        text => 'media',
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             
             #
@@ -436,22 +430,22 @@ sub parse_char_string ($$;%) {
             
             $onerror->(type => 'at-rule syntax error',
                        text => 'charset',
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             #
           } else {
             $onerror->(type => 'at-rule not allowed',
                        text => 'charset',
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             #
           }
         } else {
           $onerror->(type => 'unknown at-rule',
-                     level => $self->{level}->{uncertain},
-                     uri => \$self->{href},
+                     level => 'u',
+                     uri => $self->context->urlref,
                      token => $t,
                      value => $t->{value});
         }
@@ -470,8 +464,8 @@ sub parse_char_string ($$;%) {
       } elsif ($t->{type} == EOF_TOKEN) {
         if (@$open_rules > 1) {
           $onerror->(type => 'block not closed',
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
         }
 
@@ -504,8 +498,8 @@ sub parse_char_string ($$;%) {
           redo S;
         } else {
           $onerror->(type => 'no declaration block',
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
 
           ## Stay in the state.
@@ -551,8 +545,8 @@ sub parse_char_string ($$;%) {
                   #
                 } else {
                   $onerror->(type => 'priority syntax error',
-                             level => $self->{level}->{must},
-                             uri => \$self->{href},
+                             level => 'm',
+                             uri => $self->context->urlref,
                              token => $t);
                   
                   ## Reprocess.
@@ -571,9 +565,9 @@ sub parse_char_string ($$;%) {
             }
           } else {
             $onerror->(type => 'unknown property',
-                       level => $self->{level}->{uncertain},
-                       token => $prop_name_t, value => $prop_name,
-                       uri => \$self->{href});
+                       level => 'u',
+                       uri => $self->context->urlref,
+                       token => $prop_name_t, value => $prop_name);
 
             #
             $state = IGNORED_DECLARATION_STATE;
@@ -581,8 +575,8 @@ sub parse_char_string ($$;%) {
           }
         } else {
           $onerror->(type => 'no property colon',
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
 
           #
@@ -601,8 +595,8 @@ sub parse_char_string ($$;%) {
         #redo S;
       } elsif ($t->{type} == EOF_TOKEN) {
         $onerror->(type => 'block not closed',
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         ## Reprocess.
         $state = BEFORE_STATEMENT_STATE;
@@ -610,13 +604,13 @@ sub parse_char_string ($$;%) {
       } else {
         if ($prop_value) {
           $onerror->(type => 'no property semicolon',
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
         } else {
           $onerror->(type => 'no property name',
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
         }
 
@@ -826,8 +820,8 @@ sub parse_char_string_as_inline ($$) {
                   #
                 } else {
                   $onerror->(type => 'priority syntax error',
-                             level => $self->{level}->{must},
-                             uri => \$self->{href},
+                             level => 'm',
+                             uri => $self->context->urlref,
                              token => $t);
                   
                   ## Reprocess.
@@ -846,9 +840,10 @@ sub parse_char_string_as_inline ($$) {
             }
           } else {
             $onerror->(type => 'unknown property',
+                       level => 'u',
+                       uri => $self->context->urlref,
                        level => $self->{level}->{uncertain},
-                       token => $prop_name_t, value => $prop_name,
-                       uri => \$self->{href});
+                       token => $prop_name_t, value => $prop_name);
 
             #
             $state = IGNORED_DECLARATION_STATE;
@@ -856,8 +851,8 @@ sub parse_char_string_as_inline ($$) {
           }
         } else {
           $onerror->(type => 'no property colon',
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
 
           #
@@ -879,13 +874,13 @@ sub parse_char_string_as_inline ($$) {
       } else {
         if ($prop_value) {
           $onerror->(type => 'no property semicolon',
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
         } else {
           $onerror->(type => 'no property name',
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
         }
 

@@ -54,6 +54,22 @@ test {
   done $c;
 } n => 6, name => 'parse_char_string style declarations';
 
+test {
+  my $c = shift;
+  my $p = Web::CSS::Parser->new;
+  $p->context->url ('hoge://fuga');
+  my @url;
+  $p->{onerror} = sub {
+    my %args = @_;
+    push @url, ${$args{uri}};
+  };
+  $p->parse_char_string ('& { } @hoge; @media abc { }');
+
+  eq_or_diff \@url, ['hoge://fuga', 'hoge://fuga', 'hoge://fuga'];
+
+  done $c;
+} n => 1, name => 'context->url';
+
 run_tests;
 
 =head1 LICENSE

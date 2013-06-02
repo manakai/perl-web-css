@@ -19,6 +19,29 @@ sub new_from_nscallback ($$) {
   }, $_[0];
 } # new_from_nscallback
 
+sub url ($;$) {
+  if (@_ > 1) {
+    $_[0]->{url} = $_[1];
+  }
+  return ${$_[0]->urlref};
+} # url
+
+sub urlref ($) {
+  $_[0]->{url} = 'about:blank' if not defined $_[0]->{url};
+  return \($_[0]->{url})
+} # urlref
+
+sub base_url ($;$) {
+  if (@_ > 1) {
+    $_[0]->{base_url} = $_[1];
+  }
+  return defined $_[0]->{base_url} ? $_[0]->{base_url} : $_[0]->url;
+} # base_url
+
+sub base_urlref ($) {
+  return defined $_[0]->{base_url} ? \($_[0]->{base_url}) : $_[0]->urlref;
+} # base_urlref
+
 sub has_namespace ($) {
   return 1 if $_[0]->{callback};
   return 1 if keys %{$_[0]->{prefix_to_url} or {}};

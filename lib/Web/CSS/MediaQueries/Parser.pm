@@ -1,20 +1,31 @@
 package Web::CSS::MediaQueries::Parser;
 use strict;
 use warnings;
-our $VERSION = '1.3';
+our $VERSION = '1.4';
 use Web::CSS::Tokenizer;
 
 sub new ($) {
   my $self = bless {
     onerror => sub { },
-    level => {
-      must => 'm',
-      uncertain => 'u',
-    },
   }, shift;
-  # XXX urlref
   return $self;
 } # new
+
+sub init ($) {
+  my $self = $_[0];
+  $self->{onerror} = sub { };
+  delete $self->{context};
+} # init
+
+sub context ($;$) {
+  if (@_ > 1) {
+    $_[0]->{context} = $_[1];
+  }
+  return $_[0]->{context} ||= do {
+    require Web::CSS::Context;
+    Web::CSS::Context->new_empty;
+  };
+} # context
 
 sub parse_char_string ($$) {
   my $self = $_[0];
@@ -23,6 +34,7 @@ sub parse_char_string ($$) {
   pos ($s) = 0;
 
   my $tt = Web::CSS::Tokenizer->new;
+  $tt->context ($self->context);
   $tt->{onerror} = $self->{onerror};
   $tt->{line} = 1;
   $tt->{column} = 1;
@@ -45,7 +57,8 @@ sub parse_char_string ($$) {
 
   if ($t->{type} != EOF_TOKEN) {
     $self->{onerror}->(type => 'mq syntax error',
-                       level => $self->{level}->{must},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
     return undef;
   }
@@ -79,19 +92,22 @@ sub _parse_mq_with_tokenizer ($$$) {
       } else {
         push @$r, [['#type', 'unknown']];
         $self->{onerror}->(type => 'unknown media type',
-                           level => $self->{level}->{uncertain},
+                           level => 'u',
+                           uri => $self->context->urlref,
                            token => $t);
       }
       $t = $tt->get_next_token;
     } elsif ($t->{type} == NUMBER_TOKEN or $t->{type} == DIMENSION_TOKEN) {
       push @$r, [['#type', 'unknown']];
       $self->{onerror}->(type => 'unknown media type',
-                         level => $self->{level}->{uncertain},
+                         level => 'u',
+                         uri => $self->context->urlref,
                          token => $t);
       $t = $tt->get_next_token;
     } else {
       $self->{onerror}->(type => 'mq syntax error',
-                         level => $self->{level}->{must},
+                         level => 'm',
+                         uri => $self->context->urlref,
                          token => $t);    
       return ($t, undef);
     }

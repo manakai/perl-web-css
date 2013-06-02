@@ -58,6 +58,38 @@ test {
   done $c;
 } n => 9, name => 'new_from_callback';
 
+test {
+  my $c = shift;
+  my $ctx = Web::CSS::Context->new_empty;
+  is $ctx->url, 'about:blank';
+  is ref $ctx->urlref, 'SCALAR';
+  is $ctx->urlref, $ctx->urlref;
+  my $ref = $ctx->urlref;
+  is $$ref, 'about:blank';
+  $ctx->url ('http://foo');
+  is $ctx->url, 'http://foo';
+  is $ctx->urlref, $ref;
+  done $c;
+} n => 6, name => 'url';
+
+test {
+  my $c = shift;
+  my $ctx = Web::CSS::Context->new_empty;
+  is $ctx->base_url, 'about:blank';
+  is ref $ctx->base_urlref, 'SCALAR';
+  is $ctx->base_urlref, $ctx->base_urlref;
+  my $ref = $ctx->base_urlref;
+  is $$ref, 'about:blank';
+  $ctx->url ('http://foo');
+  is $ctx->base_url, 'http://foo';
+  is $ctx->base_urlref, $ref;
+  $ctx->base_url ('http://bar');
+  is $ctx->base_url, 'http://bar';
+  isnt $ctx->base_urlref, $ref;
+  is $ctx->base_urlref, $ctx->base_urlref;
+  done $c;
+} n => 9, name => 'base_url';
+
 run_tests;
 
 =head1 LICENSE

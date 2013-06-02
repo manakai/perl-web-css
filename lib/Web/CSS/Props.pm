@@ -2554,7 +2554,7 @@ my $uri_or_none_parser = sub {
     if ($t->{type} == URI_TOKEN) {
       my $value = $t->{value};
       $t = $tt->get_next_token;
-      return ($t, {$prop_name => ['URI', $value, \($self->{base_uri})]});
+      return ($t, {$prop_name => ['URI', $value, $self->context->base_urlref]});
     } elsif ($t->{type} == IDENT_TOKEN) {
       my $value = lc $t->{value}; ## TODO: case
       $t = $tt->get_next_token;
@@ -2575,7 +2575,7 @@ my $uri_or_none_parser = sub {
     #               uri => \$self->{href},
     #               token => $t);
     #    
-    #    return ($t, {$prop_name => ['URI', $value, \($self->{base_uri})]});
+    #    return ($t, {$prop_name => ['URI', $value, $self->context->base_urlref]});
     #  }
     }
     
@@ -2991,7 +2991,7 @@ $Prop->{cursor} = {
           return ($t, undef);
         }
       } elsif ($t->{type} == URI_TOKEN) {
-        push @prop_value, ['URI', $t->{value}, \($self->{base_uri})];
+        push @prop_value, ['URI', $t->{value}, $self->context->base_urlref];
         $t = $tt->get_next_token;
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
@@ -4602,7 +4602,7 @@ $Prop->{background} = {
                $t->{type} == URI_TOKEN and
                not defined $prop_value{'background-image'}) {
         $prop_value{'background-image'}
-            = ['URI', $t->{value}, \($self->{base_uri})];
+            = ['URI', $t->{value}, $self->context->base_urlref];
         $t = $tt->get_next_token;
       } else {
         if (keys %prop_value and not $has_sign) {
@@ -5169,7 +5169,7 @@ $Prop->{'list-style'} = {
         }
         
         $prop_value{'list-style-image'}
-            = ['URI', $t->{value}, \($self->{base_uri})];
+            = ['URI', $t->{value}, $self->context->base_urlref];
         $t = $tt->get_next_token;
       } else {
         if ($f == 1) {
@@ -5426,7 +5426,7 @@ $Prop->{content} = {
         push @v, ['STRING', $t->{value}];
         $t = $tt->get_next_token;
       } elsif ($t->{type} == URI_TOKEN) {
-        push @v, ['URI', $t->{value}, \($self->{base_uri})];
+        push @v, ['URI', $t->{value}, $self->context->base_urlref];
         $t = $tt->get_next_token;
       } elsif ($t->{type} == FUNCTION_TOKEN) {
         my $name = lc $t->{value}; ## TODO: case

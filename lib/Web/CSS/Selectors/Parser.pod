@@ -53,12 +53,6 @@ Following parameters can be specified on a parser object:
 
 =over 4
 
-=item $parser->{href} = URL
-
-The URL in which the input selectors string is found, if available.
-This value is used to set the C<href> parameter to the 
-C<< $parser->{onerror} >> handler.
-
 =item $parser->{onerror} = CODE
 
 The C<CODE> reference to which any errors and warnings during the

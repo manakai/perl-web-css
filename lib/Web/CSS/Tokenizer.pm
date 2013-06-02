@@ -7,8 +7,6 @@ use Carp;
 
 # XXX Need to be updated based on the latest css3-syntax standard
 
-# XXX href -> urlref
-
 sub BEFORE_TOKEN_STATE () { 0 }
 sub BEFORE_NMSTART_STATE () { 1 }
 sub NAME_STATE () { 2 }
@@ -124,7 +122,18 @@ sub init ($) {
   #              hyphen => bool,
   #              not_ident => bool, # HASH_TOKEN does not contain an identifier
   #              eos => bool};
+  delete $self->{context};
 } # init
+
+sub context ($;$) {
+  if (@_ > 1) {
+    $_[0]->{context} = $_[1];
+  }
+  return $_[0]->{context} ||= do {
+    require Web::CSS::Context;
+    Web::CSS::Context->new_empty;
+  };
+} # context
 
 sub get_next_token ($) {
   my $self = shift;
@@ -1353,15 +1362,15 @@ sub serialize_token ($$) {
 sub _escaped_char {
   if ($_[1] == 0x0000) {
     $_[0]->{onerror}->(type => 'css:escape:null',
-                       level => $_[0]->{level}->{must},
-                       uri => \$_[0]->{href},
+                       level => 'm',
+                       uri => $_[0]->context->urlref,
                        line => $_[0]->{line_prev},
                        column => $_[0]->{column_prev});
     return chr $_[1];
   } elsif ($_[1] > 0x10FFFF) {
     $_[0]->{onerror}->(type => 'css:escape:not unicode',
-                       level => $_[0]->{level}->{should},
-                       uri => \$_[0]->{href},
+                       level => 's',
+                       uri => $_[0]->context->urlref,
                        line => $_[0]->{line_prev},
                        column => $_[0]->{column_prev});
     return "\x{FFFD}";

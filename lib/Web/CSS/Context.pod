@@ -1,0 +1,97 @@
+=head1 NAME
+
+Web::CSS::Context - Providing context for CSS processing
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::Context> object provides context for parsing and
+processing of CSS, Selectors, and/or Media Queries.
+
+When a context object is expected, you can use the
+L<Web::CSS::Context> object, an instance of subclass of
+L<Web::CSS::Context>, or any object which implements methods supported
+by the L<Web::CSS::Context> class.  Anyway, it must behave as
+documented here.
+
+=head1 METHODS
+
+The L<Web::CSS::Context> object has following methods:
+
+=head2 Constructors
+
+=over 4
+
+=item $ctx = Web::CSS::Context->new_empty
+
+Create a new empty context object, with no namespaces.
+
+=item $ctx = Web::CSS::Context->new_from_nscallback ($callback)
+
+Create a new context object with a callback function for namespace
+resolution.  The argument must be a code reference or the C<undef>
+value.  If it is a code reference, when invoked with the namespace
+prefix argument, it must return the corresponding namespace URL.
+Instead of the namespace prefix, the C<undef> value representing the
+default namespace might be specified.  The code may return the empty
+string, representing the null namespace, or the C<undef> value,
+representing the lack of the namespace binding.  If the callback
+throws an exception, it is propagated to the callee of the method
+which invoked the code.
+
+=item $ctx = Web::CSS::Context->new_from_nsmaps ($p2u, $u2p)
+
+Create a new context object with two mapping tables, represented as
+hash references.
+
+The first mapping table is used to lookup namespace URL from the
+namespace prefix.  The default namespace is represented by the empty
+string.  The value can be the empty string, representing the null
+namespace, or the C<undef> value, representing the lack of the
+namespace binding.
+
+The second mapping table is used to lookup namespace prefix from the
+namespace URL.  The null namespace is represented by the empty string.
+The value can be the empty string, representing the default namespace,
+or the C<undef> value, representing the lack of the namespace binding.
+
+=back
+
+=head2 Namespace methods
+
+=over 4
+
+=item $boolean = $ctx->has_namespace
+
+Return whether there is any namespace binding or not.
+
+=item $prefix = $ctx->get_prefix_by_url ($url)
+
+Return the namespace prefix associated with the specified namespace
+URL.  The namespace URL can be the empty string, representing the null
+namespace.  If the result is the empty string, it represents the
+default namespace.  If the result is the C<undef> value, there is no
+namespace prefix (or the default namespace) associated with the URL.
+
+=item $url = $ctx->get_url_by_prefix ($url)
+
+Return the namespace URL associated with the specified namespace
+prefix.  The namespace prefix can be the empty string, representing
+the default namespace.  If the result is the empty string, it
+represents the null namespace.  If the result is the C<undef> value,
+there is no namespace URL (even the null namespace) associated with
+the prefix.
+
+=back
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

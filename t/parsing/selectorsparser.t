@@ -10,6 +10,7 @@ use Test::More;
 use Test::Differences;
 use Test::HTCT::Parser;
 use Web::CSS::Selectors::Parser;
+use Web::CSS::Context;
 
 my $data_d = file (__FILE__)->dir->parent->parent->subdir ('t_deps', 'tests', 'css', 'selectors', 'parsing', 'manakai');
 
@@ -156,9 +157,9 @@ sub _parse_char_string : Tests {
         $ns{''} = $1 eq '<null>' ? '' : $1;
       }
     }
-    $parser->{lookup_namespace_uri} = sub {
+    $parser->context (Web::CSS::Context->new_from_nscallback (sub {
       return $ns{$_[0] // ''};
-    }; # lookup_namespace_uri
+    }));
 
     my $selectors = $parser->parse_char_string ($test->{data}->[0]);
 

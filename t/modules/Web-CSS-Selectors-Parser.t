@@ -7,6 +7,7 @@ use lib file (__FILE__)->dir->parent->parent->subdir ('t_deps', 'modules', 'test
 use Test::X1;
 use Test::More;
 use Test::Differences;
+use Web::CSS::Context;
 use Web::CSS::Selectors::Parser;
 
 test {
@@ -41,11 +42,11 @@ for my $test (
     $parser->{pseudo_class}->{lang} = 1;
     $parser->{pseudo_class}->{'first-child'} = 1;
     $parser->{pseudo_element}->{before} = 1;
-    $parser->{lookup_namespace_uri} = sub {
+    $parser->context (Web::CSS::Context->new_from_nscallback (sub {
       my $prefix = shift;
       return 'http://foo/' if $prefix;
       return undef;
-    };
+    }));
     my $selectors = $parser->parse_char_string ($test->[0]);
     eq_or_diff $parser->get_selector_specificity ($selectors->[0]), $test->[1];
     done $c;

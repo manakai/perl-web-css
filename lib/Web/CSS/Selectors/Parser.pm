@@ -15,11 +15,6 @@ sub new ($) {
   my $self = bless {
     onerror => sub { },
 
-    ## See |Web::CSS::Parser| for usage.
-    lookup_namespace_uri => sub {
-      return undef;
-    },
-
     level => {
       must => 'm',
       should => 's',
@@ -33,6 +28,21 @@ sub new ($) {
   }, shift;
   return $self;
 } # new
+
+sub init ($) {
+  my $self = $_[0];
+  delete $self->{context};
+} # init
+
+sub context ($;$) {
+  if (@_ > 1) {
+    $_[0]->{context} = $_[1];
+  }
+  return $_[0]->{context} ||= do {
+    require Web::CSS::Context;
+    Web::CSS::Context->new_empty;
+  };
+} # context
 
 sub BEFORE_TYPE_SELECTOR_STATE () { 1 }
 sub AFTER_NAME_STATE () { 2 }
@@ -186,7 +196,7 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
   # $_[2] : End token (other than EOF_TOKEN - may be EOF_TOKEN if no other).
   # $_[3] : The first token, or undef
 
-  my $default_namespace = $self->{lookup_namespace_uri}->('');
+  my $default_namespace = $self->context->get_url_by_prefix ('');
 
   my $selectors = [];
   my $selector = [DESCENDANT_COMBINATOR];
@@ -345,7 +355,7 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
     } elsif ($state == BEFORE_LOCAL_NAME_STATE) {
       if ($t->{type} == IDENT_TOKEN) {
         if (defined $name) { ## Prefix is neither empty nor "*"
-          my $uri = $self->{lookup_namespace_uri}->($name);
+          my $uri = $self->context->get_url_by_prefix ($name);
           unless (defined $uri) {
             $self->{onerror}->(type => 'namespace prefix:not declared',
                                level => $self->{level}->{must},
@@ -364,7 +374,7 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
         redo S;
       } elsif ($t->{type} == STAR_TOKEN) {
         if (defined $name) { ## Prefix is neither empty nor "*"
-          my $uri = $self->{lookup_namespace_uri}->($name);
+          my $uri = $self->context->get_url_by_prefix ($name);
           unless (defined $uri) {
             $self->{onerror}->(type => 'namespace prefix:not declared',
                                level => $self->{level}->{must},
@@ -627,7 +637,7 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
     } elsif ($state == AFTER_ATTR_NAME_STATE) {
       if ($t->{type} == VBAR_TOKEN) {
         if (defined $name) {
-          my $uri = $self->{lookup_namespace_uri}->($name);
+          my $uri = $self->context->get_url_by_prefix ($name);
           unless (defined $uri) {
             $self->{onerror}->(type => 'namespace prefix:not declared',
                                level => $self->{level}->{must},

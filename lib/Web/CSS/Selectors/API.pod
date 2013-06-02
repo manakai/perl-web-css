@@ -1,0 +1,48 @@
+=head1 NAME
+
+Web::CSS::Selectors::API - Selectors Query API implementation
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::Selectors::API> class implements querying methods
+which search for nodes in the document tree using Selectors.  This
+module is typically used as backend for the DOM Selectors API
+(i.e. C<query_selector> and its family).
+
+XXX API of this module is not stable yet; You should not rely on it.
+Use $root_node->query_selector and $root_node->query_selector_all
+instead.
+
+=head1 SPECIFICATIONS
+
+Selectors Level 4 <http://dev.w3.org/csswg/selectors4/>.
+
+Selectors API Editor's Draft 29 August 2007
+<http://dev.w3.org/cvsweb/~checkout~/2006/webapi/selectors-api/Overview.html?rev=1.28&content-type=text/html;%20charset=utf-8>.
+
+Selectors API Level 2 <http://dev.w3.org/2006/webapi/selectors-api2/>.
+
+DOM Standard - Selectors API
+<https://github.com/whatwg/dom/pull/4/files>.
+
+manakai Selectors Extensions
+<http://suika.suikawiki.org/gate/2005/sw/manakai/Selectors%20Extensions>.
+
+=head1 SEE ALSO
+
+L<Web::DOM::ParentNode>.
+
+L<Web::CSS::Selectors::Parser>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

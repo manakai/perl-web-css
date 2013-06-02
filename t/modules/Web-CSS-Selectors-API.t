@@ -3,6 +3,7 @@ use warnings;
 use Path::Class;
 use lib file (__FILE__)->dir->parent->parent->subdir ('lib')->stringify;
 use lib glob file (__FILE__)->dir->parent->parent->subdir ('t_deps', 'modules', '*', 'lib')->stringify;
+use Test::More;
 use Test::Differences;
 use Test::HTCT::Parser;
 use Test::X1;
@@ -128,6 +129,268 @@ for my $file_name (map { $data_d->file ($_)->stringify } qw(
     } name => ['query', $file_name], n => 2 * @{$test->{result} or []};
   }
 }
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('http://foo/', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('hoge', undef);
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 2;
+  is $node[0], $el1;
+  is $node[1], $el2;
+  ok not defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 4, name => 'undef resolver';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('http://foo/', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('hoge', sub { undef });
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 2;
+  is $node[0], $el1;
+  is $node[1], $el2;
+  ok not defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 4, name => 'resolver undef';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('http://foo/', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('hoge', sub { '' });
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 1;
+  is $node[0], $el1;
+  ok not defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 3, name => 'resolver empty';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('0', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('hoge', sub { '0' });
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 1;
+  is $node[0], $el2;
+  ok not defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 3, name => 'resolver zero';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('0', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('hoge', sub { undef }, nsresolver => 1);
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 1;
+  is $node[0], $el1;
+  ok not defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 3, name => 'nsresolver undef';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('0', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('hoge', sub { '' }, nsresolver => 1);
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 1;
+  is $node[0], $el1;
+  ok not defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 3, name => 'nsresolver empty';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('0', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('hoge', sub { '0' }, nsresolver => 1);
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 1;
+  is $node[0], $el2;
+  ok not defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 3, name => 'nsresolver zero';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('0', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('abc|hoge', undef);
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 0;
+  ok defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 2, name => 'resolver prefix undef';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('0', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('abc|hoge', sub { undef });
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 0;
+  ok defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 2, name => 'resolver prefix return undef';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('0', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('abc|hoge', sub { '' });
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 1;
+  is $node[0], $el1;
+  ok not defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 3, name => 'resolver prefix return empty';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('0', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('abc|hoge', sub { undef }, nsresolver => 1);
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 0;
+  ok defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 2, name => 'nsresolver prefix return undef';
+
+test {
+  my $c = shift;
+
+  my $doc = new Web::DOM::Document;
+  my $el1 = $doc->create_element_ns (undef, 'hoge');
+  $doc->append_child ($el1);
+  my $el2 = $doc->create_element_ns ('0', 'hoge');
+  $el1->append_child ($el2);
+
+  my $api = Web::CSS::Selectors::API->new;
+  $api->root_node ($doc);
+  $api->set_selectors ('abc|hoge', sub { '' }, nsresolver => 1);
+  $api->return_all (1);
+
+  my @node = @{$api->get_elements};
+  is scalar @node, 0;
+  ok defined $api->selectors_has_ns_error;
+  
+  done $c;
+} n => 2, name => 'nsresolver prefix return empty';
 
 run_tests;
 

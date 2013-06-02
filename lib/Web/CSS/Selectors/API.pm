@@ -1,8 +1,9 @@
 package Web::CSS::Selectors::API;
 use strict;
 use warnings;
-our $VERSION = '1.12';
+our $VERSION = '1.13';
 use Web::CSS::Selectors::Parser;
+use Web::CSS::Context;
 
 sub new ($) {
   return bless {}, $_[0];
@@ -47,52 +48,47 @@ sub selectors_has_ns_error ($) {
   return $_[0]->{selectors_has_ns_error};
 } # selectors_has_ns_error
 
-sub set_selectors ($$$) {
-  #my ($self, $selectors, $ns_resolver) = @_;
-  my $self = $_[0];
-  if (ref $_[1] eq 'ARRAY') {
-    $self->{selectors} = $_[1];
+sub set_selectors ($$$;%) {
+  my ($self, $selectors, $resolver, %args) = @_;
+  if (ref $selectors eq 'ARRAY') {
+    $self->{selectors} = $selectors;
     delete $self->{selectors_has_ns_error};
   } else {
-    my $ns_error;
-    my $resolver = $_[2] || sub { return undef };
-    if (UNIVERSAL::can ($_[2], 'lookup_namespace_uri')) {
-      my $re = $resolver;
-      $resolver = sub {
-        return $re->lookup_namespace_uri ($_[0]);
-      };
-    }
     my $p = Web::CSS::Selectors::Parser->new;
-    $p->{lookup_namespace_uri} = sub {
-      ## NOTE: MAY assume that $resolver returns consistent results.
-      ## NOTE: MUST be case-sensitive.
-      if (defined $_[0] and $_[0] ne '') {
-        my $uri = $resolver->($_[0]);
-        if (defined $uri) {
-          $uri = ''.$uri;
-          if ($uri eq '') {
-            return '';
-          } else {
-            return $uri;
-          }
-        } else {
-          $ns_error = $_[0];
-          return undef;
-        }
-      } else {
-        my $uri = $resolver->(undef);
-        if (defined $uri) {
-          $uri = ''.$uri;
-          if ($uri eq '') {
-            return '';
-          } else {
-            return $uri;
-          }
-        } else {
-          return undef;
-        }
+    my $ns_error;
+    if (defined $resolver) { # resolver must be CODE or can(lookup_namespace_uri)
+      if (UNIVERSAL::can ($_[2], 'lookup_namespace_uri')) {
+        my $obj = $resolver;
+        $resolver = sub { $obj->lookup_namespace_uri ($_[0]) }; # or throw
       }
-    }; # lookup_namespace_uri
+      if ($args{nsresolver}) {
+        $p->context (Web::CSS::Context->new_from_nscallback (sub {
+          my $result = $resolver->(defined $_[0] ? $_[0] : ''); # or throw
+          $result = defined $result ? ''.$result : ''; # WebIDL DOMString
+          if (defined $_[0] and length $_[0]) {
+            $ns_error = $_[0] if $result eq '';
+            return length $result ? $result : undef;
+          } else {
+            return length $result ? $result : '';
+          }
+        }));
+      } else {
+        $p->context (Web::CSS::Context->new_from_nscallback (sub {
+          my $result = $resolver->($_[0]); # or throw
+          $ns_error = $_[0] if defined $_[0] and length $_[0] and not defined $result;
+          return $result;
+        }));
+      }
+    } else { # resolver is null
+      $p->context (Web::CSS::Context->new_from_nscallback (sub {
+        if (defined $_[0] and length $_[0]) { # Namespace prefix
+          $ns_error = $_[0];
+          return undef; # not declared
+        } else { # Default namespace
+          return undef; # not declared
+        }
+      }));
+    }
 
     ## NOTE: SHOULD ensure to remain stable when facing a hostile $_[2].
 
@@ -112,7 +108,7 @@ sub set_selectors ($$$) {
       after before first-letter first-line
     /;
 
-    $self->{selectors} = $p->parse_char_string (''.$_[1]);
+    $self->{selectors} = $p->parse_char_string ($selectors);
     $self->{selectors_has_ns_error} = $ns_error;
   }
 } # set_selectors
@@ -412,10 +408,10 @@ sub _sss_match ($$$) {
 
 sub get_elements ($) {
   my ($self) = @_;
-  my $selectors = $self->selectors;
 
   my $r;
   $r = [] if $self->return_all;
+  my $selectors = $self->selectors or return $r;
   
   my @node_cond = map {$_->[1] = [@$selectors]; $_} @{$self->_get_node_cond};
   while (@node_cond) {
@@ -518,21 +514,6 @@ sub _get_node_cond ($) {
 } # _get_node_cond
 
 1;
-
-=head1 SPECIFICATIONS
-
-Selectors Level 4 <http://dev.w3.org/csswg/selectors4/>.
-
-Selectors API Editor's Draft 29 August 2007
-<http://dev.w3.org/cvsweb/~checkout~/2006/webapi/selectors-api/Overview.html?rev=1.28&content-type=text/html;%20charset=utf-8>.
-
-Selectors API Level 2 <http://dev.w3.org/2006/webapi/selectors-api2/>.
-
-DOM Standard - Selectors API
-<https://github.com/whatwg/dom/pull/4/files>.
-
-manakai Selectors Extensions
-<http://suika.fam.cx/gate/2005/sw/manakai/Selectors%20Extensions>.
 
 =head1 LICENSE
 

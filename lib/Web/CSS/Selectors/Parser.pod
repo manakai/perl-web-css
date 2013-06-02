@@ -24,6 +24,13 @@ specificity of a parsed selector.
 
 Creates a new instance of the Selectors parser.
 
+=item $parser->context ($context)
+
+=item $context = $parser->context
+
+Return or specify the L<Web::CSS::Context> object used to resolve
+namespaces in Selectors.
+
 =item $parsed = $parser->parse_char_string ($selectors)
 
 Parses a character string.  If it is a valid group of selectors, the
@@ -51,24 +58,6 @@ Following parameters can be specified on a parser object:
 The URL in which the input selectors string is found, if available.
 This value is used to set the C<href> parameter to the 
 C<< $parser->{onerror} >> handler.
-
-=item $parser->{lookup_namespace_uri} = CODE
-
-The C<CODE> reference used to resolve namespce prefixes and to obtain
-the default namespace.
-
-The code would be invoked during the parsing with an argument.  The
-argument is C<undef>, it must return the default namespace URL.
-Otherwise, it must return the namespace URL bound to the specified
-namespace prefix.
-
-If the namespace URL is explicitly given for the prefix (or the
-default namespace), the URL must be returned.  If the prefix (or the
-default namespace) is bound to the null namespace, the empty string
-must be returned.  (Note that this is incompatible with the
-C<lookup_namespace_uri> method on the C<Node> object.)  Otherwise,
-i.e. the namespace prefix (or the default namespace) is not bound to
-any namespace, C<undef> must be returned.
 
 =item $parser->{onerror} = CODE
 
@@ -135,7 +124,7 @@ considered I<invalid> for the purpose of parsing.
 =head1 DATA STRUCTURES
 
 See also:
-<http://suika.fam.cx/www/manakai-core/lib/Whatpm/CSS/selectors-object.en.html>.
+<http://suika.suikawiki.org/www/manakai-core/lib/Whatpm/CSS/selectors-object.en.html>.
 
 =head2 A group of selectors
 
@@ -289,17 +278,24 @@ the module:
 
   use Web::CSS::Selectors::Parser;
 
-=head1 SEE ALSO
+=head1 SPECIFICATIONS
 
-Selectors <http://www.w3.org/TR/selectors/>.
+Selectors Level 4 <http://dev.w3.org/csswg/selectors4/>.
 
 The CSS syntax <http://www.w3.org/TR/CSS21/syndata.html>.
 
 The C<style> attribute specificity
 <http://www.w3.org/TR/CSS21/cascade.html#specificity>.
 
+manakai Selectors Extensions
+<http://suika.suikawiki.org/gate/2005/sw/manakai/Selectors%20Extensions>.
+
 Supported standards - Selectors
-<http://suika.fam.cx/gate/2007/html/standards#selectors>.
+<http://suika.suikawiki.org/gate/2007/html/standards#selectors>.
+
+=head1 SEE ALSO
+
+L<Web::CSS::Selectors::API>, L<Web::CSS::Selectors::Serializer>.
 
 =head1 AUTHOR
 

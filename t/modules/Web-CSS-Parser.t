@@ -16,7 +16,7 @@ test {
   my $result = $parser->parsed;
   is scalar @{$result->{sheets}}, 1;
   eq_or_diff $result->{sheets}->[0]->{rules}, [];
-  is $result->{sheets}->[0]->{base_url}, 'about:blank';
+  is ${$result->{sheets}->[0]->{base_urlref}}, 'about:blank';
   is scalar @{$result->{rules}}, 0;
   done $c;
 } n => 4, name => 'parse_char_string empty string';
@@ -28,7 +28,7 @@ test {
   my $result = $parser->parsed;
   is scalar @{$result->{sheets}}, 1;
   eq_or_diff $result->{sheets}->[0]->{rules}, [0];
-  is $result->{sheets}->[0]->{base_url}, 'about:blank';
+  is ${$result->{sheets}->[0]->{base_urlref}}, 'about:blank';
   is scalar @{$result->{rules}}, 1;
   is $result->{rules}->[0]->{type}, '@charset';
   is $result->{rules}->[0]->{encoding}, 'utf-8';
@@ -44,7 +44,7 @@ test {
   my $result = $parser->parsed;
   is scalar @{$result->{sheets}}, 1;
   eq_or_diff $result->{sheets}->[0]->{rules}, [0];
-  is $result->{sheets}->[0]->{base_url}, 'about:blank';
+  is ${$result->{sheets}->[0]->{base_urlref}}, 'about:blank';
   is scalar @{$result->{rules}}, 1;
   is $result->{rules}->[0]->{type}, 'style';
   eq_or_diff $result->{rules}->[0]->{style},

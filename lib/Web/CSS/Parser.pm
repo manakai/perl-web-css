@@ -55,8 +55,6 @@ sub init ($) {
   delete $self->{parsed};
   delete $self->{unitless_px};
   delete $self->{hashless_rgb};
-  delete $self->{urlref};
-  delete $self->{base_url};
   delete $self->{media_resolver};
   delete $self->{context};
 } # init
@@ -87,11 +85,6 @@ sub media_resolver ($;$) {
 
 # XXX parse_byte_string
 
-## Arguments:
-##   url      - The URL of the style sheet.  It must be a canonical
-##              absolute URL or |undef|.
-##   base_url - The base URL of the style sheet.  It must be a
-##              canonical absolute URL of |undef|.
 sub parse_char_string ($$;%) {
   my ($self, undef, %args) = @_;
 
@@ -174,11 +167,11 @@ sub parse_char_string ($$;%) {
   $self->{current_sheet_id} = $self->{parsed}->{next_sheet_id}++;
   ## Style sheet structures
   ##
-  ##   rules    - The arrayref of indexes of rules contained by the sheet
-  ##   base_url - The base URL of the style sheet
+  ##   rules       - The arrayref of indexes of rules contained by the sheet
+  ##   base_urlref - The scalarref of the base URL for the style sheet
   $self->{parsed}->{sheets}->[$self->{current_sheet_id}] = {
     rules => $open_rules->[0],
-    base_url => $self->{base_url},
+    base_urlref => $self->context->base_urlref,
     # XXX parent_style_sheet => ...,
   };
   # XXX import

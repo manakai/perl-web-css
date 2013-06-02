@@ -4,16 +4,18 @@ use warnings;
 our $VERSION = '1.0';
 
 sub new_empty ($) {
-  return bless {}, $_[0];
+  return bless {prefix_to_url => {}, url_to_prefixes => {}}, $_[0];
 } # new_empty
 
 sub new_from_nsmaps ($$$) {
-  return bless {prefix_to_url => $_[1], url_to_prefix => $_[2]}, $_[0];
+  return bless {prefix_to_url => $_[1], url_to_prefixes => $_[2]}, $_[0];
 } # new_from_nsmaps
 
 sub new_from_nscallback ($$) {
   return bless {
     callback => $_[1],
+    prefix_to_url => {},
+    url_to_prefixes => {},
   }, $_[0];
 } # new_from_nscallback
 
@@ -51,8 +53,8 @@ sub get_url_by_prefix ($$) {
 sub get_prefix_by_url ($$) {
   return undef unless defined $_[1];
   my $url = $_[1];
-  if (exists $_[0]->{url_to_prefix}->{$url}) {
-    return $_[0]->{url_to_prefix}->{$url};
+  if (@{$_[0]->{url_to_prefixes}->{$url} or []}) {
+    return $_[0]->{url_to_prefixes}->{$url}->[-1];
   }
   return undef;
 } # get_prefix_by_url

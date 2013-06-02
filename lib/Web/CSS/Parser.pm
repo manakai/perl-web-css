@@ -15,7 +15,6 @@ sub new ($) {
       warning => 'w',
       uncertain => 'u',
     },
-    lookup_namespace_uri => sub { undef },
   }, shift;
 
   ## The base URL.
@@ -39,29 +38,6 @@ sub new ($) {
              defined $opt{value} ? " (value $opt{value})" : '');
   }; # onerror
 
-  # XXX move to media resolver
-  ## Media-dependent RGB color range clipper
-  $self->{clip_color} = sub {
-    shift; #my $self = shift;
-    my $value = shift;
-    if (defined $value and $value->[0] eq 'RGBA') {
-      my ($r, $g, $b) = @$value[1, 2, 3];
-      $r = 0 if $r < 0;  $r = 255 if $r > 255;
-      $g = 0 if $g < 0;  $g = 255 if $g > 255;
-      $b = 0 if $b < 0;  $b = 255 if $b > 255;
-      return ['RGBA', $r, $g, $b, $value->[4]];
-    }
-    return $value;
-  };
-
-  # XXX move to media resolver
-  ## System dependent font expander
-  $self->{get_system_font} = sub {
-    #my ($self, $normalized_system_font_name, $font_properties) = @_;
-    ## Modify $font_properties hash (except for 'font-family' property).
-    return $_[2];
-  };
-
   #$self->{parsed}
   #$self->{current_sheet_id}
 
@@ -80,7 +56,29 @@ sub init ($) {
   delete $self->{hashless_rgb};
   delete $self->{urlref};
   delete $self->{base_url};
+  delete $self->{media_resolver};
+  delete $self->{context};
 } # init
+
+sub context ($;$) {
+  if (@_ > 1) {
+    $_[0]->{context} = $_[1];
+  }
+  return $_[0]->{context} ||= do {
+    require Web::CSS::Context;
+    Web::CSS::Context->new_from_nsmaps ({}, {});
+  };
+} # context
+
+sub media_resolver ($;$) {
+  if (@_ > 1) {
+    $_[0]->{media_resolver} = $_[1];
+  }
+  return $_[0]->{media_resolver} ||= do {
+    require Web::CSS::MediaResolver;
+    Web::CSS::MediaResolver->new;
+  };
+} # media_resolver
 
 # XXX sync with new css-syntax definition
 
@@ -154,29 +152,7 @@ sub parse_char_string ($$;%) {
   $mp->{level} = $self->{level};
   $mp->{urlref} = \$url;
 
-  # XXX
-  my $nsmap = {prefix_to_uri => {}, uri_to_prefixes => {}};
-
-  # $nsmap->{prefix_to_uri}->{p/""} = uri/undef
-  #
-  ## A mapping from namespace prefixes to namespace URLs.  The empty
-  ## string as the namespace prefix (or the key of the hash)
-  ## represents the default namespace.  The empty string as the
-  ## namespace URL represents the null namespace, while the |undef|
-  ## value as the namespace URL represents the missing of the
-  ## namespace prefix declaration.
-
-  # $nsmap->{uri_to_prefixes}->{uri} = ["p|"/"",...]/undef
-  # $nsmap->{has_namespace} = 1/0
-
-  ## See the note for the |prefix_to_uri| value above.
-  ##
-  ## XXX empty vs null should not be distinguished for compat with
-  ## DOM's |lookupNamespaceURI| method.
-  $self->{lookup_namespace_uri} = 
-  $sp->{lookup_namespace_uri} = sub {
-    return $nsmap->{prefix_to_uri}->{$_[0]}; # $_[0] is '' (default) or prefix
-  }; # $sp->{lookup_namespace_uri}
+  $sp->context ($self->context);
 
   my $state = BEFORE_STATEMENT_STATE;
   my $t = $tt->get_next_token;
@@ -257,36 +233,36 @@ sub parse_char_string ($$;%) {
             if ($t->{type} == SEMICOLON_TOKEN) {
               if ($namespace_allowed) {
                 my $p = $prefix;
-                $nsmap->{has_namespace} = 1;
                 if (defined $prefix) {
-                  if (defined $nsmap->{prefix_to_uri}->{$prefix}) {
+                  if (defined $self->context->get_url_by_prefix ($prefix)) {
                     $onerror->(type => 'duplicate @namespace',
                                value => $prefix,
                                level => $self->{level}->{must},
                                uri => \$self->{href},
                                token => $t_at);
                   }
-                  $nsmap->{prefix_to_uri}->{$prefix} = $uri;
+                  $self->context->{prefix_to_url}->{$prefix} = $uri;
                   $p .= '|';
                 } else {
-                  if (defined $nsmap->{prefix_to_uri}->{''}) {
+                  if (defined $self->context->get_url_by_prefix ('')) {
                     $onerror->(type => 'duplicate @namespace',
                                level => $self->{level}->{must},
                                uri => \$self->{href},
                                token => $t_at);
                   }
-                  $nsmap->{prefix_to_uri}->{''} = $uri;
+                  $self->context->{prefix_to_url}->{''} = $uri;
                   $p = '';
                 }
-                for my $u (keys %{$nsmap->{uri_to_prefixes}}) {
+                my $map = $self->context->{url_to_prefixes};
+                for my $u (keys %$map) {
                   next if $u eq $uri;
-                  my $list = $nsmap->{uri_to_prefixes}->{$u};
+                  my $list = $map->{$u};
                   next unless $list;
                   for (reverse 0..$#$list) {
                     splice @$list, $_, 1, () if $list->[$_] eq $p;
                   }
                 }
-                push @{$nsmap->{uri_to_prefixes}->{$uri} ||= []}, $p;
+                push @{$map->{$uri} ||= []}, $p;
                 my $rule_id = $self->{parsed}->{next_rule_id}++;
                 $self->{parsed}->{rules}->[$rule_id]
                     = {type => '@namespace',

@@ -1,0 +1,57 @@
+=head1 NAME
+
+Web::CSS::Parser - A CSS parser
+
+=head1 SYNOPSIS
+
+TBD
+
+=head1 METHODS
+
+TBD
+
+=over 4
+
+=item $context = $parser->context
+
+=item $parser->context ($context)
+
+Return or specify the L<Web::CSS::Context> object for parsing.
+
+=item $mr = $parser->media_resolver
+
+=item $parser->media_resolver ($mr)
+
+Return or specify the L<Web::CSS::MediaResolver> object for parsing.
+
+=back
+
+=head1 SUPPORTED STANDARDS
+
+This module implements CSS, Selectors, Media Querties, and CSSOM.  See
+<http://suika.suikawiki.org/gate/2007/html/standards#css> for more
+information.
+
+CSS Namespace <http://www.w3.org/TR/css3-namespace/>.
+
+=head1 SEE ALSO
+
+L<Web::CSS::Selectors::Parser>, L<Web::CSS::MediaQueries::Parser>.
+
+L<Web::CSS::Serializer>.
+
+L<Web::DOM::CSSStyleSheet>, L<Web::DOM::CSSRule>,
+L<Web::DOM::CSSStyleDeclaration>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

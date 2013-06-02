@@ -8,10 +8,8 @@ The C<Web::CSS::Context> object provides context for parsing and
 processing of CSS, Selectors, and/or Media Queries.
 
 When a context object is expected, you can use the
-L<Web::CSS::Context> object, an instance of subclass of
-L<Web::CSS::Context>, or any object which implements methods supported
-by the L<Web::CSS::Context> class.  Anyway, it must behave as
-documented here.
+L<Web::CSS::Context> object or an instance of subclass of
+L<Web::CSS::Context>.
 
 =head1 METHODS
 

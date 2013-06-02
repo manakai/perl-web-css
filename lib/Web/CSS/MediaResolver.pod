@@ -1,0 +1,28 @@
+=head1 NAME
+
+Web::CSS::MediaResolver - Default for media-dependent CSS processing
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::MediaResolver> class can be used as an implementation
+of the media-dependent CSS and/or Media Queries processing adaptor for
+the C<Web::CSS> modules.
+
+XXX
+
+=head1 SEE ALSO
+
+L<Web::CSS::Parser>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

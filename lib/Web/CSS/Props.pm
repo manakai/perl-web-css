@@ -131,8 +131,8 @@ my $parse_color = sub {
                   $t = $tt->get_next_token;
                   return ($t,
                           {$prop_name =>
-                           $self->{clip_color}->($self,
-                                                 ['RGBA', $r, $g, $b, 1])});
+                           $self->media_resolver->clip_color
+                               (['RGBA', $r, $g, $b, 1])});
                 }
               }
             }
@@ -174,8 +174,8 @@ my $parse_color = sub {
                   $t = $tt->get_next_token;
                   return ($t,
                           {$prop_name =>
-                           $self->{clip_color}->($self,
-                                                 ['RGBA', $r, $g, $b, 1])});
+                           $self->media_resolver->clip_color
+                               (['RGBA', $r, $g, $b, 1])});
                 }
               }
             }
@@ -243,12 +243,11 @@ my $parse_color = sub {
                   $t = $tt->get_next_token;
                   return ($t,
                           {$prop_name =>
-                           $self->{clip_color}
-                               ->($self,
-                                  ['RGBA',
-                                   $hue2rgb->($m1, $m2, $h + 1/3) * 255,
-                                   $hue2rgb->($m1, $m2, $h) * 255,
-                                   $hue2rgb->($m1, $m2, $h - 1/3) * 255, 1])});
+                           $self->media_resolver->clip_color
+                               (['RGBA',
+                                 $hue2rgb->($m1, $m2, $h + 1/3) * 255,
+                                 $hue2rgb->($m1, $m2, $h) * 255,
+                                 $hue2rgb->($m1, $m2, $h - 1/3) * 255, 1])});
                 }
               }
             }
@@ -4674,7 +4673,7 @@ $Prop->{font} = {
                   'message-box' => 1, 'small-caption' => 1, 'status-bar' => 1,
                  }->{$value} and 0 == keys %prop_value) {
           $t = $tt->get_next_token;
-          return ($t, $self->{get_system_font}->($self, $value, {
+          return ($t, $self->media_resolver->get_system_font ($value, {
             'font-style' => $Prop->{'font-style'}->{initial},
             'font-variant' => $Prop->{'font-variant'}->{initial},
             'font-weight' => $Prop->{'font-weight'}->{initial},
@@ -5453,7 +5452,7 @@ $Prop->{content} = {
             if ($t->{type} == RPAREN_TOKEN) {
               if (defined $t_pfx) {
                 my $pfx = $t_pfx->{value};
-                my $uri = $self->{lookup_namespace_uri}->($pfx);
+                my $uri = $self->context->get_url_by_prefix ($pfx);
                 unless (defined $uri) {
                   $self->{onerror}->(type => 'namespace prefix:not declared',
                                      level => $self->{level}->{must},

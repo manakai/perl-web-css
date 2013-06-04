@@ -3196,7 +3196,7 @@ $Prop->{'border-color'} = {
     if (not defined $pv) {
       return ($t, undef);
     }
-    $prop_value{'border-top-color'} = $pv->{'border-color'};
+    $prop_value{'border-top-color'} = $pv->{'border-top-color'};
     $prop_value{'border-bottom-color'} = $prop_value{'border-top-color'};
     $prop_value{'border-right-color'} = $prop_value{'border-top-color'};
     $prop_value{'border-left-color'}= $prop_value{'border-right-color'};
@@ -3220,7 +3220,7 @@ $Prop->{'border-color'} = {
                    token => $t);
         return ($t, undef);
       }
-      $prop_value{'border-right-color'} = $pv->{'border-color'};
+      $prop_value{'border-right-color'} = $pv->{'border-right-color'};
       $prop_value{'border-left-color'}= $prop_value{'border-right-color'};
 
       $t = $tt->get_next_token while $t->{type} == S_TOKEN;
@@ -3239,7 +3239,7 @@ $Prop->{'border-color'} = {
                      token => $t);
           return ($t, undef);
         }
-        $prop_value{'border-bottom-color'} = $pv->{'border-color'};
+        $prop_value{'border-bottom-color'} = $pv->{'border-bottom-color'};
 
         $t = $tt->get_next_token while $t->{type} == S_TOKEN;
         if ({
@@ -3257,7 +3257,7 @@ $Prop->{'border-color'} = {
                        token => $t);
             return ($t, undef);
           }
-          $prop_value{'border-left-color'} = $pv->{'border-color'};
+          $prop_value{'border-left-color'} = $pv->{'border-left-color'};
         }
       }
     }

@@ -258,8 +258,8 @@ my $parse_color = sub {
   }
   
   $onerror->(type => 'CSS syntax error', text => 'color',
-             level => $self->{level}->{must},
-             uri => \$self->{href},
+             level => 'm',
+             uri => $self->context->urlref,
              token => $t);
   
   return ($t, undef);
@@ -620,8 +620,8 @@ my $one_keyword_parser = sub {
   }
   
   $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-             level => $self->{level}->{must},
-             uri => \$self->{href},
+             level => 'm',
+             uri => $self->context->urlref,
              token => $t);
   return ($t, undef);
 };
@@ -1195,8 +1195,8 @@ $Prop->{'z-index'} = {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -1241,8 +1241,8 @@ $Prop->{'font-size-adjust'} = {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -1287,8 +1287,8 @@ $Prop->{orphans} = {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -1344,8 +1344,8 @@ $Prop->{opacity} = {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -1437,8 +1437,8 @@ my $length_percentage_keyword_parser = sub ($$$$$) {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
 }; # $length_percentage_keyword_parser
@@ -1484,8 +1484,8 @@ my $length_keyword_parser = sub {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
 }; # $length_keyword_parser
@@ -2174,8 +2174,8 @@ $Prop->{'line-height'} = {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -2518,8 +2518,8 @@ $Prop->{'font-weight'} = {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -2585,8 +2585,8 @@ my $uri_or_none_parser = sub {
     #  $t = $tt->get_next_token;
     #  if ($t->{type} == EOF_TOKEN) {
     #    $onerror->(type => 'uri not closed',
-    #               level => $self->{level}->{must},
-    #               uri => \$self->{href},
+    #               level => 'm',
+    #               uri => $self->context->urlref,
     #               token => $t);
     #    
     #    return ($t, {$prop_name => ['URI', $value, $self->context->base_urlref]});
@@ -2594,8 +2594,8 @@ my $uri_or_none_parser = sub {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
 }; # $uri_or_none_parser
@@ -2938,8 +2938,8 @@ $Prop->{'font-family'} = {
           push @prop_value, ['STRING', $font_name];
         } else {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           return ($t, undef);
         }
@@ -2988,8 +2988,8 @@ $Prop->{cursor} = {
                  $Prop->{$prop_name}->{keyword}->{pointer}) {
           ## TODO: add test
           $onerror->(type => 'CSS cursor hand',
-                     level => $self->{level}->{must}, # not valid <'cursor'>
-                     uri => \$self->{href},
+                     level => 'm', # not valid <'cursor'>
+                     uri => $self->context->urlref,
                      token => $t);
           push @prop_value, ['KEYWORD', 'pointer'];
           $t = $tt->get_next_token;
@@ -2999,8 +2999,8 @@ $Prop->{cursor} = {
           return ($t, {$prop_name => ['INHERIT']});
         } else {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           return ($t, undef);
         }
@@ -3009,8 +3009,8 @@ $Prop->{cursor} = {
         $t = $tt->get_next_token;
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3082,8 +3082,8 @@ $Prop->{'border-style'} = {
         return ($t, \%prop_value);
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3092,8 +3092,8 @@ $Prop->{'border-style'} = {
       $prop_value{'border-left-style'} = $prop_value{'border-right-style'};
     } else {
       $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => $self->{level}->{must},
-                 uri => \$self->{href},
+                 level => 'm',
+                 uri => $self->context->urlref,
                  token => $t);
       return ($t, undef);
     }
@@ -3107,8 +3107,8 @@ $Prop->{'border-style'} = {
         $prop_value{'border-right-style'} = ["KEYWORD", $prop_value];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3123,8 +3123,8 @@ $Prop->{'border-style'} = {
           $prop_value{'border-bottom-style'} = ["KEYWORD", $prop_value];
         } else {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           return ($t, undef);
         }
@@ -3138,8 +3138,8 @@ $Prop->{'border-style'} = {
             $prop_value{'border-left-style'} = ["KEYWORD", $prop_value];
           } else {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           }
@@ -3215,8 +3215,8 @@ $Prop->{'border-color'} = {
         return ($t, undef);
       } elsif ($pv->{'border-color'}->[0] eq 'INHERIT') {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3234,8 +3234,8 @@ $Prop->{'border-color'} = {
           return ($t, undef);
         } elsif ($pv->{'border-color'}->[0] eq 'INHERIT') {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           return ($t, undef);
         }
@@ -3252,8 +3252,8 @@ $Prop->{'border-color'} = {
             return ($t, undef);
           } elsif ($pv->{'border-color'}->[0] eq 'INHERIT') {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           }
@@ -3334,8 +3334,8 @@ $Prop->{'border-top'} = {
           $prop_value{$prop_name.'-style'} = $pv->{$prop_name.'-style'};
         } else {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           return ($t, undef);
         }
@@ -3371,8 +3371,8 @@ $Prop->{'border-top'} = {
       if (defined $pv) {
         if ($pv->{$prop_name.'-color'}->[0] eq 'INHERIT') {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
         } else {
           $prop_value{$prop_name.'-color'} = $pv->{$prop_name.'-color'};
@@ -3392,8 +3392,8 @@ $Prop->{'border-top'} = {
         if (defined $pv) {
           if ($pv->{$prop_name.'-width'}->[0] eq 'INHERIT') {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
           } else {
             $prop_value{$prop_name.'-width'} = $pv->{$prop_name.'-width'};
@@ -3602,8 +3602,8 @@ $Prop->{margin} = {
         $prop_value{'margin-top'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3629,15 +3629,15 @@ $Prop->{margin} = {
         return ($t, \%prop_value);
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => $self->{level}->{must},
-                 uri => \$self->{href},
+                 level => 'm',
+                 uri => $self->context->urlref,
                  token => $t);
       return ($t, undef);
     }
@@ -3665,8 +3665,8 @@ $Prop->{margin} = {
         $prop_value{'margin-right'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3686,16 +3686,16 @@ $Prop->{margin} = {
         $prop_value{'margin-right'} = ['KEYWORD', $prop_value];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       if ($has_sign) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3723,8 +3723,8 @@ $Prop->{margin} = {
         $prop_value{'margin-bottom'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3744,16 +3744,16 @@ $Prop->{margin} = {
         $prop_value{'margin-bottom'} = ['KEYWORD', $prop_value];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       if ($has_sign) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3780,8 +3780,8 @@ $Prop->{margin} = {
         $prop_value{'margin-left'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3801,16 +3801,16 @@ $Prop->{margin} = {
         $prop_value{'margin-left'} = ['KEYWORD', $prop_value];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       if ($has_sign) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3845,8 +3845,8 @@ $Prop->{padding} = {
         $prop_value{'padding-top'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3856,8 +3856,8 @@ $Prop->{padding} = {
       $prop_value{'padding-top'} = ['PERCENTAGE', $value];
       unless ($value >= 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3868,8 +3868,8 @@ $Prop->{padding} = {
       $prop_value{'padding-top'} = ['DIMENSION', $value, 'px'];
       unless ($value >= 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3884,15 +3884,15 @@ $Prop->{padding} = {
         return ($t, \%prop_value);
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => $self->{level}->{must},
-                 uri => \$self->{href},
+                 level => 'm',
+                 uri => $self->context->urlref,
                  token => $t);
       return ($t, undef);
     }
@@ -3915,8 +3915,8 @@ $Prop->{padding} = {
         $prop_value{'padding-right'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3926,8 +3926,8 @@ $Prop->{padding} = {
       $prop_value{'padding-right'} = ['PERCENTAGE', $value];
       unless ($value >= 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3938,16 +3938,16 @@ $Prop->{padding} = {
       $prop_value{'padding-right'} = ['DIMENSION', $value, 'px'];
       unless ($value >= 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       if ($sign < 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3970,8 +3970,8 @@ $Prop->{padding} = {
         $prop_value{'padding-bottom'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3981,8 +3981,8 @@ $Prop->{padding} = {
       $prop_value{'padding-bottom'} = ['PERCENTAGE', $value];
       unless ($value >= 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -3993,16 +3993,16 @@ $Prop->{padding} = {
       $prop_value{'padding-bottom'} = ['DIMENSION', $value, 'px'];
       unless ($value >= 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       if ($sign < 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4024,8 +4024,8 @@ $Prop->{padding} = {
         $prop_value{'padding-left'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4035,8 +4035,8 @@ $Prop->{padding} = {
       $prop_value{'padding-left'} = ['PERCENTAGE', $value];
       unless ($value >= 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4047,16 +4047,16 @@ $Prop->{padding} = {
       $prop_value{'padding-left'} = ['DIMENSION', $value, 'px'];
       unless ($value >= 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       if ($sign < 0) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4095,8 +4095,8 @@ $Prop->{'border-spacing'} = {
         $prop_value{'-manakai-border-spacing-x'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4108,8 +4108,8 @@ $Prop->{'border-spacing'} = {
         $t = $tt->get_next_token;
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4123,15 +4123,15 @@ $Prop->{'border-spacing'} = {
         return ($t, \%prop_value);
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => $self->{level}->{must},
-                 uri => \$self->{href},
+                 level => 'm',
+                 uri => $self->context->urlref,
                  token => $t);
       return ($t, undef);
     }
@@ -4158,8 +4158,8 @@ $Prop->{'border-spacing'} = {
         $prop_value{'-manakai-border-spacing-y'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4171,16 +4171,16 @@ $Prop->{'border-spacing'} = {
         $t = $tt->get_next_token;
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       if ($has_sign) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4224,8 +4224,8 @@ $Prop->{'background-position'} = {
         $prop_value{'background-position-y'} = ['PERCENTAGE', 50];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4285,15 +4285,15 @@ $Prop->{'background-position'} = {
         return ($t, \%prop_value);
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => $self->{level}->{must},
-                 uri => \$self->{href},
+                 level => 'm',
+                 uri => $self->context->urlref,
                  token => $t);
       return ($t, undef);
     }
@@ -4318,8 +4318,8 @@ $Prop->{'background-position'} = {
         $prop_value{'background-position-y'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4341,8 +4341,8 @@ $Prop->{'background-position'} = {
     } else {
       if ($has_sign) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4468,8 +4468,8 @@ $Prop->{background} = {
                   = ['DIMENSION', $value, $unit];
             } else {
               $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                         level => $self->{level}->{must},
-                         uri => \$self->{href},
+                         level => 'm',
+                         uri => $self->context->urlref,
                          token => $t);
               return ($t, undef);
             }
@@ -4484,8 +4484,8 @@ $Prop->{background} = {
             $prop_value{'background-position-y'} = ['DIMENSION', $value, 'px'];
           } elsif ($has_sign) {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           } else {
@@ -4539,8 +4539,8 @@ $Prop->{background} = {
                 = ['DIMENSION', $value, $unit];
           } else {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           }
@@ -4580,8 +4580,8 @@ $Prop->{background} = {
                 = ['DIMENSION', $value, $unit];
           } else {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           }
@@ -4606,8 +4606,8 @@ $Prop->{background} = {
           $prop_value{'background-position-y'} = ['PERCENTAGE', 50];
           if ($has_sign) {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           }
@@ -4623,8 +4623,8 @@ $Prop->{background} = {
           last B;
         } else {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           return ($t, undef);
         }
@@ -4702,8 +4702,8 @@ $Prop->{font} = {
             last A;
           } else {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           }
@@ -4733,8 +4733,8 @@ $Prop->{font} = {
           last A;
         } else {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           return ($t, undef);
         }
@@ -4754,8 +4754,8 @@ $Prop->{font} = {
     return ($t, undef) unless defined $pv;
     if ($pv->{font}->[0] eq 'INHERIT') {
       $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => $self->{level}->{must},
-                 uri => \$self->{href},
+                 level => 'm',
+                 uri => $self->context->urlref,
                  token => $t);
       return ($t, undef);
     }
@@ -4770,8 +4770,8 @@ $Prop->{font} = {
       return ($t, undef) unless defined $pv;
       if ($pv->{font}->[0] eq 'INHERIT') {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4862,8 +4862,8 @@ $Prop->{'border-width'} = {
         $t = $tt->get_next_token;
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4875,8 +4875,8 @@ $Prop->{'border-width'} = {
         $t = $tt->get_next_token;
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4894,15 +4894,15 @@ $Prop->{'border-width'} = {
         return ($t, \%prop_value);
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
     } else {
       $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => $self->{level}->{must},
-                 uri => \$self->{href},
+                 level => 'm',
+                 uri => $self->context->urlref,
                  token => $t);
       return ($t, undef);
     }
@@ -4932,8 +4932,8 @@ $Prop->{'border-width'} = {
         $prop_value{'border-right-width'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4945,8 +4945,8 @@ $Prop->{'border-width'} = {
         $prop_value{'border-right-width'} = ['DIMENSION', $value, 'px'];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4959,8 +4959,8 @@ $Prop->{'border-width'} = {
     } else {
       if ($has_sign) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -4990,8 +4990,8 @@ $Prop->{'border-width'} = {
         $prop_value{'border-bottom-width'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -5003,8 +5003,8 @@ $Prop->{'border-width'} = {
         $prop_value{'border-bottom-width'} = ['DIMENSION', $value, 'px'];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -5017,8 +5017,8 @@ $Prop->{'border-width'} = {
     } else {
       if ($has_sign) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -5047,8 +5047,8 @@ $Prop->{'border-width'} = {
         $prop_value{'border-left-width'} = ['DIMENSION', $value, $unit];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -5060,8 +5060,8 @@ $Prop->{'border-width'} = {
         $prop_value{'border-left-width'} = ['DIMENSION', $value, 'px'];
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -5074,8 +5074,8 @@ $Prop->{'border-width'} = {
     } else {
       if ($has_sign) {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -5139,8 +5139,8 @@ $Prop->{'list-style'} = {
         } elsif ($Prop->{'list-style-type'}->{keyword}->{$prop_value}) {
           if (exists $prop_value{'list-style-type'}) {
             $onerror->(type => 'CSS duplication', text => "'list-style-type'",
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           } else {
@@ -5150,8 +5150,8 @@ $Prop->{'list-style'} = {
           if (exists $prop_value{'list-style-position'}) {
             $onerror->(type => 'CSS duplication',
                        text => "'list-style-position'",
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           }
@@ -5165,8 +5165,8 @@ $Prop->{'list-style'} = {
         } else {
           if ($f == 1) {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           } else {
@@ -5176,8 +5176,8 @@ $Prop->{'list-style'} = {
       } elsif ($t->{type} == URI_TOKEN) {
         if (exists $prop_value{'list-style-image'}) {
           $onerror->(type => 'CSS duplication', text => "'list-style-image'",
-                     uri => \$self->{href},
-                     level => $self->{level}->{must},
+                     uri => $self->context->urlref,
+                     level => 'm',
                      token => $t);
           return ($t, undef);
         }
@@ -5188,8 +5188,8 @@ $Prop->{'list-style'} = {
       } else {
         if ($f == 1) {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           return ($t, undef);
         } else {
@@ -5205,8 +5205,8 @@ $Prop->{'list-style'} = {
       if (exists $prop_value{'list-style-type'}) {
         if (exists $prop_value{'list-style-image'}) {
           $onerror->(type => 'CSS duplication', text => "'list-style-image'",
-                     uri => \$self->{href},
-                     level => $self->{level}->{must},
+                     uri => $self->context->urlref,
+                     level => 'm',
                      token => $t);
           return ($t, undef);
         } else {
@@ -5220,15 +5220,15 @@ $Prop->{'list-style'} = {
     } elsif ($none == 2) {
       if (exists $prop_value{'list-style-type'}) {
         $onerror->(type => 'CSS duplication', text => "'list-style-type'",
-                   uri => \$self->{href},
-                   level => $self->{level}->{must},
+                   uri => $self->context->urlref,
+                   level => 'm',
                    token => $t);
         return ($t, undef);
       }
       if (exists $prop_value{'list-style-image'}) {
         $onerror->(type => 'CSS duplication', text => "'list-style-image'",
-                   uri => \$self->{href},
-                   level => $self->{level}->{must},
+                   uri => $self->context->urlref,
+                   level => 'm',
                    token => $t);
         return ($t, undef);
       }
@@ -5237,8 +5237,8 @@ $Prop->{'list-style'} = {
       $prop_value{'list-style-image'} = ['KEYWORD', 'none'];
     } elsif ($none == 3) {
       $onerror->(type => 'CSS duplication', text => "'list-style-type'",
-                 uri => \$self->{href},
-                 level => $self->{level}->{must},
+                 uri => $self->context->urlref,
+                 level => 'm',
                  token => $t);
       return ($t, undef);
     }
@@ -5308,8 +5308,8 @@ $Prop->{'text-decoration'} = {
         $value->[4] = 1;
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -5395,8 +5395,8 @@ $Prop->{quotes} = {
     }
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -5471,8 +5471,8 @@ $Prop->{content} = {
                 my $uri = $self->context->get_url_by_prefix ($pfx);
                 unless (defined $uri) {
                   $self->{onerror}->(type => 'namespace prefix:not declared',
-                                     level => $self->{level}->{must},
-                                     uri => \$self->{href},
+                                     level => 'm',
+                                     uri => $self->context->urlref,
                                      token => $t_pfx,
                                      value => $pfx);
                   return ($t, undef);
@@ -5576,8 +5576,8 @@ $Prop->{content} = {
     } # A
 
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -5621,8 +5621,8 @@ $Prop->{'counter-reset'} = {
             $t = $tt->get_next_token;
           } else {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           }
@@ -5633,8 +5633,8 @@ $Prop->{'counter-reset'} = {
             $t = $tt->get_next_token;
           } else {
             $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => $self->{level}->{must},
-                       uri => \$self->{href},
+                       level => 'm',
+                       uri => $self->context->urlref,
                        token => $t);
             return ($t, undef);
           }
@@ -5650,8 +5650,8 @@ $Prop->{'counter-reset'} = {
         $t = $tt->get_next_token while $t->{type} == S_TOKEN;
       } else {
         $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => $self->{level}->{must},
-                   uri => \$self->{href},
+                   level => 'm',
+                   uri => $self->context->urlref,
                    token => $t);
         return ($t, undef);
       }
@@ -5694,8 +5694,8 @@ $Prop->{'counter-reset'} = {
     } # A
     
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -5753,8 +5753,8 @@ $Prop->{clip} = {
               push @$prop_value, ['DIMENSION', $value, $unit];
             } else {
               $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                         level => $self->{level}->{must},
-                         uri => \$self->{href},
+                         level => 'm',
+                         uri => $self->context->urlref,
                          token => $t);
               return ($t, undef);
             }
@@ -5774,8 +5774,8 @@ $Prop->{clip} = {
           } else {
             if ($has_sign) {
               $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                         level => $self->{level}->{must},
-                         uri => \$self->{href},
+                         level => 'm',
+                         uri => $self->context->urlref,
                          token => $t);
               return ($t, undef);
             } else {
@@ -5809,8 +5809,8 @@ $Prop->{clip} = {
     }
 
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -5878,8 +5878,8 @@ $Prop->{marks} = {
     }
 
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -5931,8 +5931,8 @@ $Prop->{size} = {
           push @$prop_value, ['DIMENSION', $value, $unit];
         } else {
           $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => $self->{level}->{must},
-                     uri => \$self->{href},
+                     level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
           return ($t, undef);
         }
@@ -5959,8 +5959,8 @@ $Prop->{size} = {
     } # A
 
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },
@@ -6003,8 +6003,8 @@ $Prop->{page} = {
     }
 
     $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => $self->{level}->{must},
-               uri => \$self->{href},
+               level => 'm',
+               uri => $self->context->urlref,
                token => $t);
     return ($t, undef);
   },

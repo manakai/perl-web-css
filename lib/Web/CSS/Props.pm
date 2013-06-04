@@ -270,6 +270,14 @@ $Prop->{color} = {
   dom => 'color',
   key => 'color',
   parse => $parse_color,
+  keyword => {
+    transparent => 1, ## For 'background-color' in CSS2.1, everywhre in CSS3.
+    flavor => 1, ## CSS3.
+    invert => 1, ## For 'outline-color' in CSS2.1.
+    '-moz-use-text-color' => 1, ## For <border-color> in Gecko.
+    '-manakai-default' => 1, ## CSS2.1 initial for 'color'
+    '-manakai-invert-or-currentcolor' => 1, ## CSS2.1 initial4'outline-color'
+  },
   initial => ['KEYWORD', '-manakai-default'],
   inherited => 1,
   compute => sub ($$$$) {
@@ -310,6 +318,7 @@ $Prop->{'background-color'} = {
   dom => 'background_color',
   key => 'background_color',
   parse => $parse_color,
+  keyword => $Prop->{color}->{keyword},
   serialize_multiple => sub {
     my ($se, $st) = @_;
 
@@ -408,6 +417,7 @@ $Prop->{'border-top-color'} = {
   dom => 'border_top_color',
   key => 'border_top_color',
   parse => $parse_color,
+  keyword => $Prop->{color}->{keyword},
   serialize_multiple => sub {
     my ($se, $st) = @_;
     ## NOTE: This algorithm returns the same result as that of Firefox 2
@@ -522,6 +532,7 @@ $Prop->{'border-right-color'} = {
   dom => 'border_right_color',
   key => 'border_right_color',
   parse => $parse_color,
+  keyword => $Prop->{color}->{keyword},
   serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
@@ -535,6 +546,7 @@ $Prop->{'border-bottom-color'} = {
   dom => 'border_bottom_color',
   key => 'border_bottom_color',
   parse => $parse_color,
+  keyword => $Prop->{color}->{keyword},
   serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
@@ -548,6 +560,7 @@ $Prop->{'border-left-color'} = {
   dom => 'border_left_color',
   key => 'border_left_color',
   parse => $parse_color,
+  keyword => $Prop->{color}->{keyword},
   serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
@@ -561,6 +574,7 @@ $Prop->{'outline-color'} = {
   dom => 'outline_color',
   key => 'outline_color',
   parse => $parse_color,
+  keyword => $Prop->{color}->{keyword},
   serialize_multiple => sub {
     my ($se, $st) = @_;
 
@@ -3178,7 +3192,7 @@ $Prop->{'border-color'} = {
     my ($self, $prop_name, $tt, $t, $onerror) = @_;
 
     my %prop_value;
-    ($t, my $pv) = $parse_color->($self, 'border-color', $tt, $t, $onerror);
+    ($t, my $pv) = $parse_color->($self, 'border-top-color', $tt, $t, $onerror);
     if (not defined $pv) {
       return ($t, undef);
     }
@@ -3196,7 +3210,7 @@ $Prop->{'border-color'} = {
          HASH_TOKEN, 1, NUMBER_TOKEN, 1, DIMENSION_TOKEN, 1,
          FUNCTION_TOKEN, 1,
         }->{$t->{type}}) {
-      ($t, $pv) = $parse_color->($self, 'border-color', $tt, $t, $onerror);
+      ($t, $pv) = $parse_color->($self, 'border-right-color', $tt, $t, $onerror);
       if (not defined $pv) {
         return ($t, undef);
       } elsif ($pv->{'border-color'}->[0] eq 'INHERIT') {
@@ -3215,7 +3229,7 @@ $Prop->{'border-color'} = {
            HASH_TOKEN, 1, NUMBER_TOKEN, 1, DIMENSION_TOKEN, 1,
            FUNCTION_TOKEN, 1,
           }->{$t->{type}}) {
-        ($t, $pv) = $parse_color->($self, 'border-color', $tt, $t, $onerror);
+        ($t, $pv) = $parse_color->($self, 'border-bottom-color', $tt, $t, $onerror);
         if (not defined $pv) {
           return ($t, undef);
         } elsif ($pv->{'border-color'}->[0] eq 'INHERIT') {
@@ -3233,7 +3247,7 @@ $Prop->{'border-color'} = {
              HASH_TOKEN, 1, NUMBER_TOKEN, 1, DIMENSION_TOKEN, 1,
              FUNCTION_TOKEN, 1,
             }->{$t->{type}}) {
-          ($t, $pv) = $parse_color->($self, 'border-color', $tt, $t, $onerror);
+          ($t, $pv) = $parse_color->($self, 'border-left-color', $tt, $t, $onerror);
           if (not defined $pv) {
             return ($t, undef);
           } elsif ($pv->{'border-color'}->[0] eq 'INHERIT') {
@@ -5266,6 +5280,8 @@ $Prop->{'text-decoration'} = {
   css => 'text-decoration',
   dom => 'text_decoration',
   key => 'text_decoration',
+  keyword => {none => 1, underline => 1, overline => 1,
+              'line-through' => 1, blink => 1},
   parse => sub {
     my ($self, $prop_name, $tt, $t, $onerror) = @_;
 
@@ -5821,6 +5837,7 @@ $Prop->{marks} = {
   css => 'marks',
   dom => 'marks',
   key => 'marks',
+  keyword => {crop => 1, cross => 1},
   parse => sub {
     my ($self, $prop_name, $tt, $t, $onerror) = @_;
 

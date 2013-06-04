@@ -1,11 +1,50 @@
 package Web::CSS::MediaResolver;
 use strict;
 use warnings;
-our $VERSION = '1.0';
+our $VERSION = '3.0';
 
 sub new ($) {
   return bless {}, $_[0];
 } # new
+
+sub set_supported ($%) {
+  my ($self, %args) = @_;
+
+  if ($args{all} or $args{all_props}) {
+    require Web::CSS::Props;
+    $self->{prop}->{$_} = 1 for keys %$Web::CSS::Props::Prop;
+  }
+
+  if ($args{all} or $args{all_prop_values}) {
+    require Web::CSS::Props;
+    for my $pn (keys %$Web::CSS::Props::Prop) {
+      for (keys %{$Web::CSS::Props::Prop->{$pn}->{keyword} or {}}) {
+        $self->{prop_value}->{$pn}->{$_} = 1
+            if $Web::CSS::Props::Prop->{$pn}->{keyword}->{$_};
+      }
+      for (keys %{$Web::CSS::Props::Prop->{$pn}->{keyword_replace} or {}}) {
+        $self->{prop_value}->{$pn}->{$_} = 1
+            if $Web::CSS::Props::Prop->{$pn}->{keyword_replace}->{$_};
+      }
+    }
+  }
+
+  if ($args{all} or $args{all_pseudo_classes}) {
+    $self->{pseudo_class}->{$_} = 1 for qw/
+      active checked disabled empty enabled first-child first-of-type
+      focus hover indeterminate last-child last-of-type link only-child
+      only-of-type root target visited
+      lang nth-child nth-last-child nth-of-type nth-last-of-type not
+      -manakai-contains -manakai-current
+    /;
+  }
+
+  if ($args{all} or $args{all_pseudo_elements}) {
+    $self->{pseudo_element}->{$_} = 1 for qw/
+      after before first-letter first-line
+    /;
+  }
+} # set_supported
 
 ## Media-dependent RGB color range clipper
 sub clip_color ($$) {

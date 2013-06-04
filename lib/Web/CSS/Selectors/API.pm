@@ -92,7 +92,8 @@ sub set_selectors ($$$;%) {
 
     ## NOTE: SHOULD ensure to remain stable when facing a hostile $_[2].
 
-    $p->{pseudo_class}->{$_} = 1 for qw/
+    my $mr = $p->media_resolver;
+    $mr->{pseudo_class}->{$_} = 1 for qw/
       root nth-child nth-last-child nth-of-type nth-last-of-type
       first-child first-of-type last-child last-of-type
       only-child only-of-type empty
@@ -104,7 +105,7 @@ sub set_selectors ($$$;%) {
 
     ## NOTE: MAY treat all links as :link rather than :visited
 
-    $p->{pseudo_element}->{$_} = 1 for qw/
+    $mr->{pseudo_element}->{$_} = 1 for qw/
       after before first-letter first-line
     /;
 

@@ -38,8 +38,8 @@ test {
 test {
   my $c = shift;
   my $parser = Web::CSS::Parser->new;
-  $parser->{prop}->{color} = 1;
-  $parser->{prop}->{'font-size'} = 1;
+  $parser->media_resolver->{prop}->{color} = 1;
+  $parser->media_resolver->{prop}->{'font-size'} = 1;
   $parser->parse_char_string ('p { color : blue; opacity: 0; font-size: small }');
   my $result = $parser->parsed;
   is scalar @{$result->{sheets}}, 1;

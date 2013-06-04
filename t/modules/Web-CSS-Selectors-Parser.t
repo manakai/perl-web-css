@@ -38,10 +38,10 @@ for my $test (
   test {
     my $c = shift;
     my $parser = Web::CSS::Selectors::Parser->new;
-    $parser->{pseudo_class}->{not} = 1;
-    $parser->{pseudo_class}->{lang} = 1;
-    $parser->{pseudo_class}->{'first-child'} = 1;
-    $parser->{pseudo_element}->{before} = 1;
+    $parser->media_resolver->{pseudo_class}->{not} = 1;
+    $parser->media_resolver->{pseudo_class}->{lang} = 1;
+    $parser->media_resolver->{pseudo_class}->{'first-child'} = 1;
+    $parser->media_resolver->{pseudo_element}->{before} = 1;
     $parser->context (Web::CSS::Context->new_from_nscallback (sub {
       my $prefix = shift;
       return 'http://foo/' if $prefix;

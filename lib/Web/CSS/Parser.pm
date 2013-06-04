@@ -1,26 +1,14 @@
 package Web::CSS::Parser;
 use strict;
 use warnings;
-our $VERSION = '3.0';
+our $VERSION = '4.0';
 use Web::CSS::Tokenizer;
 use Web::CSS::Props;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
 
 sub new ($) {
-  my $self = bless {
-    level => {
-      must => 'm',
-      should => 's',
-      warning => 'w',
-      uncertain => 'u',
-    },
-  }, shift;
-
-  #$self->{parsed}
-  #$self->{current_sheet_id}
-
-  return $self;
+  my $self = bless {}, $_[0];
 } # new
 
 sub BEFORE_STATEMENT_STATE () { 0 }
@@ -34,6 +22,8 @@ sub init ($) {
   delete $self->{parsed};
   delete $self->{media_resolver};
   delete $self->{context};
+  delete $self->{parsed};
+  delete $self->{current_sheet_id};
 } # init
 
 sub context ($;$) {
@@ -88,11 +78,12 @@ sub parse_char_string ($$;%) {
   pos ($s) = 0;
   my $line = 1;
   my $column = 0;
+  my $ctx = $self->context;
+  my $mr = $self->media_resolver;
 
   my $tt = Web::CSS::Tokenizer->new;
   my $onerror = $self->onerror;
-  $tt->init;
-  $tt->context ($self->context);
+  $tt->context ($ctx);
   $tt->onerror ($onerror);
   $tt->{get_char} = sub ($) {
     if (pos $s < length $s) {
@@ -130,12 +121,16 @@ sub parse_char_string ($$;%) {
   my $sp = Web::CSS::Selectors::Parser->new;
   $sp->{pseudo_element} = $self->{pseudo_element};
   $sp->{pseudo_class} = $self->{pseudo_class};
-  $sp->context ($self->context);
+  $sp->context ($ctx);
+  $sp->media_resolver ($mr);
   $sp->onerror ($onerror);
 
   my $mp = Web::CSS::MediaQueries::Parser->new;
-  $mp->context ($self->context);
+  $mp->context ($ctx);
   $mp->onerror ($onerror);
+
+  $self->{prop} = $mr->{prop} || {};
+  $self->{prop_value} = $mr->{prop_value} || {};
 
   my $state = BEFORE_STATEMENT_STATE;
   my $t = $tt->get_next_token;

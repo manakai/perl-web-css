@@ -100,7 +100,7 @@ my $data_d = file (__FILE__)->dir->parent->parent
     for my $test (@{$all_test->{test}}) {
       test {
         my $c = shift;
-        my ($p, $css_options) = get_parser ($test->{option}->{parse_mode});
+        my ($p) = get_parser ($test->{option}->{parse_mode});
 
         my @actual_error;
         $p->onerror (sub {
@@ -135,7 +135,7 @@ my $data_d = file (__FILE__)->dir->parent->parent
         for my $doc_id (keys %{$test->{computed} or {}}) {
           for my $selectors (keys %{$test->{computed}->{$doc_id}}) {
             my ($window, $style) = get_computed_style
-                ($all_test, $doc_id, $selectors, $css_options, 'XXXSHEET');
+                ($all_test, $doc_id, $selectors, 'XXX', 'XXXSHEET');
             ## NOTE: $window is the root object, so that we must keep
             ## it referenced in this block.
         
@@ -151,7 +151,7 @@ my $data_d = file (__FILE__)->dir->parent->parent
         for my $doc_id (keys %{$test->{computedtext} or {}}) {
           for my $selectors (keys %{$test->{computedtext}->{$doc_id}}) {
             my ($window, $style) = get_computed_style
-                ($all_test, $doc_id, $selectors, $css_options, 'XXXSHEET');
+                ($all_test, $doc_id, $selectors, 'XXX', 'XXXSHEET');
             ## NOTE: $window is the root object, so that we must keep
             ## it referenced in this block.
         
@@ -330,158 +330,13 @@ sub get_parser ($) {
   my $parse_mode = shift;
 
   my $p = Web::CSS::Parser->new;
+  $p->media_resolver->set_supported (all => 1);
 
-  $p->{prop}->{$_} = 1 for (@longhand, @shorthand);
-  $p->{prop_value}->{display}->{$_} = 1 for qw/
-    block clip inline inline-block inline-table list-item none
-    table table-caption table-cell table-column table-column-group
-    table-header-group table-footer-group table-row table-row-group
-    compact marker
-  /;
-  $p->{prop_value}->{position}->{$_} = 1 for qw/
-    absolute fixed relative static
-  /;
-  for (qw/-moz-max-content -moz-min-content -moz-fit-content -moz-available/) {
-    $p->{prop_value}->{width}->{$_} = 1;
-    $p->{prop_value}->{'min-width'}->{$_} = 1;
-    $p->{prop_value}->{'max-width'}->{$_} = 1;
-  }
-  $p->{prop_value}->{float}->{$_} = 1 for qw/
-    left right none
-  /;
-  $p->{prop_value}->{clear}->{$_} = 1 for qw/
-    left right none both
-  /;
-  $p->{prop_value}->{direction}->{ltr} = 1;
-  $p->{prop_value}->{direction}->{rtl} = 1;
-  $p->{prop_value}->{marks}->{crop} = 1;
-  $p->{prop_value}->{marks}->{cross} = 1;
-  $p->{prop_value}->{'unicode-bidi'}->{$_} = 1 for qw/
-    normal bidi-override embed
-  /;
-  for my $prop_name (qw/overflow overflow-x overflow-y/) {
-    $p->{prop_value}->{$prop_name}->{$_} = 1 for qw/
-      visible hidden scroll auto -webkit-marquee -moz-hidden-unscrollable
-    /;
-  }
-  $p->{prop_value}->{visibility}->{$_} = 1 for qw/
-    visible hidden collapse
-  /;
-  $p->{prop_value}->{'list-style-type'}->{$_} = 1 for qw/
-    disc circle square decimal decimal-leading-zero
-    lower-roman upper-roman lower-greek lower-latin
-    upper-latin armenian georgian lower-alpha upper-alpha none
-    hebrew cjk-ideographic hiragana katakana hiragana-iroha
-    katakana-iroha
-  /;
-  $p->{prop_value}->{'list-style-position'}->{outside} = 1;
-  $p->{prop_value}->{'list-style-position'}->{inside} = 1;
-  $p->{prop_value}->{'page-break-before'}->{$_} = 1 for qw/
-    auto always avoid left right
-  /;
-  $p->{prop_value}->{'page-break-after'}->{$_} = 1 for qw/
-    auto always avoid left right
-  /;
-  $p->{prop_value}->{'page-break-inside'}->{auto} = 1;
-  $p->{prop_value}->{'page-break-inside'}->{avoid} = 1;
-  $p->{prop_value}->{'background-repeat'}->{$_} = 1 for qw/
-    repeat repeat-x repeat-y no-repeat
-  /;
-  $p->{prop_value}->{'background-attachment'}->{scroll} = 1;
-  $p->{prop_value}->{'background-attachment'}->{fixed} = 1;
-  $p->{prop_value}->{'font-size'}->{$_} = 1 for qw/
-    xx-small x-small small medium large x-large xx-large
-    -manakai-xxx-large -webkit-xxx-large
-    larger smaller
-  /;
-  $p->{prop_value}->{'font-style'}->{normal} = 1;
-  $p->{prop_value}->{'font-style'}->{italic} = 1;
-  $p->{prop_value}->{'font-style'}->{oblique} = 1;
-  $p->{prop_value}->{'font-variant'}->{normal} = 1;
-  $p->{prop_value}->{'font-variant'}->{'small-caps'} = 1;
-  $p->{prop_value}->{'font-stretch'}->{$_} = 1 for
-      qw/normal wider narrower ultra-condensed extra-condensed
-        condensed semi-condensed semi-expanded expanded
-        extra-expanded ultra-expanded/;
-  $p->{prop_value}->{'text-align'}->{$_} = 1 for qw/
-    left right center justify begin end
-  /;
-  $p->{prop_value}->{'text-transform'}->{$_} = 1 for qw/
-    capitalize uppercase lowercase none
-  /;
-  $p->{prop_value}->{'white-space'}->{$_} = 1 for qw/
-    normal pre nowrap pre-line pre-wrap -moz-pre-wrap
-  /;
-  $p->{prop_value}->{'writing-mode'}->{$_} = 1 for qw/
-    lr rl tb lr-tb rl-tb tb-rl
-  /;
-  $p->{prop_value}->{'text-anchor'}->{$_} = 1 for qw/
-    start middle end
-  /;
-  $p->{prop_value}->{'dominant-baseline'}->{$_} = 1 for qw/
-    auto use-script no-change reset-size ideographic alphabetic
-    hanging mathematical central middle text-after-edge text-before-edge
-  /;
-  $p->{prop_value}->{'alignment-baseline'}->{$_} = 1 for qw/
-    auto baseline before-edge text-before-edge middle central
-    after-edge text-after-edge ideographic alphabetic hanging
-    mathematical
-  /;
-  $p->{prop_value}->{'text-decoration'}->{$_} = 1 for qw/
-    none blink underline overline line-through
-  /;
-  $p->{prop_value}->{'caption-side'}->{$_} = 1 for qw/
-    top bottom left right
-  /;
-  $p->{prop_value}->{'table-layout'}->{auto} = 1;
-  $p->{prop_value}->{'table-layout'}->{fixed} = 1;
-  $p->{prop_value}->{'border-collapse'}->{collapse} = 1;
-  $p->{prop_value}->{'border-collapse'}->{separate} = 1;
-  $p->{prop_value}->{'empty-cells'}->{show} = 1;
-  $p->{prop_value}->{'empty-cells'}->{hide} = 1;
-  $p->{prop_value}->{cursor}->{$_} = 1 for qw/
-    auto crosshair default pointer move e-resize ne-resize nw-resize n-resize
-    se-resize sw-resize s-resize w-resize text wait help progress
-  /;
-  for my $prop (qw/border-top-style border-left-style
-                   border-bottom-style border-right-style outline-style/) {
-    $p->{prop_value}->{$prop}->{$_} = 1 for qw/
-      none hidden dotted dashed solid double groove ridge inset outset
-    /;
-  }
-  for my $prop (qw/color background-color
-                   border-bottom-color border-left-color border-right-color
-                   border-top-color border-color/) {
-    $p->{prop_value}->{$prop}->{transparent} = 1;
-    $p->{prop_value}->{$prop}->{flavor} = 1;
-    $p->{prop_value}->{$prop}->{'-manakai-default'} = 1;
-  }
-  $p->{prop_value}->{'outline-color'}->{invert} = 1;
-  $p->{prop_value}->{'outline-color'}->{'-manakai-invert-or-currentcolor'} = 1;
-  $p->{pseudo_class}->{$_} = 1 for qw/
-    active checked disabled empty enabled first-child first-of-type
-    focus hover indeterminate last-child last-of-type link only-child
-    only-of-type root target visited
-    lang nth-child nth-last-child nth-of-type nth-last-of-type not
-    -manakai-contains -manakai-current
-  /;
-  $p->{pseudo_element}->{$_} = 1 for qw/
-    after before first-letter first-line
-  /;
-
-  my $css_options = {
-    prop => $p->{prop},
-    prop_value => $p->{prop_value},
-    pseudo_class => $p->{pseudo_class},
-    pseudo_element => $p->{pseudo_element},
-  };
-
-  $p->init;
   if ($parse_mode and $parse_mode eq 'q') {
     $p->context->manakai_compat_mode ('quirks');
   }
 
-  return ($p, $css_options);
+  return ($p);
 } # get_parser
 
 sub serialize_selectors ($$) {

@@ -1,15 +1,13 @@
 package Web::CSS::Selectors::Parser;
 use strict;
 use warnings;
-our $VERSION = '1.13';
+our $VERSION = '14.0';
 use Web::CSS::Tokenizer;
 use Carp;
 
 ## XXX API of this module is not stable yet; You should not rely on
 ## it.  Use $root_node->query_selector and
 ## $root_node->query_selector_all instead.
-
-# XXX href -> urlref
 
 sub new ($) {
   my $self = bless {
@@ -34,6 +32,16 @@ sub context ($;$) {
     Web::CSS::Context->new_empty;
   };
 } # context
+
+sub media_resolver ($;$) {
+  if (@_ > 1) {
+    $_[0]->{media_resolver} = $_[1];
+  }
+  return $_[0]->{media_resolver} ||= do {
+    require Web::CSS::MediaResolver;
+    Web::CSS::MediaResolver->new;
+  };
+} # media_resolver
 
 sub onerror ($;$) {
   if (@_ > 1) {
@@ -115,7 +123,6 @@ sub parse_char_string ($$) {
   my $column = 0;
 
   my $tt = Web::CSS::Tokenizer->new;
-  $tt->init;
   $tt->context ($self->context);
   $tt->onerror ($self->onerror); # setting $self->{onerror}
   $tt->{get_char} = sub ($) {
@@ -150,6 +157,10 @@ sub parse_char_string ($$) {
   $tt->{line} = $line;
   $tt->{column} = $column;
   $tt->init_tokenizer;
+
+  my $mr = $self->media_resolver;
+  $self->{pseudo_class} = $mr->{pseudo_class};
+  $self->{pseudo_element} = $mr->{pseudo_element};
 
   my ($next_token, $selectors)
       = $self->_parse_selectors_with_tokenizer ($tt, EOF_TOKEN);

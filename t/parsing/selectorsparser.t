@@ -143,9 +143,9 @@ sub _parse_char_string : Tests {
 
     for (@{$test->{supported}->[0] or []}) {
       if (/^::(\S+)$/) {
-        $parser->{pseudo_element}->{$1} = 1;
+        $parser->media_resolver->{pseudo_element}->{$1} = 1;
       } elsif (/^:(\S+)$/) {
-        $parser->{pseudo_class}->{$1} = 1;
+        $parser->media_resolver->{pseudo_class}->{$1} = 1;
       }
     }
 

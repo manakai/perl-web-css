@@ -38,7 +38,6 @@ sub parse_char_string ($$) {
   pos ($s) = 0;
 
   my $tt = Web::CSS::Tokenizer->new;
-  $tt->init;
   $tt->context ($self->context);
   $tt->onerror ($self->onerror);
   $tt->{line} = 1;

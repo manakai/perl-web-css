@@ -13,7 +13,7 @@ test {
   my $c = shift;
   my $parser = Web::CSS::Parser->new;
   $parser->parse_char_string ('');
-  my $result = $parser->parsed;
+  my $result = $parser->parsed_sheet_set;
   is scalar @{$result->{sheets}}, 1;
   eq_or_diff $result->{sheets}->[0]->{rules}, [];
   is ${$result->{sheets}->[0]->{base_urlref}}, 'about:blank';
@@ -25,7 +25,7 @@ test {
   my $c = shift;
   my $parser = Web::CSS::Parser->new;
   $parser->parse_char_string ('@charset "utf-8";');
-  my $result = $parser->parsed;
+  my $result = $parser->parsed_sheet_set;
   is scalar @{$result->{sheets}}, 1;
   eq_or_diff $result->{sheets}->[0]->{rules}, [0];
   is ${$result->{sheets}->[0]->{base_urlref}}, 'about:blank';
@@ -41,7 +41,7 @@ test {
   $parser->media_resolver->{prop}->{color} = 1;
   $parser->media_resolver->{prop}->{'font-size'} = 1;
   $parser->parse_char_string ('p { color : blue; opacity: 0; font-size: small }');
-  my $result = $parser->parsed;
+  my $result = $parser->parsed_sheet_set;
   is scalar @{$result->{sheets}}, 1;
   eq_or_diff $result->{sheets}->[0]->{rules}, [0];
   is ${$result->{sheets}->[0]->{base_urlref}}, 'about:blank';
@@ -69,6 +69,37 @@ test {
 
   done $c;
 } n => 1, name => 'context->url';
+
+# XXX broken
+for my $test (
+  {input => '', result => {props => {}, prop_names => []}},
+  {input => 'color:red',
+   result => {props => {color => [['KEYWORD', 'red'], '']},
+              prop_names => ['color']}},
+  {input => 'color:red; font-size: 10px ! imporTant',
+   result => {props => {color => [['KEYWORD', 'red'], ''],
+                        font_size => [['DIMENSION', 10, 'px'], 'important']},
+              prop_names => ['color', 'font_size']}},
+) {
+  test {
+    my $c = shift;
+    my $parser = Web::CSS::Parser->new;
+    my @error;
+    $parser->onerror (sub {
+      my %args = @_;
+      push @error, join ';',
+          $args{token}->{line}, $args{token}->{column},
+          $args{level},
+          $args{type};
+    });
+    $parser->media_resolver->set_supported (all => 1);
+    $parser->parse_char_string_as_style_decls ($test->{input});
+    my $result = $parser->parsed_style_decls;
+    eq_or_diff $result, $test->{result};
+    eq_or_diff \@error, $test->{errors} || [];
+    done $c;
+  } n => 2, name => 'parse_char_string_as_style_decls';
+}
 
 run_tests;
 

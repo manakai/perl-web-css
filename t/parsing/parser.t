@@ -113,7 +113,7 @@ my $data_d = file (__FILE__)->dir->parent->parent
         });
 
         $p->parse_char_string ($test->{data});
-        my $set = $p->parsed;
+        my $set = $p->parsed_sheet_set;
 
         eq_or_diff
             ((join "\n", @actual_error), (join "\n", @{$test->{errors} or []}),

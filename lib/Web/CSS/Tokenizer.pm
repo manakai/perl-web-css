@@ -7,6 +7,41 @@ use Carp;
 
 # XXX Need to be updated based on the latest css3-syntax standard
 
+## ------ Character classes ------
+
+## The "EOF" pseudo-character in the parsing algorithm.
+sub EOF_CHAR () { -1 }
+
+## Pause tokenization (and parsing) because of the end of the
+## currently available characters (that could be different from EOF).
+sub ABORT_CHAR () { -3 }
+
+sub IS_NEWLINE () {
+  return {
+    0x000A => 1, # \n
+
+    ## Normalized to U+000A by input stream preprocessor such that not
+    ## included in the spec.
+    0x000D => 1, # \r
+    0x000C => 1, # \f
+  };
+} # IS_NEWLINE
+
+sub IS_WHITE_SPACE () {
+  return {
+    0x0020 => 1, # SP
+    0x0009 => 1, # \t
+    0x000A => 1, # \n
+
+    ## Normalized to U+000A by input stream preprocessor such that not
+    ## included in the spec.
+    0x000D => 1, # \r
+    0x000C => 1, # \f
+  };
+} # IS_WHITE_SPACE
+
+## ------ Tokenizer states ------
+
 sub BEFORE_TOKEN_STATE () { 0 }
 sub BEFORE_NMSTART_STATE () { 1 }
 sub NAME_STATE () { 2 }
@@ -28,50 +63,57 @@ sub URI_AFTER_WSP_STATE () { 17 }
 sub AFTER_AT_STATE () { 18 }
 sub AFTER_AT_HYPHEN_STATE () { 19 }
 
-sub IDENT_TOKEN () { 1 }
-sub ATKEYWORD_TOKEN () { 2 }
-sub HASH_TOKEN () { 3 }
-sub FUNCTION_TOKEN () { 4 }
-sub URI_TOKEN () { 5 }
-sub URI_INVALID_TOKEN () { 6 }
-sub URI_PREFIX_TOKEN () { 7 }
-sub URI_PREFIX_INVALID_TOKEN () { 8 }
-sub STRING_TOKEN () { 9 }
-sub INVALID_TOKEN () { 10 }
-sub NUMBER_TOKEN () { 11 }
-sub DIMENSION_TOKEN () { 12 }
-sub PERCENTAGE_TOKEN () { 13 }
-sub UNICODE_RANGE_TOKEN () { 14 }
-sub DELIM_TOKEN () { 16 }
-sub PLUS_TOKEN () { 17 }
-sub GREATER_TOKEN () { 18 }
-sub COMMA_TOKEN () { 19 }
-sub TILDE_TOKEN () { 20 }
-sub DASHMATCH_TOKEN () { 21 }
-sub PREFIXMATCH_TOKEN () { 22 }
-sub SUFFIXMATCH_TOKEN () { 23 }
-sub SUBSTRINGMATCH_TOKEN () { 24 }
-sub INCLUDES_TOKEN () { 25 }
-sub SEMICOLON_TOKEN () { 26 }
-sub LBRACE_TOKEN () { 27 }
-sub RBRACE_TOKEN () { 28 }
-sub LPAREN_TOKEN () { 29 }
-sub RPAREN_TOKEN () { 30 }
-sub LBRACKET_TOKEN () { 31 }
-sub RBRACKET_TOKEN () { 32 }
-sub S_TOKEN () { 33 }
-sub CDO_TOKEN () { 34 }
-sub CDC_TOKEN () { 35 }
-sub COMMENT_TOKEN () { 36 }
-sub COMMENT_INVALID_TOKEN () { 37 }
-sub EOF_TOKEN () { 38 }
-sub MINUS_TOKEN () { 39 }
-sub STAR_TOKEN () { 40 }
-sub VBAR_TOKEN () { 41 }
-sub DOT_TOKEN () { 42 }
-sub COLON_TOKEN () { 43 }
-sub MATCH_TOKEN () { 44 }
-sub EXCLAMATION_TOKEN () { 45 }
+## ------ Token types ------
+
+## This module exports these token type constants for the use within
+## the parser.
+
+sub IDENT_TOKEN              () {  1 } # <ident>
+sub ATKEYWORD_TOKEN          () {  2 } # <at-keyword>
+sub HASH_TOKEN               () {  3 } # <hash>
+sub FUNCTION_TOKEN           () {  4 } # <function>
+sub URI_TOKEN                () {  5 } # <url>
+sub URI_INVALID_TOKEN        () {  6 } # <bad-url>
+sub URI_PREFIX_TOKEN         () {  7 }
+sub URI_PREFIX_INVALID_TOKEN () {  8 }
+sub STRING_TOKEN             () {  9 } # <string>
+sub INVALID_TOKEN            () { 10 } # <bad-string>
+sub NUMBER_TOKEN             () { 11 } # <number>
+sub DIMENSION_TOKEN          () { 12 } # <dimension>
+sub PERCENTAGE_TOKEN         () { 13 } # <percentage>
+sub UNICODE_RANGE_TOKEN      () { 14 } # <unicode-range>
+sub DELIM_TOKEN              () { 16 } # <delim>
+sub PLUS_TOKEN               () { 17 } # <delim>               +
+sub GREATER_TOKEN            () { 18 } # <delim>           >
+sub COMMA_TOKEN              () { 19 } # <comma>           ,
+sub TILDE_TOKEN              () { 20 } # <delim>               ~
+sub DASHMATCH_TOKEN          () { 21 } # <dash-match>      |=
+sub PREFIXMATCH_TOKEN        () { 22 } # <prefix-match>    ^=
+sub SUFFIXMATCH_TOKEN        () { 23 } # <suffix-match>    $=
+sub SUBSTRINGMATCH_TOKEN     () { 24 } # <substring-match> *=
+sub INCLUDES_TOKEN           () { 25 } # <include-match>   ~=
+sub SEMICOLON_TOKEN          () { 26 } # <semicolon>       ;
+sub LBRACE_TOKEN             () { 27 } # <{> {
+sub RBRACE_TOKEN             () { 28 } # <}> }
+sub LPAREN_TOKEN             () { 29 } # <(> (
+sub RPAREN_TOKEN             () { 30 } # <)> )
+sub LBRACKET_TOKEN           () { 31 } # <delim>               [
+sub RBRACKET_TOKEN           () { 32 } # <delim>               ]
+sub S_TOKEN                  () { 33 } # <whitespace>
+sub CDO_TOKEN                () { 34 } # <CDO> <!--
+sub CDC_TOKEN                () { 35 } # <CDC> -->
+sub COMMENT_TOKEN            () { 36 }
+sub COMMENT_INVALID_TOKEN    () { 37 }
+sub EOF_TOKEN                () { 38 }
+sub MINUS_TOKEN              () { 39 } # <delim>               -
+sub STAR_TOKEN               () { 40 } # <delim>               *
+sub VBAR_TOKEN               () { 41 } # <delim>               |
+sub DOT_TOKEN                () { 42 } # <delim>               .
+sub COLON_TOKEN              () { 43 } # <colon>           :
+sub MATCH_TOKEN              () { 44 } # <delim>               =
+sub EXCLAMATION_TOKEN        () { 45 } # <delim>               !
+sub COLUMN_TOKEN             () { 46 } # <column>          ||
+sub ABORT_TOKEN              () { 47 }
 
 our @TokenName = qw(
   0 IDENT ATKEYWORD HASH FUNCTION URI URI_INVALID URI_PREFIX URI_PREFIX_INVALID
@@ -80,6 +122,7 @@ our @TokenName = qw(
   PREFIXMATCH SUFFIXMATCH SUBSTRINGMATCH INCLUDES SEMICOLON
   LBRACE RBRACE LPAREN RPAREN LBRACKET RBRACKET S CDO CDC COMMENT
   COMMENT_INVALID EOF MINUS STAR VBAR DOT COLON MATCH EXCLAMATION
+  COLUMN ABORT
 );
 
 our @EXPORT = qw(
@@ -92,7 +135,7 @@ our @EXPORT = qw(
   RBRACE_TOKEN LPAREN_TOKEN RPAREN_TOKEN LBRACKET_TOKEN RBRACKET_TOKEN
   S_TOKEN CDO_TOKEN CDC_TOKEN COMMENT_TOKEN COMMENT_INVALID_TOKEN EOF_TOKEN
   MINUS_TOKEN STAR_TOKEN VBAR_TOKEN DOT_TOKEN COLON_TOKEN MATCH_TOKEN
-  EXCLAMATION_TOKEN
+  EXCLAMATION_TOKEN COLUMN_TOKEN ABORT_TOKEN
 );
 
 sub import ($;@) {
@@ -106,6 +149,8 @@ sub import ($;@) {
   }
 } # import
 
+## ------ Initialization ------
+
 sub new ($) {
   my $self = bless {token => [], get_char => sub { -1 }}, shift;
   return $self;
@@ -118,18 +163,7 @@ sub init ($) {
   delete $self->{onerror};
 } # init
 
-sub init_tokenizer ($) {
-  my $self = shift;
-  $self->{state} = BEFORE_TOKEN_STATE;
-  $self->{c} = $self->{get_char}->($self);
-  #$self->{t} = {type => token-type,
-  #              value => value,
-  #              number => number,
-  #              line => ..., column => ...,
-  #              hyphen => bool,
-  #              not_ident => bool, # HASH_TOKEN does not contain an identifier
-  #              eos => bool};
-} # init_tokenizer
+## ------ Parameters ------
 
 sub context ($;$) {
   if (@_ > 1) {
@@ -148,6 +182,24 @@ sub onerror ($;$) {
   return $_[0]->{onerror} ||= sub { };
 } # onerror
 
+## ------ Preprocessing of input stream ------
+
+# XXX
+
+## ------ Tokenization ------
+
+sub init_tokenizer ($) {
+  my $self = shift;
+  $self->{state} = BEFORE_TOKEN_STATE;
+  $self->{c} = $self->{get_char}->($self);
+  #$self->{t} = {type => token-type,
+  #              value => value,
+  #              number => number,
+  #              line => ..., column => ...,
+  #              hyphen => bool,
+  #              not_ident => bool}; # HASH_TOKEN does not contain an identifier
+} # init_tokenizer
+
 sub get_next_token ($) {
   my $self = shift;
   if (@{$self->{token}}) {
@@ -161,11 +213,17 @@ sub get_next_token ($) {
       ## NOTE:
       ##   0: in |ident|.
       ##   1: in |URI| outside of |string|.
-      ##   0x0022: in |string1| or |invalid1|.
-      ##   0x0027: in |string2| or |invalid2|.
 
   A: {
+    if ($self->{c} == ABORT_CHAR) {
+      $self->{c} = $self->{get_char}->($self);
+      return {type => ABORT_TOKEN} if $self->{c} == ABORT_CHAR;
+    }
+
     if ($self->{state} == BEFORE_TOKEN_STATE) {
+      ## Consume a token
+      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-token>.
+
       if ($self->{c} == 0x002D) { # -
         ## NOTE: |-| in |ident| in |IDENT|
         $self->{t} = {type => IDENT_TOKEN, value => '-', hyphen => 1,
@@ -274,7 +332,11 @@ sub get_next_token ($) {
       } elsif ($self->{c} == 0x0022 or $self->{c} == 0x0027) { # " or '
         $self->{t} = {type => STRING_TOKEN, value => '',
                       line => $self->{line}, column => $self->{column}};
-        $self->{state} = STRING_STATE; $q = $self->{c};
+        $self->{state} = STRING_STATE;
+        $self->{end_char} = $self->{c};
+            ## $self->{end_char} - ending character
+            ##   0x0022: in |string1| or |invalid1|.
+            ##   0x0027: in |string2| or |invalid2|.
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0023) { # #
@@ -390,41 +452,21 @@ sub get_next_token ($) {
                         0x0029 => RPAREN_TOKEN, # )
                         0x005B => LBRACKET_TOKEN, # [
                         0x005D => RBRACKET_TOKEN, # ]
+                        0x002B => PLUS_TOKEN, # +
+                        0x003E => GREATER_TOKEN, # >
+                        0x002C => COMMA_TOKEN, # ,
                }->{$self->{c}}) {
         my ($l, $c) = ($self->{line}, $self->{column});
         # stay in the state
         $self->{c} = $self->{get_char}->($self);
         return {type => $t, line => $l, column => $c};
         # redo A;
-      } elsif ({
-                0x0020 => 1, # SP
-                0x0009 => 1, # \t
-                0x000D => 1, # \r
-                0x000A => 1, # \n
-                0x000C => 1, # \f
-               }->{$self->{c}}) {
+      } elsif (IS_WHITE_SPACE->{$self->{c}}) {
         my ($l, $c) = ($self->{line}, $self->{column});
         W: {
           $self->{c} = $self->{get_char}->($self);
-          if ({
-                0x0020 => 1, # SP
-                0x0009 => 1, # \t
-                0x000D => 1, # \r
-                0x000A => 1, # \n
-                0x000C => 1, # \f
-              }->{$self->{c}}) {
+          if (IS_WHITE_SPACE->{$self->{c}}) {
             redo W;
-          } elsif (my $v = {
-                            0x002B => PLUS_TOKEN, # +
-                            0x003E => GREATER_TOKEN, # >
-                            0x002C => COMMA_TOKEN, # ,
-                            0x007E => TILDE_TOKEN, # ~
-                           }->{$self->{c}}) {
-            my ($l, $c) = ($self->{line}, $self->{column});
-            # stay in the state
-            $self->{c} = $self->{get_char}->($self);
-            return {type => $v, line => $l, column => $c};
-            #redo A;
           } else {
             # stay in the state
             # reprocess
@@ -461,24 +503,6 @@ sub get_next_token ($) {
                   line => $line, column => $column};
           #redo A;
         }
-      } elsif ($self->{c} == 0x002B) { # +
-        my ($l, $c) = ($self->{line}, $self->{column});
-        # stay in the state
-        $self->{c} = $self->{get_char}->($self);
-        return {type => PLUS_TOKEN, line => $l, column => $c};
-        #redo A;
-      } elsif ($self->{c} == 0x003E) { # >
-        my ($l, $c) = ($self->{line}, $self->{column});
-        # stay in the state
-        $self->{c} = $self->{get_char}->($self);
-        return {type => GREATER_TOKEN, line => $l, column => $c};
-        #redo A;
-      } elsif ($self->{c} == 0x002C) { # ,
-        my ($l, $c) = ($self->{line}, $self->{column});
-        # stay in the state
-        $self->{c} = $self->{get_char}->($self);
-        return {type => COMMA_TOKEN, line => $l, column => $c};
-        #redo A;
       } elsif ($self->{c} == 0x007E) { # ~
         my ($l, $c) = ($self->{line}, $self->{column});
         $self->{c} = $self->{get_char}->($self);
@@ -507,6 +531,8 @@ sub get_next_token ($) {
         return $self->{t};
         #redo A;
       }
+
+
     } elsif ($self->{state} == BEFORE_NMSTART_STATE) {
       ## NOTE: |nmstart| in |ident| in (|IDENT|, |DIMENSION|, or
       ## |FUNCTION|)
@@ -696,7 +722,12 @@ sub get_next_token ($) {
         return $self->{t};
         #redo A;
       }
+
     } elsif ($self->{state} == HASH_OPEN_STATE) {
+      ## Consume a token
+      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-token> -
+      ## U+0023 NUMBER SIGN (#)
+
       ## NOTE: The first |nmchar| in |name| in |HASH|.
       if ((0x0041 <= $self->{c} and $self->{c} <= 0x005A) or # A..Z
           (0x0061 <= $self->{c} and $self->{c} <= 0x007A) or # a..z
@@ -704,8 +735,9 @@ sub get_next_token ($) {
           $self->{c} == 0x002D or # -
           $self->{c} == 0x005F or # _
           $self->{c} > 0x007F) { # nonascii
-        $self->{t}->{not_ident} = 1 if
-            (0x0030 <= $self->{c} and $self->{c} <= 0x0039); # 0..9
+        ## A name character
+        $self->{t}->{not_ident} = 1 # <hash>'s type != "id"
+            if (0x0030 <= $self->{c} and $self->{c} <= 0x0039); # 0..9
         $self->{t}->{hyphen} = 1 if $self->{c} == 0x002D; # -
         $self->{t}->{value} .= chr $self->{c};
         $self->{state} = NAME_STATE;
@@ -723,6 +755,7 @@ sub get_next_token ($) {
                 column => $self->{t}->{column}};
         #redo A;
       }
+
     } elsif ($self->{state} == NAME_STATE) {
       ## NOTE: |nmchar| in (|ident| or |name|).
       if ((0x0041 <= $self->{c} and $self->{c} <= 0x005A) or # A..Z
@@ -807,7 +840,8 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0022 or $self->{c} == 0x0027) { # " or '
-        $self->{state} = STRING_STATE; $q = $self->{c};
+        $self->{state} = STRING_STATE;
+        $self->{end_char} = $self->{c};
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0029) { # )
@@ -921,28 +955,36 @@ sub get_next_token ($) {
         redo A;
       }
     } elsif ($self->{state} == ESCAPE_OPEN_STATE) {
-      $self->{t}->{has_escape} = 1;
       if (0x0030 <= $self->{c} and $self->{c} <= 0x0039) { # 0..9
         ## NOTE: second character of |unicode| in |escape|.
+        $self->{t}->{has_escape} = 1;
         $char = $self->{c} - 0x0030;
         $self->{state} = ESCAPE_STATE; $i = 2;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif (0x0041 <= $self->{c} and $self->{c} <= 0x0046) { # A..F
         ## NOTE: second character of |unicode| in |escape|.
+        $self->{t}->{has_escape} = 1;
         $char = $self->{c} - 0x0041 + 0xA;
         $self->{state} = ESCAPE_STATE; $i = 2;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif (0x0061 <= $self->{c} and $self->{c} <= 0x0066) { # a..f
         ## NOTE: second character of |unicode| in |escape|.
+        $self->{t}->{has_escape} = 1;
         $char = $self->{c} - 0x0061 + 0xA;
         $self->{state} = ESCAPE_STATE; $i = 2;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x000A or # \n
                $self->{c} == 0x000C) { # \f
-        if ($q == 0) {
+        $self->{t}->{has_escape} = 1;
+        if (defined $self->{end_char}) {
+          ## Note: In |nl| in ... in |string| or |ident|.
+          $self->{state} = STRING_STATE;
+          $self->{c} = $self->{get_char}->($self);
+          redo A;
+        } elsif ($q == 0) {
           #
         } elsif ($q == 1) {
           ## NOTE: In |escape| in |URI|.
@@ -956,14 +998,15 @@ sub get_next_token ($) {
           $self->{state} = URI_UNQUOTED_STATE;
           $self->{c} = $self->{get_char}->($self);
           redo A;
-        } else {
-          ## Note: In |nl| in ... in |string| or |ident|.
-          $self->{state} = STRING_STATE;
-          $self->{c} = $self->{get_char}->($self);
-          redo A;
         }
       } elsif ($self->{c} == 0x000D) { # \r
-        if ($q == 0) {
+        $self->{t}->{has_escape} = 1;
+        if (defined $self->{end_char}) {
+          ## Note: In |nl| in ... in |string| or |ident|.
+          $self->{state} = ESCAPE_BEFORE_LF_STATE;
+          $self->{c} = $self->{get_char}->($self);
+          redo A;
+        } elsif ($q == 0) {
           #
         } elsif ($q == 1) {
           ## NOTE: In |escape| in |URI|.
@@ -976,16 +1019,12 @@ sub get_next_token ($) {
           $self->{state} = ESCAPE_BEFORE_LF_STATE;
           $self->{c} = $self->{get_char}->($self);
           redo A;
-        } else {
-          ## Note: In |nl| in ... in |string| or |ident|.
-          $self->{state} = ESCAPE_BEFORE_LF_STATE;
-          $self->{c} = $self->{get_char}->($self);
-          redo A;
         }
-      } elsif ($self->{c} == -1) {
+      } elsif ($self->{c} == EOF_CHAR) {
         #
       } else {
         ## NOTE: second character of |escape|.
+        $self->{t}->{has_escape} = 1;
         $self->{t}->{value} .= chr $self->{c};
         $self->{state} = $q == 0 ? NAME_STATE :
             $q == 1 ? URI_UNQUOTED_STATE : STRING_STATE;
@@ -993,7 +1032,23 @@ sub get_next_token ($) {
         redo A;
       }
 
-      if ($q == 0) {
+      if (defined $self->{end_char}) {
+        $self->onerror->(type => 'css:escape:broken', # XXX
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         line => $self->{line_prev},
+                         column => $self->{column_prev});
+        $self->{t}->{type} = {
+          STRING_TOKEN, INVALID_TOKEN,
+          URI_TOKEN, URI_INVALID_TOKEN,
+          URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
+        }->{$self->{t}->{type}} || $self->{t}->{type};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        delete $self->{end_char};
+        # reprocess
+        return $self->{t};
+        #redo A;
+      } elsif ($q == 0) {
         if ($self->{t}->{type} == DIMENSION_TOKEN) {
           if ($self->{t}->{hyphen} and $self->{t}->{value} eq '-') {
             $self->{state} = BEFORE_TOKEN_STATE;
@@ -1039,7 +1094,8 @@ sub get_next_token ($) {
               {type => DELIM_TOKEN, value => '\\',
                line => $self->{line_prev}, column => $self->{column_prev}};
 
-          if ($self->{t}->{hyphen} and $self->{t}->{value} eq '-') {
+          if ($self->{t}->{hyphen} and $self->{t}->{value} eq '-' and
+              not $self->{t}->{type} == HASH_TOKEN) {
             unshift @{$self->{token}},
                 {type => MINUS_TOKEN,
                  line => $self->{line_prev},
@@ -1049,19 +1105,17 @@ sub get_next_token ($) {
 
           if (length $self->{t}->{value}) {
             $self->normalize_surrogate ($self->{t}->{value});
+            $self->{t}->{not_ident} = 1
+                if $self->{t}->{type} == HASH_TOKEN and
+                   $self->{t}->{value} eq '-' and $self->{t}->{hyphen};
             $self->{state} = BEFORE_TOKEN_STATE;
             # reprocess
             return $self->{t};
             #redo A;
-          }
-
-          if ($self->{t}->{type} == HASH_TOKEN) {
-            $self->{state} = BEFORE_TOKEN_STATE;
-            # reprocess
-            return {type => DELIM_TOKEN, value => '#',
-                    line => $self->{t}->{line},
-                    column => $self->{t}->{column}};
-            #redo A;
+          } elsif ($self->{t}->{type} == HASH_TOKEN) {
+            unshift @{$self->{token}},
+                {type => DELIM_TOKEN, value => '#',
+                 line => $self->{line_prev}, column => $self->{column_prev}-1};
           }
 
           $self->{state} = BEFORE_TOKEN_STATE;
@@ -1073,19 +1127,6 @@ sub get_next_token ($) {
         $self->{state} = URI_UNQUOTED_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
-      } else {
-        unshift @{$self->{token}}, {type => DELIM_TOKEN, value => '\\',
-                                    line => $self->{line_prev},
-                                    column => $self->{column_prev}};
-        $self->{t}->{type} = {
-          STRING_TOKEN, INVALID_TOKEN,
-          URI_TOKEN, URI_INVALID_TOKEN,
-          URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-        }->{$self->{t}->{type}} || $self->{t}->{type};
-        $self->{state} = BEFORE_TOKEN_STATE;
-        # reprocess
-        return $self->{t};
-        #redo A;
       }
     } elsif ($self->{state} == ESCAPE_STATE) {
       ## NOTE: third..seventh character of |unicode| in |escape|.
@@ -1161,31 +1202,51 @@ sub get_next_token ($) {
         # reprocess
         redo A;
       }
+
     } elsif ($self->{state} == STRING_STATE) {
+      ## Consume a string token
+      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-string-token>.
+
       ## NOTE: A character in |string$Q| in |string| in |STRING|, or
       ## a character in |invalid$Q| in |invalid| in |INVALID|,
-      ## where |$Q = $q == 0x0022 ? 1 : 2|.
+      ## where |$Q = $self->{end_char} == 0x0022 ? 1 : 2|.
       ## Or, in |URI|.
       if ($self->{c} == 0x005C) { # \
         $self->{state} = ESCAPE_OPEN_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
-      } elsif ($self->{c} == $q) { # " | '
+      } elsif ($self->{c} == $self->{end_char}) { # ending character (" | ')
         if ($self->{t}->{type} == STRING_TOKEN) {
           $self->normalize_surrogate ($self->{t}->{value});
           $self->{state} = BEFORE_TOKEN_STATE;
+          delete $self->{end_char};
           $self->{c} = $self->{get_char}->($self);
           return $self->{t};
           #redo A;
         } else {
           $self->{state} = URI_AFTER_WSP_STATE;
+          delete $self->{end_char};
           $self->{c} = $self->{get_char}->($self);
           redo A;
         }
-      } elsif ($self->{c} == 0x000A or # \n
-               $self->{c} == 0x000D or # \r
-               $self->{c} == 0x000C or # \f
-               $self->{c} == -1) {
+      } elsif ($self->{c} == EOF_CHAR) {
+        $self->onerror->(type => 'css:string:eof', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{line},
+                         column => $self->{column});
+        $self->normalize_surrogate ($self->{t}->{value});
+        $self->{state} = BEFORE_TOKEN_STATE;
+        delete $self->{end_char};
+        # reconsume
+        return $self->{t};
+        #redo A;
+      } elsif (IS_NEWLINE->{$self->{c}}) {
+        $self->onerror->(type => 'css:string:newline', # XXX
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         line => $self->{line},
+                         column => $self->{column});
         $self->{t}->{type} = {
           STRING_TOKEN, INVALID_TOKEN,
           INVALID_TOKEN, INVALID_TOKEN,
@@ -1194,7 +1255,6 @@ sub get_next_token ($) {
           URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
           URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
         }->{$self->{t}->{type}};
-        $self->{t}->{eos} = 1 if $self->{c} == -1;
         $self->{state} = BEFORE_TOKEN_STATE;
         # reconsume
         return $self->{t};
@@ -1205,6 +1265,7 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       }
+
     } elsif ($self->{state} == NUMBER_STATE) {
       ## NOTE: 2nd, 3rd, or ... character in |num| before |.|.
       if (0x0030 <= $self->{c} and $self->{c} <= 0x0039) {

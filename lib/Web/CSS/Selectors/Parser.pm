@@ -723,8 +723,7 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
       }
     } elsif ($state == BEFORE_VALUE_STATE) {
       if ($t->{type} == IDENT_TOKEN or
-          $t->{type} == STRING_TOKEN or
-          ($t->{type} == INVALID_TOKEN and $t->{eos})) {
+          $t->{type} == STRING_TOKEN) {
         $simple_selector->[4] = $t->{value};
         push @$sss, $simple_selector;
 
@@ -1130,8 +1129,7 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
       }
     } elsif ($state == BEFORE_CONTAINS_STRING_STATE) {
       if ($t->{type} == STRING_TOKEN or
-          $t->{type} == IDENT_TOKEN or
-          ($t->{type} == INVALID_TOKEN and $t->{eos})) {
+          $t->{type} == IDENT_TOKEN) {
         push @$sss, [PSEUDO_CLASS_SELECTOR, '-manakai-contains', $t->{value}];
         
         $state = AFTER_LANG_TAG_STATE;

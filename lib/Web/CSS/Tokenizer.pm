@@ -40,6 +40,25 @@ sub IS_WHITE_SPACE () {
   };
 } # IS_WHITE_SPACE
 
+sub IS_DIGIT () {
+  return {
+    0x0030 => 1, 0x0031 => 1, 0x0032 => 1, 0x0033 => 1, 0x0034 => 1,
+    0x0035 => 1, 0x0036 => 1, 0x0037 => 1, 0x0038 => 1, 0x0039 => 1,
+  };
+} # IS_DIGIT
+
+sub IS_NAME ($) {
+  return {
+    map { $_ => 1 } 0x0030..0x0039, 0x0041..0x005A, 0x0061..0x007A, 0x002D,
+  }->{$_[0]} || $_[0] > 0x007F;
+} # IS_NAME
+
+sub IS_VALID_ESCAPE ($$) {
+  return 0 if not defined $_[0] or $_[0] != 0x005C;
+  return 0 if not defined $_[1] or $_[1] != EOF_CHAR or IS_NEWLINE->{$_[1]};
+  return 1;
+} # IS_VALID_ESCAPE
+
 ## ------ Tokenizer states ------
 
 sub BEFORE_TOKEN_STATE () { 0 }
@@ -62,6 +81,18 @@ sub URI_UNQUOTED_STATE () { 16 }
 sub URI_AFTER_WSP_STATE () { 17 }
 sub AFTER_AT_STATE () { 18 }
 sub AFTER_AT_HYPHEN_STATE () { 19 }
+sub BEFORE_EQUAL_STATE () { 20 }
+sub PLUS_STATE () { 21 }
+sub PLUS_DOT_STATE () { 22 }
+sub MINUS_STATE () { 23 }
+sub MINUS_DOT_STATE () { 24 }
+sub SLASH_STATE () { 25 }
+sub COMMENT_STATE () { 26 }
+sub COMMENT_STAR_STATE () { 27 }
+sub MINUS_MINUS_STATE () { 28 }
+sub LESS_THAN_STATE () { 29 }
+sub MDO_STATE () { 30 }
+sub MDO_HYPHEN_STATE () { 31 }
 
 ## ------ Token types ------
 
@@ -102,8 +133,8 @@ sub RBRACKET_TOKEN           () { 32 } # <delim>               ]
 sub S_TOKEN                  () { 33 } # <whitespace>
 sub CDO_TOKEN                () { 34 } # <CDO> <!--
 sub CDC_TOKEN                () { 35 } # <CDC> -->
-sub COMMENT_TOKEN            () { 36 }
-sub COMMENT_INVALID_TOKEN    () { 37 }
+#sub COMMENT_TOKEN            () { 36 }
+#sub COMMENT_INVALID_TOKEN    () { 37 }
 sub EOF_TOKEN                () { 38 }
 sub MINUS_TOKEN              () { 39 } # <delim>               -
 sub STAR_TOKEN               () { 40 } # <delim>               *
@@ -120,8 +151,8 @@ our @TokenName = qw(
   STRING INVALID NUMBER DIMENSION PERCENTAGE UNICODE_RANGE
   0 DELIM PLUS GREATER COMMA TILDE DASHMATCH
   PREFIXMATCH SUFFIXMATCH SUBSTRINGMATCH INCLUDES SEMICOLON
-  LBRACE RBRACE LPAREN RPAREN LBRACKET RBRACKET S CDO CDC COMMENT
-  COMMENT_INVALID EOF MINUS STAR VBAR DOT COLON MATCH EXCLAMATION
+  LBRACE RBRACE LPAREN RPAREN LBRACKET RBRACKET S CDO CDC
+  EOF MINUS STAR VBAR DOT COLON MATCH EXCLAMATION
   COLUMN ABORT
 );
 
@@ -133,7 +164,7 @@ our @EXPORT = qw(
   TILDE_TOKEN DASHMATCH_TOKEN PREFIXMATCH_TOKEN SUFFIXMATCH_TOKEN
   SUBSTRINGMATCH_TOKEN INCLUDES_TOKEN SEMICOLON_TOKEN LBRACE_TOKEN
   RBRACE_TOKEN LPAREN_TOKEN RPAREN_TOKEN LBRACKET_TOKEN RBRACKET_TOKEN
-  S_TOKEN CDO_TOKEN CDC_TOKEN COMMENT_TOKEN COMMENT_INVALID_TOKEN EOF_TOKEN
+  S_TOKEN CDO_TOKEN CDC_TOKEN EOF_TOKEN
   MINUS_TOKEN STAR_TOKEN VBAR_TOKEN DOT_TOKEN COLON_TOKEN MATCH_TOKEN
   EXCLAMATION_TOKEN COLUMN_TOKEN ABORT_TOKEN
 );
@@ -228,7 +259,7 @@ sub get_next_token ($) {
         ## NOTE: |-| in |ident| in |IDENT|
         $self->{t} = {type => IDENT_TOKEN, value => '-', hyphen => 1,
                       line => $self->{line}, column => $self->{column}};
-        $self->{state} = BEFORE_NMSTART_STATE;
+        $self->{state} = MINUS_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0055 or $self->{c} == 0x0075) { # U or u
@@ -354,94 +385,34 @@ sub get_next_token ($) {
         $self->{state} = NUMBER_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
+      } elsif ($self->{c} == 0x002B) { # +
+        $self->{t} = {type => NUMBER_TOKEN, value => chr $self->{c},
+                      line => $self->{line}, column => $self->{column}};
+        $self->{state} = PLUS_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
       } elsif ($self->{c} == 0x002E) { # .
         ## NOTE: |num|.
-        $self->{t} = {type => NUMBER_TOKEN, value => '0',
+        $self->{t} = {type => NUMBER_TOKEN, value => '',
                       line => $self->{line}, column => $self->{column}};
         ## NOTE: 'value' is renamed as 'number' later.
         $self->{state} = NUMBER_FRACTION_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x002F) { # /
-        my ($l, $c) = ($self->{line}, $self->{column});
+        $self->{t} = {type => DELIM_TOKEN, value => '/',
+                      line => $self->{line}, column => $self->{column}};
+        $self->{state} = SLASH_STATE;
         $self->{c} = $self->{get_char}->($self);
-        if ($self->{c} == 0x002A) { # *
-          C: {
-            $self->{c} = $self->{get_char}->($self);
-            if ($self->{c} == 0x002A) { # *
-              D: {
-                $self->{c} = $self->{get_char}->($self);
-                if ($self->{c} == 0x002F) { # /
-                  #
-                } elsif ($self->{c} == 0x002A) { # *
-                  redo D;
-                } else {
-                  redo C;
-                }
-              } # D
-            } elsif ($self->{c} == -1) {
-              # stay in the state
-              # reprocess
-              return {type => COMMENT_INVALID_TOKEN};
-              #redo A;
-            } else {
-              redo C;
-            }
-          } # C
-
-          # stay in the state.
-          $self->{c} = $self->{get_char}->($self);
-          redo A;
-        } else {
-          # stay in the state.
-          # reprocess
-          return {type => DELIM_TOKEN, value => '/', line => $l, column => $c};
-          #redo A;
-        }         
+        redo A;
       } elsif ($self->{c} == 0x003C) { # <
-        my ($l, $c) = ($self->{line}, $self->{column});
-        ## NOTE: |CDO|
+        $self->{t} = {type => DELIM_TOKEN, value => '<',
+                      line => $self->{line}, column => $self->{column}};
+        $self->{state} = LESS_THAN_STATE;
         $self->{c} = $self->{get_char}->($self);
-        if ($self->{c} == 0x0021) { # !
-          $self->{c} = $self->{get_char}->($self);
-          if ($self->{c} == 0x002D) { # -
-            $self->{c} = $self->{get_char}->($self);
-            if ($self->{c} == 0x002D) { # -
-              $self->{state} = BEFORE_TOKEN_STATE;
-              $self->{c} = $self->{get_char}->($self);
-              return {type => CDO_TOKEN, line => $l, column => $c};
-              #redo A;
-            } else {
-              unshift @{$self->{token}},
-                  {type => EXCLAMATION_TOKEN, line => $l, column => $c + 1};
-              ## NOTE: |-| in |ident| in |IDENT|
-              $self->{t} = {type => IDENT_TOKEN, value => '-',
-                            line => $l, column => $c + 2};
-              $self->{state} = BEFORE_NMSTART_STATE;
-              #reprocess
-              return {type => DELIM_TOKEN, value => '<',
-                      line => $l, column => $c};
-              #redo A;
-            }
-          } else {
-            unshift @{$self->{token}}, {type => EXCLAMATION_TOKEN,
-                                        line => $l, column => $c + 1};
-            $self->{state} = BEFORE_TOKEN_STATE;
-            #reprocess
-            return {type => DELIM_TOKEN, value => '<',
-                    line => $l, column => $c};
-            #redo A;
-          }
-        } else {
-          $self->{state} = BEFORE_TOKEN_STATE;
-          #reprocess
-          return {type => DELIM_TOKEN, value => '<',
-                  line => $l, column => $c};
-          #redo A;
-        }
+        redo A;
       } elsif (my $t = {
                         0x0021 => EXCLAMATION_TOKEN, # !
-                        0x002D => MINUS_TOKEN, # -
                         0x002E => DOT_TOKEN, # .
                         0x003A => COLON_TOKEN, # :
                         0x003B => SEMICOLON_TOKEN, # ;
@@ -452,7 +423,6 @@ sub get_next_token ($) {
                         0x0029 => RPAREN_TOKEN, # )
                         0x005B => LBRACKET_TOKEN, # [
                         0x005D => RBRACKET_TOKEN, # ]
-                        0x002B => PLUS_TOKEN, # +
                         0x003E => GREATER_TOKEN, # >
                         0x002C => COMMA_TOKEN, # ,
                }->{$self->{c}}) {
@@ -475,34 +445,17 @@ sub get_next_token ($) {
           }
         } # W
       } elsif (my $v = {
-                        0x007C => DASHMATCH_TOKEN, # |
-                        0x005E => PREFIXMATCH_TOKEN, # ^
-                        0x0024 => SUFFIXMATCH_TOKEN, # $
-                        0x002A => SUBSTRINGMATCH_TOKEN, # *
-                       }->{$self->{c}}) {
-        my ($line, $column) = ($self->{line}, $self->{column});
-        my $c = $self->{c};
+        0x007C => [VBAR_TOKEN, DASHMATCH_TOKEN], # |
+        0x005E => [DELIM_TOKEN, PREFIXMATCH_TOKEN], # ^
+        0x0024 => [DELIM_TOKEN, SUFFIXMATCH_TOKEN], # $
+        0x002A => [STAR_TOKEN, SUBSTRINGMATCH_TOKEN], # *
+      }->{$self->{c}}) {
+        $self->{t} = {type => $v->[0], value => chr $self->{c},
+                      line => $self->{line}, column => $self->{column},
+                      _equal_state => $v->[1]};
         $self->{c} = $self->{get_char}->($self);
-        if ($self->{c} == 0x003D) { # =
-          # stay in the state
-          $self->{c} = $self->{get_char}->($self);
-          return {type => $v, line => $line, column => $column};
-          #redo A;
-        } elsif ($v = {
-                       0x002A => STAR_TOKEN, # *
-                       0x007C => VBAR_TOKEN, # |
-                      }->{$c}) {
-          # stay in the state.
-          # reprocess
-          return {type => $v, line => $line, column => $column};
-          #redo A;
-        } else {
-          # stay in the state
-          # reprocess
-          return {type => DELIM_TOKEN, value => chr $c,
-                  line => $line, column => $column};
-          #redo A;
-        }
+        $self->{state} = BEFORE_EQUAL_STATE;
+        redo A;
       } elsif ($self->{c} == 0x007E) { # ~
         my ($l, $c) = ($self->{line}, $self->{column});
         $self->{c} = $self->{get_char}->($self);
@@ -559,7 +512,7 @@ sub get_next_token ($) {
             $self->{c} = $self->{get_char}->($self);
             return {type => CDC_TOKEN,
                     line => $self->{t}->{line},
-                    column => $self->{t}->{column}};
+                    column => $self->{t}->{column}}; # XXX
             #redo A;
           } else {
             ## NOTE: |-|, |-|, $self->{c}
@@ -576,7 +529,7 @@ sub get_next_token ($) {
           my ($l, $c) = ($self->{line}, $self->{column}); # second '-'
           $self->{c} = $self->{get_char}->($self);
           if ($self->{c} == 0x003E) { # >
-            unshift @{$self->{token}}, {type => CDC_TOKEN};
+            unshift @{$self->{token}}, {type => CDC_TOKEN}; # XXX
             $self->{t}->{type} = NUMBER_TOKEN;
             $self->{t}->{value} = '';
             $self->{state} = BEFORE_TOKEN_STATE;
@@ -645,8 +598,8 @@ sub get_next_token ($) {
         $self->{state} = BEFORE_TOKEN_STATE;
         # reprocess
         return {type => DELIM_TOKEN, value => '@',
-                line => $self->{t}->{line},
-                column => $self->{t}->{column}};
+                line => $self->{line_prev},
+                column => $self->{column_prev}};
       }
     } elsif ($self->{state} == AFTER_AT_HYPHEN_STATE) {
       if ((0x0041 <= $self->{c} and $self->{c} <= 0x005A) or # A..Z
@@ -657,32 +610,35 @@ sub get_next_token ($) {
         $self->{state} = NAME_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
-      } elsif ($self->{c} == 0x002D) { # -
+      } elsif ($self->{c} == 0x002D) { # -  @--
+        my $t = $self->{t};
+        $t->{type} = DELIM_TOKEN;
+        $t->{value} = '@';
+        delete $t->{hyphen};
+        $self->{t} = {type => IDENT_TOKEN, hyphen => 1, value => '-',
+                      line => $self->{line_prev},
+                      column => $self->{column_prev}};
+        $self->{state} = MINUS_MINUS_STATE;
         $self->{c} = $self->{get_char}->($self);
-        if ($self->{c} == 0x003E) { # >
-          unshift @{$self->{token}}, {type => CDC_TOKEN};
-          $self->{state} = BEFORE_TOKEN_STATE;
-          $self->{c} = $self->{get_char}->($self);
-          return {type => DELIM_TOKEN, value => '@'};
-          #redo A;
-        } else {
-          unshift @{$self->{token}}, {type => MINUS_TOKEN};
-          $self->{t} = {type => IDENT_TOKEN, value => '-'};
-          $self->{state} = BEFORE_NMSTART_STATE;
-          # reprocess
-          return {type => DELIM_TOKEN, value => '@'};
-          #redo A;
-        }
+        return $t;
+        #redo A;
       } elsif ($self->{c} == 0x005C) { # \
         ## TODO: @-\{nl}
         $self->{state} = ESCAPE_OPEN_STATE; $q = 0;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
-        unshift @{$self->{token}}, {type => MINUS_TOKEN};
-        $self->{state} = BEFORE_TOKEN_STATE;
-        # reprocess
-        return {type => DELIM_TOKEN, value => '@'};
+        my $t = $self->{t};
+        $t->{type} = DELIM_TOKEN;
+        $t->{value} = '@';
+        delete $t->{hyphen};
+        $self->{t} = {type => IDENT_TOKEN, hyphen => 1, value => '-',
+                      line => $self->{line_prev},
+                      column => $self->{column_prev}};
+        $self->{state} = MINUS_STATE;
+        ## Reprocess the current input character.
+        return $t;
+        #redo A;
       }
     } elsif ($self->{state} == AFTER_NUMBER_STATE) {
       if ($self->{c} == 0x002D) { # -
@@ -1266,6 +1222,138 @@ sub get_next_token ($) {
         redo A;
       }
 
+    } elsif ($self->{state} == PLUS_STATE) {
+      ## Consume a number
+      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-number>.
+
+      if (IS_DIGIT->{$self->{c}}) {
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{state} = NUMBER_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } elsif ($self->{c} == 0x002E) { # .
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{state} = PLUS_DOT_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{t}->{type} = PLUS_TOKEN;
+        delete $self->{t}->{value};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        ## Reconsume the current input character.
+        return $self->{t};
+      }
+
+    } elsif ($self->{state} == PLUS_DOT_STATE) {
+      ## Consume a number
+      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-number>.
+
+      if (IS_DIGIT->{$self->{c}}) {
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{state} = NUMBER_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{t}->{type} = PLUS_TOKEN;
+        delete $self->{t}->{value};
+        unshift @{$self->{token}},
+            {type => DOT_TOKEN,
+             line => $self->{line_prev}, column => $self->{column_prev}};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        ## Reconsume the current input character.
+        return $self->{t};
+      }
+
+    } elsif ($self->{state} == MINUS_STATE) {
+      ## Consume a number
+      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-number>.
+
+      if (IS_DIGIT->{$self->{c}}) {
+        $self->{t}->{type} = NUMBER_TOKEN;
+        $self->{t}->{value} .= chr $self->{c};
+        delete $self->{t}->{hyphen};
+        $self->{state} = NUMBER_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } elsif ($self->{c} == 0x002E) { # .
+        $self->{t}->{type} = NUMBER_TOKEN;
+        $self->{t}->{value} .= chr $self->{c};
+        delete $self->{t}->{hyphen};
+        $self->{state} = MINUS_DOT_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } elsif ($self->{c} == 0x002D) { # -
+        $self->{state} = MINUS_MINUS_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{state} = BEFORE_NMSTART_STATE;
+        ## Reconsume the current input character.
+        redo A;
+
+        # XXX
+        $self->{t}->{type} = MINUS_TOKEN;
+        delete $self->{t}->{value};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        ## Reconsume the current input character.
+        return $self->{t};
+      }
+
+    } elsif ($self->{state} == MINUS_DOT_STATE) {
+      ## Consume a number
+      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-number>.
+
+      if (IS_DIGIT->{$self->{c}}) {
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{state} = NUMBER_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{t}->{type} = MINUS_TOKEN;
+        delete $self->{t}->{value};
+        unshift @{$self->{token}},
+            {type => DOT_TOKEN,
+             line => $self->{line_prev}, column => $self->{column_prev}};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        ## Reconsume the current input character.
+        return $self->{t};
+      }
+
+    } elsif ($self->{state} == MINUS_MINUS_STATE) {
+      if ($self->{c} == 0x003E) { # >
+        $self->{t}->{type} = CDC_TOKEN;
+        delete $self->{t}->{value};
+        delete $self->{t}->{hyphen};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        return $self->{t};
+        #redo A;
+      } elsif ($self->{c} == 0x002D) { # -
+        $self->{t}->{type} = MINUS_TOKEN;
+        delete $self->{t}->{value};
+        delete $self->{t}->{hyphen};
+        my $t = $self->{t};
+        $self->{t} = {type => IDENT_TOKEN, hyphen => 1, value => '-',
+                      line => $self->{line_prev},
+                      column => $self->{column_prev}};
+        ## Stay in this state.
+        $self->{c} = $self->{get_char}->($self);
+        return $t;
+        #redo A;
+      } else {
+        $self->{t}->{type} = MINUS_TOKEN;
+        delete $self->{t}->{value};
+        delete $self->{t}->{hyphen};
+        my $t = $self->{t};
+        $self->{t} = {type => IDENT_TOKEN, hyphen => 1, value => '-',
+                      line => $self->{line_prev},
+                      column => $self->{column_prev}};
+        $self->{state} = MINUS_STATE;
+        ## Reconsume the current input character.
+        return $t;
+        #redo A;
+      }
+
     } elsif ($self->{state} == NUMBER_STATE) {
       ## NOTE: 2nd, 3rd, or ... character in |num| before |.|.
       if (0x0030 <= $self->{c} and $self->{c} <= 0x0039) {
@@ -1330,6 +1418,118 @@ sub get_next_token ($) {
         # reprocess
         redo A;
       }
+
+    } elsif ($self->{state} == BEFORE_EQUAL_STATE) {
+      if ($self->{c} == 0x003D) { # = (|=, *=, ^=, $=)
+        $self->{t}->{type} = delete $self->{t}->{_equal_state};
+        delete $self->{t}->{value};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        return $self->{t};
+      } else {
+        delete $self->{t}->{_equal_state};
+        delete $self->{t}->{value} if $self->{t}->{type} != DELIM_TOKEN;
+        $self->{state} = BEFORE_TOKEN_STATE;
+        # Reprocess the current input character.
+        return $self->{t};
+      }
+
+    } elsif ($self->{state} == SLASH_STATE) {
+      if ($self->{c} == 0x002A) { # *
+        $self->{state} = COMMENT_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{state} = BEFORE_TOKEN_STATE;
+        ## Reprocess the current input character.
+        return $self->{t};
+        #redo A;
+      }
+    } elsif ($self->{state} == COMMENT_STATE) {
+      if ($self->{c} == 0x002A) { # *
+        $self->{state} = COMMENT_STAR_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } elsif ($self->{c} == EOF_CHAR) {
+        $self->{state} = BEFORE_TOKEN_STATE;
+        #$self->{c} = $self->{get_char}->($self);
+        return {type => EOF_TOKEN,
+                line => $self->{line}, column => $self->{column}};
+        #redo A;
+      } else {
+        ## Stay in this state.
+        $self->{c} = $self->{get_char}->($self)
+            while $self->{c} >= 0x0000 and $self->{c} != 0x002A; # *
+        redo A;
+      }
+    } elsif ($self->{state} == COMMENT_STAR_STATE) {
+      if ($self->{c} == 0x002F) { # /
+        $self->{state} = BEFORE_TOKEN_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } elsif ($self->{c} == 0x002A) { # *
+        ## Stay in this state.
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } elsif ($self->{c} == EOF_CHAR) {
+        $self->{state} = BEFORE_TOKEN_STATE;
+        #$self->{c} = $self->{get_char}->($self);
+        return {type => EOF_TOKEN,
+                line => $self->{line}, column => $self->{column}};
+        #redo A;
+      } else {
+        $self->{state} = COMMENT_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      }
+
+    } elsif ($self->{state} == LESS_THAN_STATE) {
+      if ($self->{c} == 0x0021) { # !
+        $self->{state} = MDO_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{state} = BEFORE_TOKEN_STATE;
+        ## Reconsume the current input character.
+        return $self->{t}; # DELIM_TOKEN(<)
+        #redo A;
+      }
+    } elsif ($self->{state} == MDO_STATE) {
+      if ($self->{c} == 0x002D) { # -
+        $self->{state} = MDO_HYPHEN_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        unshift @{$self->{token}},
+            {type => EXCLAMATION_TOKEN,
+             line => $self->{line_prev}, column => $self->{column_prev}};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        ## Reconsume the current input character.
+        return $self->{t};
+        #redo A;
+      }
+    } elsif ($self->{state} == MDO_HYPHEN_STATE) {
+      if ($self->{c} == 0x002D) { # -
+        $self->{t}->{type} = CDO_TOKEN;
+        delete $self->{t}->{value};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        return $self->{t};
+        #redo A;
+      } else {
+        my $t = $self->{t};
+        unshift @{$self->{token}},
+            {type => EXCLAMATION_TOKEN,
+             line => $self->{line_prev}, column => $self->{column_prev}-1};
+        $self->{t} = {type => IDENT_TOKEN, hyphen => 1, value => '-',
+                      line => $self->{line_prev},
+                      column => $self->{column_prev}};
+        $self->{state} = MINUS_STATE;
+        ## Reconsume the current input character.
+        return $t;
+        #redo A;
+      }
+
     } else {
       die "$0: Unknown state |$self->{state}|";
     }
@@ -1410,10 +1610,6 @@ sub serialize_token ($$) {
     return '<!--';
   } elsif ($t->{type} == CDC_TOKEN) {
     return '-->';
-  } elsif ($t->{type} == COMMENT_TOKEN) {
-    return '/**/';
-  } elsif ($t->{type} == COMMENT_INVALID_TOKEN) {
-    return '/*';
   } elsif ($t->{type} == EOF_TOKEN) {
     return '{EOF}';
   } elsif ($t->{type} == MINUS_TOKEN) {

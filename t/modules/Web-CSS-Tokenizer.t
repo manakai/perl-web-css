@@ -37,6 +37,120 @@ for my $test (
   [['#-\\-'] => [[1, HASH_TOKEN, '--', 'id']]],
   [['#-a'] => [[1, HASH_TOKEN, '-a', 'id']]],
   [['#-\\z'] => [[1, HASH_TOKEN, '-z', 'id']]],
+  [['#1235'] => [[1, HASH_TOKEN, '1235', '']]],
+  [['#z1235'] => [[1, HASH_TOKEN, 'z1235', 'id']]],
+  [['#\\1235'] => [[1, HASH_TOKEN, "\x{1235}", 'id']]],
+  [["#\\\x0A1235"] => [Delim(1, '#'), Delim(2, '\\'), S(3), [4, NUMBER_TOKEN, '1235']]],
+  [['$'] => [Delim(1, '$')]],
+  [['$ab'] => [Delim(1, '$'), [2, IDENT_TOKEN, 'ab']]],
+  [['$='] => [[1, SUFFIXMATCH_TOKEN]]],
+  [['$=ab'] => [[1, SUFFIXMATCH_TOKEN], [3, IDENT_TOKEN, 'ab']]],
+  [['^'] => [Delim(1, '^')]],
+  [['^ab'] => [Delim(1, '^'), [2, IDENT_TOKEN, 'ab']]],
+  [['^='] => [[1, PREFIXMATCH_TOKEN]]],
+  [['^=ab'] => [[1, PREFIXMATCH_TOKEN], [3, IDENT_TOKEN, 'ab']]],
+  [['*'] => [[1, STAR_TOKEN]]],
+  [['*ab'] => [[1, STAR_TOKEN], [2, IDENT_TOKEN, 'ab']]],
+  [['*='] => [[1, SUBSTRINGMATCH_TOKEN]]],
+  [['*=ab'] => [[1, SUBSTRINGMATCH_TOKEN], [3, IDENT_TOKEN, 'ab']]],
+  [['|'] => [[1, VBAR_TOKEN]]],
+  [['|ab'] => [[1, VBAR_TOKEN], [2, IDENT_TOKEN, 'ab']]],
+  [['|='] => [[1, DASHMATCH_TOKEN]]],
+  [['|=ab'] => [[1, DASHMATCH_TOKEN], [3, IDENT_TOKEN, 'ab']]],
+  [['('] => [[1, LPAREN_TOKEN]]],
+  [[')'] => [[1, RPAREN_TOKEN]]],
+  [['(('] => [[1, LPAREN_TOKEN], [2, LPAREN_TOKEN]]],
+  [[')a'] => [[1, RPAREN_TOKEN], [2, IDENT_TOKEN, 'a']]],
+  [['+'] => [[1, PLUS_TOKEN]]],
+  [['+.'] => [[1, PLUS_TOKEN], [2, DOT_TOKEN]]],
+  [['+120'] => [[1, NUMBER_TOKEN, '+120']]],
+  [['+1.20'] => [[1, NUMBER_TOKEN, '+1.20']]],
+  [['+.20'] => [[1, NUMBER_TOKEN, '+.20']]],
+  [['+.1234567'] => [[1, NUMBER_TOKEN, '+.1234567']]],
+  [['+.+'] => [[1, PLUS_TOKEN], [2, DOT_TOKEN], [3, PLUS_TOKEN]]],
+  [[','] => [[1, COMMA_TOKEN]]],
+  [[',,'] => [[1, COMMA_TOKEN], [2, COMMA_TOKEN]]],
+  [['-'] => [[1, MINUS_TOKEN]]],
+  [['-910'] => [[1, NUMBER_TOKEN, '-910']]],
+  [['-.'] => [[1, MINUS_TOKEN], [2, DOT_TOKEN]]],
+  [['-.12'] => [[1, NUMBER_TOKEN, '-.12']]],
+  [['-00.12'] => [[1, NUMBER_TOKEN, '-00.12']]],
+  [['-910\\a'] => [[1, DIMENSION_TOKEN, '-910', "\x0A"]]],
+  [['-a'] => [[1, IDENT_TOKEN, '-a']]],
+  [['-\\'] => [[1, MINUS_TOKEN], [2, DELIM_TOKEN, '\\']]],
+  [["-\\\x0Ac"] => [[1, MINUS_TOKEN], [2, DELIM_TOKEN, '\\'], S(3), [4, IDENT_TOKEN, 'c']]],
+  [['-\\-'] => [[1, IDENT_TOKEN, '--']]],
+  [['-abc'] => [[1, IDENT_TOKEN, '-abc']]],
+  [['--120'] => [[1, MINUS_TOKEN], [2, NUMBER_TOKEN, '-120']]],
+  [['--a'] => [[1, MINUS_TOKEN], [2, IDENT_TOKEN, '-a']]],
+  [['----'] => [[1, MINUS_TOKEN], [2, MINUS_TOKEN], [3, MINUS_TOKEN], [4, MINUS_TOKEN]]],
+  [['----a'] => [[1, MINUS_TOKEN], [2, MINUS_TOKEN], [3, MINUS_TOKEN], [4, IDENT_TOKEN, '-a']]],
+  [['-->'] => [[1, CDC_TOKEN]]],
+  [['-->-'] => [[1, CDC_TOKEN], [4, MINUS_TOKEN]]],
+  [['-->-a'] => [[1, CDC_TOKEN], [4, IDENT_TOKEN, '-a']]],
+  [['-', '->'] => [[1, CDC_TOKEN]]],
+  [['-', '\\->'] => [[1, IDENT_TOKEN, '--'], [4, GREATER_TOKEN]]],
+  [['-', '-', '>'] => [[1, CDC_TOKEN]]],
+  [['abc-->'] => [[1, IDENT_TOKEN, 'abc--'], [6, GREATER_TOKEN]]],
+  [['.'] => [[1, DOT_TOKEN]]],
+  [['..'] => [[1, DOT_TOKEN], [2, DOT_TOKEN]]],
+  [['.12'] => [[1, NUMBER_TOKEN, '.12']]],
+  [['.12.4'] => [[1, NUMBER_TOKEN, '.12'], [4, NUMBER_TOKEN, '.4']]],
+  [['.12.a'] => [[1, NUMBER_TOKEN, '.12'], [4, DOT_TOKEN], [5, IDENT_TOKEN, 'a']]],
+  [['..4'] => [[1, DOT_TOKEN], [2, NUMBER_TOKEN, '.4']]],
+  [['.+4'] => [[1, DOT_TOKEN], [2, NUMBER_TOKEN, '+4']]],
+  [['/'] => [Delim(1,'/')]],
+  [['/', '**/a'] => [[5, IDENT_TOKEN, 'a']]],
+  [['/*/a'] => []],
+  [['/*/a', '*/a'] => [[7, IDENT_TOKEN, 'a']]],
+  [['/**/a'] => [[5, IDENT_TOKEN, 'a']]],
+  [['/**/', 'a'] => [[5, IDENT_TOKEN, 'a']]],
+  [['/****/', 'a'] => [[7, IDENT_TOKEN, 'a']]],
+  [['/* a** b*/', 'a'] => [[11, IDENT_TOKEN, 'a']]],
+  [['/* a**/ b'] => [S(8), [9, IDENT_TOKEN, 'b']]],
+  [['/***'] => []],
+  [['/* a**', '**/b'] => [[10, IDENT_TOKEN, 'b']]],
+  [['/*', '*/a'] => [[5, IDENT_TOKEN, 'a']]],
+  [['/**', '/a'] => [[5, IDENT_TOKEN, 'a']]],
+  [[':'] => [[1, COLON_TOKEN]]],
+  [['::'] => [[1, COLON_TOKEN], [2, COLON_TOKEN]]],
+  [[';'] => [[1, SEMICOLON_TOKEN]]],
+  [[';:'] => [[1, SEMICOLON_TOKEN], [2, COLON_TOKEN]]],
+  [['<!--'] => [[1, CDO_TOKEN]]],
+  [['<', '!--'] => [[1, CDO_TOKEN]]],
+  [['<!', '--'] => [[1, CDO_TOKEN]]],
+  [['<!-', '-'] => [[1, CDO_TOKEN]]],
+  [['<!--a'] => [[1, CDO_TOKEN], [5, IDENT_TOKEN, 'a']]],
+  [['<abc'] => [Delim(1,'<'), [2, IDENT_TOKEN, 'abc']]],
+  [['<!abc'] => [Delim(1,'<'), [2, EXCLAMATION_TOKEN], [3, IDENT_TOKEN, 'abc']]],
+  [['<!-'] => [Delim(1,'<'), [2, EXCLAMATION_TOKEN], [3, MINUS_TOKEN]]],
+  [['<!-/**/-'] => [Delim(1,'<'), [2, EXCLAMATION_TOKEN], [3, MINUS_TOKEN], [8, MINUS_TOKEN]]],
+  [['<!-a'] => [Delim(1,'<'), [2, EXCLAMATION_TOKEN], [3, IDENT_TOKEN, '-a']]],
+  [['<!-12'] => [Delim(1,'<'), [2, EXCLAMATION_TOKEN], [3, NUMBER_TOKEN, '-12']]],
+  [['<!---->'] => [[1, CDO_TOKEN], [5, CDC_TOKEN]]],
+  [['<!----->'] => [[1, CDO_TOKEN], [5, MINUS_TOKEN], [6, CDC_TOKEN]]],
+  [['@'] => [Delim(1,'@')]],
+  [['@a'] => [[1, ATKEYWORD_TOKEN, 'a']]],
+  [['@', 'a'] => [[1, ATKEYWORD_TOKEN, 'a']]],
+  [['@a-->'] => [[1, ATKEYWORD_TOKEN, 'a--'], [5, GREATER_TOKEN]]],
+  [['@-'] => [Delim(1,'@'), [2, MINUS_TOKEN]]],
+  [['@--'] => [Delim(1,'@'), [2, MINUS_TOKEN], [3, MINUS_TOKEN]]],
+  [['@-', '-'] => [Delim(1,'@'), [2, MINUS_TOKEN], [3, MINUS_TOKEN]]],
+  [['@-a'] => [[1, ATKEYWORD_TOKEN, '-a']]],
+  [['@-\\a'] => [[1, ATKEYWORD_TOKEN, "-\x0A"]]],
+  [['@-\\', 'a'] => [[1, ATKEYWORD_TOKEN, "-\x0A"]]],
+  [['@\\--'] => [[1, ATKEYWORD_TOKEN, "--"]]],
+  [['@-->'] => [Delim(1,'@'), [2, CDC_TOKEN]]],
+  [['@--120'] => [Delim(1,'@'), [2, MINUS_TOKEN], [3, NUMBER_TOKEN, '-120']]],
+  [['@-120'] => [Delim(1,'@'), [2, NUMBER_TOKEN, '-120']]],
+  [['@--abc'] => [Delim(1,'@'), [2, MINUS_TOKEN], [3, IDENT_TOKEN, '-abc']]],
+  [['@--\\abc'] => [Delim(1,'@'), [2, MINUS_TOKEN], [3, IDENT_TOKEN, "-\x{abc}"]]],
+  [['['] => [[1, LBRACKET_TOKEN]]],
+  [[']'] => [[1, RBRACKET_TOKEN]]],
+  [['{'] => [[1, LBRACE_TOKEN]]],
+  [['}'] => [[1, RBRACE_TOKEN]]],
+
+  # XXX 120--> 31ab-->
 ) {
   for (@{$test->[1]}) {
     next unless ref $_;
@@ -46,6 +160,14 @@ for my $test (
     delete $_->{value} unless defined $_->{value};
     if ($_->{type} == HASH_TOKEN) {
       $_->{not_ident} = 1 if not $f;
+    }
+    if ($_->{type} == NUMBER_TOKEN) {
+      $_->{number} = delete $_->{value};
+      $_->{value} = '';
+    }
+    if ($_->{type} == DIMENSION_TOKEN) {
+      $_->{number} = $_->{value};
+      $_->{value} = $f;
     }
   }
   test {
@@ -91,8 +213,8 @@ for my $test (
     {
       my $t = $tt->get_next_token;
       last if $t->{type} == EOF_TOKEN;
-      delete $t->{hyphen};
-      delete $t->{has_escape};
+      delete $t->{hyphen}; # XXX
+      delete $t->{has_escape}; # XXX
       push @$tokens, $t;
       redo;
     }

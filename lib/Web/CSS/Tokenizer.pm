@@ -47,11 +47,20 @@ sub IS_DIGIT () {
   };
 } # IS_DIGIT
 
+my $is_name_char = {
+  map { $_ => 1 } 0x0030..0x0039, 0x0041..0x005A, 0x0061..0x007A, 0x005F, 0x002D,
+};
+my $is_name_start_char = {
+  map { $_ => 1 } 0x0041..0x005A, 0x0061..0x007A, 0x005F,
+};
+
 sub IS_NAME ($) {
-  return {
-    map { $_ => 1 } 0x0030..0x0039, 0x0041..0x005A, 0x0061..0x007A, 0x002D,
-  }->{$_[0]} || $_[0] > 0x007F;
+  return $is_name_char->{$_[0]} || $_[0] > 0x007F;
 } # IS_NAME
+
+sub IS_NAME_START ($) {
+  return $is_name_start_char->{$_[0]} || $_[0] > 0x007F;
+} # IS_NAME_START
 
 sub IS_VALID_ESCAPE ($$) {
   return 0 if not defined $_[0] or $_[0] != 0x005C;
@@ -93,6 +102,8 @@ sub MINUS_MINUS_STATE () { 28 }
 sub LESS_THAN_STATE () { 29 }
 sub MDO_STATE () { 30 }
 sub MDO_HYPHEN_STATE () { 31 }
+sub NUMBER_E_STATE () { 32 }
+sub NUMBER_E_NUMBER_STATE () { 33 }
 
 ## ------ Token types ------
 
@@ -219,6 +230,41 @@ sub onerror ($;$) {
 
 ## ------ Tokenization ------
 
+##  | BEFORE_TOKEN_STATE
+##  v
+## consume a token
+##  |
+##  v
+## consume a numeric token
+##  |
+##  v
+## consume a number
+##  |   :...................................................
+##  |   :d    :+                           :-              :.
+##  |   : PLUS_STATE                   MINUS_STATE         :
+##  |   :     :..............          :d     .: :         :
+##  |   :     :d            :.         :       : ..................>
+##  |   v     v             v          v       :           v
+##  | NUMBER_STATE PLUS_DOT_STATE NUMBER_STATE v      NUMBER_FRACTION_STATE
+##  | :  :e    :             :d         MINUS_DOT_STATE     :d
+##  | :  :     v.            :                  :d          :
+##  | :  :  NUMBER_DOT_STATE :                  :           :
+##  | :  :     :d            :   ............................
+##  | :  :     v             v   v
+##  | :  :  NUMBER_DOT_NUMBER_STATE
+##  | :  :     :e             :
+##  | :  v     v              :
+##  | : NUMBER_E_STATE        :
+##  | :  :d         :         :
+##  | :  :          ...........
+##  | :  v                    :
+##  | : NUMBER_E_NUMBER_STATE :
+##  | :               :       :
+##  | :               :.......:
+##  | v               vv
+##  | AFTER_NUMBER_STATE
+##  v
+
 sub init_tokenizer ($) {
   my $self = shift;
   $self->{state} = BEFORE_TOKEN_STATE;
@@ -229,6 +275,10 @@ sub init_tokenizer ($) {
   #              line => ..., column => ...,
   #              hyphen => bool,
   #              not_ident => bool}; # HASH_TOKEN does not contain an identifier
+
+  ## <number>/<dimension>'s type flag is represented by |$t->{number}
+  ## =~ /[.Ee]/ ? 'number' : 'integer'|.
+
 } # init_tokenizer
 
 sub get_next_token ($) {
@@ -336,10 +386,7 @@ sub get_next_token ($) {
           # reprocess
           redo A;
         }
-      } elsif ((0x0041 <= $self->{c} and $self->{c} <= 0x005A) or # A..Z
-               (0x0061 <= $self->{c} and $self->{c} <= 0x007A) or # a..z
-               $self->{c} == 0x005F or # _
-               $self->{c} > 0x007F) { # nonascii
+      } elsif (IS_NAME_START ($self->{c})) {
         ## NOTE: |nmstart| in |ident| in |IDENT|
         $self->{t} = {type => IDENT_TOKEN, value => chr $self->{c},
                       line => $self->{line}, column => $self->{column}};
@@ -449,6 +496,7 @@ sub get_next_token ($) {
         0x005E => [DELIM_TOKEN, PREFIXMATCH_TOKEN], # ^
         0x0024 => [DELIM_TOKEN, SUFFIXMATCH_TOKEN], # $
         0x002A => [STAR_TOKEN, SUBSTRINGMATCH_TOKEN], # *
+        0x007E => [TILDE_TOKEN, INCLUDES_TOKEN], # ~
       }->{$self->{c}}) {
         $self->{t} = {type => $v->[0], value => chr $self->{c},
                       line => $self->{line}, column => $self->{column},
@@ -456,35 +504,20 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         $self->{state} = BEFORE_EQUAL_STATE;
         redo A;
-      } elsif ($self->{c} == 0x007E) { # ~
-        my ($l, $c) = ($self->{line}, $self->{column});
-        $self->{c} = $self->{get_char}->($self);
-        if ($self->{c} == 0x003D) { # =
-          # stay in the state
-          $self->{c} = $self->{get_char}->($self);
-          return {type => INCLUDES_TOKEN, line => $l, column => $c};
-          #redo A;
-        } else {
-          # stay in the state
-          # reprocess
-          return {type => TILDE_TOKEN, line => $l, column => $c};
-          #redo A;
-        }
-      } elsif ($self->{c} == -1) {
-        # stay in the state
-        $self->{c} = $self->{get_char}->($self);
+      } elsif ($self->{c} == EOF_CHAR) {
+        ## Stay in this state.
+        #$self->{c} = $self->{get_char}->($self);
         return {type => EOF_TOKEN,
                 line => $self->{line}, column => $self->{column}};
         #redo A;
       } else {
-        # stay in the state
+        ## Stay in this state.
         $self->{t} = {type => DELIM_TOKEN, value => chr $self->{c},
                       line => $self->{line}, column => $self->{column}};
         $self->{c} = $self->{get_char}->($self);
         return $self->{t};
         #redo A;
       }
-
 
     } elsif ($self->{state} == BEFORE_NMSTART_STATE) {
       ## NOTE: |nmstart| in |ident| in (|IDENT|, |DIMENSION|, or
@@ -934,6 +967,12 @@ sub get_next_token ($) {
         redo A;
       } elsif ($self->{c} == 0x000A or # \n
                $self->{c} == 0x000C) { # \f
+        $self->onerror->(type => 'css:escape:broken', # XXX
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         line => $self->{line_prev},
+                         column => $self->{column_prev});
+
         $self->{t}->{has_escape} = 1;
         if (defined $self->{end_char}) {
           ## Note: In |nl| in ... in |string| or |ident|.
@@ -977,7 +1016,11 @@ sub get_next_token ($) {
           redo A;
         }
       } elsif ($self->{c} == EOF_CHAR) {
-        #
+        $self->onerror->(type => 'css:escape:broken', # XXX
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         line => $self->{line_prev},
+                         column => $self->{column_prev});
       } else {
         ## NOTE: second character of |escape|.
         $self->{t}->{has_escape} = 1;
@@ -989,11 +1032,6 @@ sub get_next_token ($) {
       }
 
       if (defined $self->{end_char}) {
-        $self->onerror->(type => 'css:escape:broken', # XXX
-                         level => 'm',
-                         uri => $self->context->urlref,
-                         line => $self->{line_prev},
-                         column => $self->{column_prev});
         $self->{t}->{type} = {
           STRING_TOKEN, INVALID_TOKEN,
           URI_TOKEN, URI_INVALID_TOKEN,
@@ -1250,7 +1288,7 @@ sub get_next_token ($) {
 
       if (IS_DIGIT->{$self->{c}}) {
         $self->{t}->{value} .= chr $self->{c};
-        $self->{state} = NUMBER_STATE;
+        $self->{state} = NUMBER_DOT_NUMBER_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
@@ -1305,7 +1343,7 @@ sub get_next_token ($) {
 
       if (IS_DIGIT->{$self->{c}}) {
         $self->{t}->{value} .= chr $self->{c};
-        $self->{state} = NUMBER_STATE;
+        $self->{state} = NUMBER_DOT_NUMBER_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
@@ -1365,6 +1403,11 @@ sub get_next_token ($) {
         $self->{state} = NUMBER_DOT_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
+      } elsif ($self->{c} == 0x0045 or $self->{c} == 0x0065) { # E e
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{state} = NUMBER_E_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
       } else {
         $self->{t}->{number} = $self->{t}->{value};
         $self->{t}->{value} = '';
@@ -1380,7 +1423,9 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
-        unshift @{$self->{token}}, {type => DOT_TOKEN};
+        unshift @{$self->{token}},
+            {type => DOT_TOKEN,
+             line => $self->{line_prev}, column => $self->{column_prev}};
         $self->{t}->{number} = $self->{t}->{value};
         $self->{t}->{value} = '';
         $self->{state} = BEFORE_TOKEN_STATE;
@@ -1411,11 +1456,43 @@ sub get_next_token ($) {
         # stay in the state
         $self->{c} = $self->{get_char}->($self);
         redo A;
+      } elsif ($self->{c} == 0x0045 or $self->{c} == 0x0065) { # E e
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{state} = NUMBER_E_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
       } else {
         $self->{t}->{number} = $self->{t}->{value};
         $self->{t}->{value} = '';
         $self->{state} = AFTER_NUMBER_STATE;
-        # reprocess
+        ## Reprocess the current input character.
+        redo A;
+      }
+    } elsif ($self->{state} == NUMBER_E_STATE) {
+      if (IS_DIGIT->{$self->{c}}) {
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{state} = NUMBER_E_NUMBER_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{t}->{type} = DIMENSION_TOKEN;
+        $self->{t}->{number} = substr $self->{t}->{value}, 0, -1;
+        $self->{t}->{value} = substr $self->{t}->{value}, -1;
+        $self->{state} = NAME_STATE;
+        ## Reprocess the current input character.
+        redo A;
+      }
+    } elsif ($self->{state} == NUMBER_E_NUMBER_STATE) {
+      if (IS_DIGIT->{$self->{c}}) {
+        $self->{t}->{value} .= chr $self->{c};
+        ## Stay in this state.
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{t}->{number} = $self->{t}->{value};
+        $self->{t}->{value} = '';
+        $self->{state} = AFTER_NUMBER_STATE;
+        ## Reprocess the current input character.
         redo A;
       }
 
@@ -1423,6 +1500,14 @@ sub get_next_token ($) {
       if ($self->{c} == 0x003D) { # = (|=, *=, ^=, $=)
         $self->{t}->{type} = delete $self->{t}->{_equal_state};
         delete $self->{t}->{value};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        return $self->{t};
+      } elsif ($self->{t}->{type} == VBAR_TOKEN and
+               $self->{c} == 0x007C) { # |
+        $self->{t}->{type} = COLUMN_TOKEN;
+        delete $self->{t}->{value};
+        delete $self->{t}->{_equal_state};
         $self->{state} = BEFORE_TOKEN_STATE;
         $self->{c} = $self->{get_char}->($self);
         return $self->{t};

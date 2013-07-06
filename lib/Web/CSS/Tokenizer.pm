@@ -47,6 +47,17 @@ sub IS_DIGIT () {
   };
 } # IS_DIGIT
 
+sub IS_HEX_DIGIT () {
+  return {
+    0x0030 => 1, 0x0031 => 1, 0x0032 => 1, 0x0033 => 1, 0x0034 => 1,
+    0x0035 => 1, 0x0036 => 1, 0x0037 => 1, 0x0038 => 1, 0x0039 => 1,
+    0x0041 => 1, 0x0042 => 1, 0x0043 => 1,
+    0x0044 => 1, 0x0045 => 1, 0x0046 => 1,
+    0x0061 => 1, 0x0062 => 1, 0x0063 => 1,
+    0x0064 => 1, 0x0065 => 1, 0x0066 => 1,
+  };
+} # IS_HEX_DIGIT
+
 my $is_name_char = {
   map { $_ => 1 } 0x0030..0x0039, 0x0041..0x005A, 0x0061..0x007A, 0x005F, 0x002D,
 };
@@ -104,6 +115,16 @@ sub MDO_STATE () { 30 }
 sub MDO_HYPHEN_STATE () { 31 }
 sub NUMBER_E_STATE () { 32 }
 sub NUMBER_E_NUMBER_STATE () { 33 }
+
+sub ESCAPE_MODE_IDENT () { 1 }
+sub ESCAPE_MODE_URL () { 2 }
+sub ESCAPE_MODE_STRING () { 3 }
+
+sub EM2STATE () { {
+  ESCAPE_MODE_IDENT, NAME_STATE,
+  ESCAPE_MODE_URL, URI_UNQUOTED_STATE,
+  ESCAPE_MODE_STRING, STRING_STATE,
+} }
 
 ## ------ Token types ------
 
@@ -230,40 +251,113 @@ sub onerror ($;$) {
 
 ## ------ Tokenization ------
 
-##  | BEFORE_TOKEN_STATE
-##  v
+## | BEFORE_TOKEN_STATE
+## v
 ## consume a token
-##  |
-##  v
-## consume a numeric token
-##  |
-##  v
-## consume a number
-##  |   :...................................................
-##  |   :d    :+                           :-              :.
-##  |   : PLUS_STATE                   MINUS_STATE         :
-##  |   :     :..............          :d     .: :         :
-##  |   :     :d            :.         :       : ..................>
-##  |   v     v             v          v       :           v
-##  | NUMBER_STATE PLUS_DOT_STATE NUMBER_STATE v      NUMBER_FRACTION_STATE
-##  | :  :e    :             :d         MINUS_DOT_STATE     :d
-##  | :  :     v.            :                  :d          :
-##  | :  :  NUMBER_DOT_STATE :                  :           :
-##  | :  :     :d            :   ............................
-##  | :  :     v             v   v
-##  | :  :  NUMBER_DOT_NUMBER_STATE
-##  | :  :     :e             :
-##  | :  v     v              :
-##  | : NUMBER_E_STATE        :
-##  | :  :d         :         :
-##  | :  :          ...........
-##  | :  v                    :
-##  | : NUMBER_E_NUMBER_STATE :
-##  | :               :       :
-##  | :               :.......:
-##  | v               vv
-##  | AFTER_NUMBER_STATE
-##  v
+## |  |n |d
+## |  |s v
+## |  |\ consume a numeric token
+## |  |@ |
+## |  |  |>consume a number
+## |  |  | |  :...................................................
+## |  |  | |  :d    :+                           :-              :.
+## |  |  | |  : PLUS_STATE                   MINUS_STATE         :
+## |  |  | |  :     :..............          :d     .: :         :
+## |  |  | |  :     :d            :.         :       : ......... : ......,
+## |  |  | |  :     :             :          :       :           :       :
+## |  |  | |  v     v             v          v       :           v
+## |  |  | | NUMBER_STATE PLUS_DOT_STATE NUMBER_STATE v   NUMBER_FRACTION_STATE
+## |  |  | | :  :e    :.            :d         MINUS_DOT_STATE     :d
+## |  |  | | :  :     v             :                  :d          :     :
+## |  |  | | :  :  NUMBER_DOT_STATE :                  :           :     :
+## |  |  | | :  :     :d            :   ............................     :
+## |  |  | | :  :     v             v   v                                :
+## |  |  | | :  :  NUMBER_DOT_NUMBER_STATE                               :
+## |  |  | | :  :     :e             :                                   :
+## |  |  | | :  v     v              :                                   :
+## |  |  | | : NUMBER_E_STATE        :                                   :
+## |  |  | | :  :d         :         :                                   :
+## |  |  | | :  :          ...........                                   :
+## |  |  | | :  v                    :                                   :
+## |  |  | | : NUMBER_E_NUMBER_STATE :                                   :
+## |  |  | | :             :         :                                   :
+## |  |  | | :             :.........:                                   :
+## |  |  | v v             vv                                            :
+## |  |  | AFTER_NUMBER_STATE                                            :
+## |  |  v   :n                ..........................................:
+## |  +,@    :s                :
+## |  |:     :\                :
+## |  v                        v
+## |  Consume an ident-like token
+## |  |
+## |  |:...  :
+## |  |   v  v
+## |  |>Consume a name.............................
+## |  | | :-        :ns                           :
+## |  | | :..       :...............              :
+## |  | | :::                      :              :
+## |  | | :::         ,........... : ............ : .....
+## |  | | ::v         v            :              :     :
+## |  | | :vMINUS_STATE.........,  :              :     :
+## |  | | :AFTER_AT_HYPHEN_STATE.. : ............ : ..> MINUS_MINUS_STATE
+## |  | | v v                ,..'  :              :
+## |  | | BEFORE_NMSTART_STATE.....:..............:
+## |  | |                   :      :              :
+## |  | |                   v      v              :
+## |  | |                  NAME_STATE.............:\
+## |  | |                           ^             v
+## |  | |                           :        ESCAPE_*_STATE
+## |  | |                           :.............:
+## |  | v
+## |  |
+## |  |>Consume a url token
+## |  | |
+## |  | v
+## |  v
+## v
+
+## BEFORE_TOKEN_STATE
+## |\  |@     |#    |
+## |   |      |     `-------------------+--+-------------------+---,
+## |   |      `---------------,         |  |                   |"  |
+## |   v                      |         |  |                   |'  |
+## |  AFTER_AT_STATE          v         |  |                   |   :
+## |   |\|-       |      HASH_OPEN_STATE|  :                   |   :
+## |   | |        `-----------, |\ |- | |  :                   |   :
+## |   | v                    | |  |  | |  :                   |   |
+## |   | AFTER_AT_HYPHEN_STATE| |  |  | |  :                   :   v
+## |   | |\|-        ,-----.|.|.|.-'  | |  |               URI_UNQUOTED_STATE
+## |   | | v         v      | | |     | |  |                   :   |"    |\
+## |   | | MINUS_STATE      | | |     | | AFTER_NUMBER_STATE   |   |'    |
+## |   | | |\|-      |      | | :     | |  |  |\               |   |     |
+## |   | | | |       `------+-+------,| |  |  |                v   v     |
+## |   | | | v                  :    || |  |  |          STRING_STATE    |
+## |   | | | MINUS_MINUS_STATE  |    || |  |  |           |\             |
+## |   | | | |\              |  :    || |  |  |           |              |
+## |   | | | |               `-----, || |  |  |           |              |
+## |   | | | |                  :  v vv v  v  |           |              |
+## |   | | | |                  |  NAME_STATE |           |              |
+## |   | | | |                  |      |\     |           |              |
+## |   | | | |               ,--+------+------+-----------+--------------'
+## v   v v v v               v
+## Consume an escape character
+## :\
+## v
+## ESCAPE_OPEN_STATE
+## :h
+## v
+## ESCAPE_STATE
+## :6h
+## v
+## ESCAPE_BEFORE_NL_STATE
+## :w
+## v
+## |
+## v
+## NAME_STATE (IDENT_TOKEN, DIMENSION_TOKEN, HASH_TOKEN, ATKEYWORD_TOKEN)
+## STRING_STATE
+## URI_UNQUOTED_STATE
+## BEFORE_TOKEN_STATE
 
 sub init_tokenizer ($) {
   my $self = shift;
@@ -286,14 +380,6 @@ sub get_next_token ($) {
   if (@{$self->{token}}) {
     return shift @{$self->{token}};
   }
-
-  my $char;
-  my $num; # |{num}|, if any.
-  my $i; # |$i + 1|th character in |unicode| in |escape|.
-  my $q;
-      ## NOTE:
-      ##   0: in |ident|.
-      ##   1: in |URI| outside of |string|.
 
   A: {
     if ($self->{c} == ABORT_CHAR) {
@@ -397,7 +483,8 @@ sub get_next_token ($) {
         ## NOTE: |nmstart| in |ident| in |IDENT|
         $self->{t} = {type => IDENT_TOKEN, value => '',
                       line => $self->{line}, column => $self->{column}};
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 0;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_IDENT;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0040) { # @
@@ -522,10 +609,7 @@ sub get_next_token ($) {
     } elsif ($self->{state} == BEFORE_NMSTART_STATE) {
       ## NOTE: |nmstart| in |ident| in (|IDENT|, |DIMENSION|, or
       ## |FUNCTION|)
-      if ((0x0041 <= $self->{c} and $self->{c} <= 0x005A) or # A..Z
-          (0x0061 <= $self->{c} and $self->{c} <= 0x007A) or # a..z
-          $self->{c} == 0x005F or # _
-          $self->{c} > 0x007F) { # nonascii
+      if (IS_NAME_START ($self->{c})) {
         $self->{t}->{value} .= chr $self->{c};
         $self->{t}->{type} = DIMENSION_TOKEN
             if $self->{t}->{type} == NUMBER_TOKEN;
@@ -533,10 +617,12 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 0;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_IDENT;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x002D) { # -
+        #XXX
         if ($self->{t}->{type} == IDENT_TOKEN) {
           #$self->normalize_surrogate ($self->{t}->{value});
           $self->{c} = $self->{get_char}->($self);
@@ -562,7 +648,9 @@ sub get_next_token ($) {
           my ($l, $c) = ($self->{line}, $self->{column}); # second '-'
           $self->{c} = $self->{get_char}->($self);
           if ($self->{c} == 0x003E) { # >
-            unshift @{$self->{token}}, {type => CDC_TOKEN}; # XXX
+            unshift @{$self->{token}}, {type => CDC_TOKEN,
+                                        line => $self->{line_prev},
+                                        column => $self->{column_prev}-1}; # XXX
             $self->{t}->{type} = NUMBER_TOKEN;
             $self->{t}->{value} = '';
             $self->{state} = BEFORE_TOKEN_STATE;
@@ -624,7 +712,8 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 0;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_IDENT;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
@@ -635,10 +724,7 @@ sub get_next_token ($) {
                 column => $self->{column_prev}};
       }
     } elsif ($self->{state} == AFTER_AT_HYPHEN_STATE) {
-      if ((0x0041 <= $self->{c} and $self->{c} <= 0x005A) or # A..Z
-          (0x0061 <= $self->{c} and $self->{c} <= 0x007A) or # a..z
-          $self->{c} == 0x005F or # _
-          $self->{c} > 0x007F) { # nonascii
+      if (IS_NAME_START ($self->{c})) {
         $self->{t}->{value} .= chr $self->{c};
         $self->{state} = NAME_STATE;
         $self->{c} = $self->{get_char}->($self);
@@ -656,8 +742,8 @@ sub get_next_token ($) {
         return $t;
         #redo A;
       } elsif ($self->{c} == 0x005C) { # \
-        ## TODO: @-\{nl}
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 0;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_IDENT;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
@@ -696,7 +782,8 @@ sub get_next_token ($) {
         ## NOTE: |nmstart| in |ident| in |IDENT|
         $self->{t}->{value} = '';
         $self->{t}->{type} = DIMENSION_TOKEN;
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 0;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_IDENT;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0025) { # %
@@ -733,7 +820,8 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 0;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_IDENT;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
@@ -763,7 +851,8 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 0;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_IDENT;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0028 and # (
@@ -839,7 +928,8 @@ sub get_next_token ($) {
         return $self->{t};
         #redo A;
       } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 1;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_URL;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
@@ -891,7 +981,8 @@ sub get_next_token ($) {
         return $self->{t};
         #redo A;
       } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 1;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_URL;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
@@ -928,7 +1019,8 @@ sub get_next_token ($) {
         return $self->{t};
         #redo A;
       } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE; $q = 1;
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_URL;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
@@ -943,45 +1035,29 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       }
+
     } elsif ($self->{state} == ESCAPE_OPEN_STATE) {
-      if (0x0030 <= $self->{c} and $self->{c} <= 0x0039) { # 0..9
+      if (IS_HEX_DIGIT->{$self->{c}}) {
         ## NOTE: second character of |unicode| in |escape|.
         $self->{t}->{has_escape} = 1;
-        $char = $self->{c} - 0x0030;
-        $self->{state} = ESCAPE_STATE; $i = 2;
-        $self->{c} = $self->{get_char}->($self);
-        redo A;
-      } elsif (0x0041 <= $self->{c} and $self->{c} <= 0x0046) { # A..F
-        ## NOTE: second character of |unicode| in |escape|.
-        $self->{t}->{has_escape} = 1;
-        $char = $self->{c} - 0x0041 + 0xA;
-        $self->{state} = ESCAPE_STATE; $i = 2;
-        $self->{c} = $self->{get_char}->($self);
-        redo A;
-      } elsif (0x0061 <= $self->{c} and $self->{c} <= 0x0066) { # a..f
-        ## NOTE: second character of |unicode| in |escape|.
-        $self->{t}->{has_escape} = 1;
-        $char = $self->{c} - 0x0061 + 0xA;
-        $self->{state} = ESCAPE_STATE; $i = 2;
+        $self->{escape_value} = chr $self->{c};
+        $self->{state} = ESCAPE_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x000A or # \n
-               $self->{c} == 0x000C) { # \f
+               $self->{c} == 0x000C) { # \f # XXX
         $self->onerror->(type => 'css:escape:broken', # XXX
                          level => 'm',
                          uri => $self->context->urlref,
                          line => $self->{line_prev},
                          column => $self->{column_prev});
-
         $self->{t}->{has_escape} = 1;
         if (defined $self->{end_char}) {
           ## Note: In |nl| in ... in |string| or |ident|.
           $self->{state} = STRING_STATE;
           $self->{c} = $self->{get_char}->($self);
           redo A;
-        } elsif ($q == 0) {
-          #
-        } elsif ($q == 1) {
+        } elsif ($self->{escape_mode} == ESCAPE_MODE_URL) {
           ## NOTE: In |escape| in |URI|.
           $self->{t}->{type} = {
               URI_TOKEN, URI_INVALID_TOKEN,
@@ -993,17 +1069,17 @@ sub get_next_token ($) {
           $self->{state} = URI_UNQUOTED_STATE;
           $self->{c} = $self->{get_char}->($self);
           redo A;
+        } else {
+          #
         }
-      } elsif ($self->{c} == 0x000D) { # \r
+      } elsif ($self->{c} == 0x000D) { # \r # XXX
         $self->{t}->{has_escape} = 1;
         if (defined $self->{end_char}) {
           ## Note: In |nl| in ... in |string| or |ident|.
           $self->{state} = ESCAPE_BEFORE_LF_STATE;
           $self->{c} = $self->{get_char}->($self);
           redo A;
-        } elsif ($q == 0) {
-          #
-        } elsif ($q == 1) {
+        } elsif ($self->{escape_mode} == ESCAPE_MODE_URL) {
           ## NOTE: In |escape| in |URI|.
           $self->{t}->{type} = {
               URI_TOKEN, URI_INVALID_TOKEN,
@@ -1014,6 +1090,8 @@ sub get_next_token ($) {
           $self->{state} = ESCAPE_BEFORE_LF_STATE;
           $self->{c} = $self->{get_char}->($self);
           redo A;
+        } else {
+          #
         }
       } elsif ($self->{c} == EOF_CHAR) {
         $self->onerror->(type => 'css:escape:broken', # XXX
@@ -1021,12 +1099,16 @@ sub get_next_token ($) {
                          uri => $self->context->urlref,
                          line => $self->{line_prev},
                          column => $self->{column_prev});
+        $self->{t}->{has_escape} = 1;
+        $self->{t}->{value} .= "\x{FFFD}";
+        $self->{state} = EM2STATE->{$self->{escape_mode}};
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
       } else {
         ## NOTE: second character of |escape|.
         $self->{t}->{has_escape} = 1;
         $self->{t}->{value} .= chr $self->{c};
-        $self->{state} = $q == 0 ? NAME_STATE :
-            $q == 1 ? URI_UNQUOTED_STATE : STRING_STATE;
+        $self->{state} = EM2STATE->{$self->{escape_mode}};
         $self->{c} = $self->{get_char}->($self);
         redo A;
       }
@@ -1042,7 +1124,7 @@ sub get_next_token ($) {
         # reprocess
         return $self->{t};
         #redo A;
-      } elsif ($q == 0) {
+      } elsif ($self->{escape_mode} == ESCAPE_MODE_IDENT) {
         if ($self->{t}->{type} == DIMENSION_TOKEN) {
           if ($self->{t}->{hyphen} and $self->{t}->{value} eq '-') {
             $self->{state} = BEFORE_TOKEN_STATE;
@@ -1117,46 +1199,36 @@ sub get_next_token ($) {
           return shift @{$self->{token}};
           #redo A;
         }
-      } elsif ($q == 1) {
+      } elsif ($self->{escape_mode} == ESCAPE_MODE_URL) {
         $self->{state} = URI_UNQUOTED_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       }
     } elsif ($self->{state} == ESCAPE_STATE) {
       ## NOTE: third..seventh character of |unicode| in |escape|.
-      if (0x0030 <= $self->{c} and $self->{c} <= 0x0039) { # 0..9
-        $char = $char * 0x10 + $self->{c} - 0x0030;
-        $self->{state} = ++$i == 7 ? ESCAPE_BEFORE_NL_STATE : ESCAPE_STATE;
-        $self->{c} = $self->{get_char}->($self);
-        redo A;
-      } elsif (0x0041 <= $self->{c} and $self->{c} <= 0x0046) { # A..F
-        $char = $char * 0x10 + $self->{c} - 0x0041 + 0xA;
-        $self->{state} = ++$i == 7 ? ESCAPE_BEFORE_NL_STATE : ESCAPE_STATE;
-        $self->{c} = $self->{get_char}->($self);
-        redo A;
-      } elsif (0x0061 <= $self->{c} and $self->{c} <= 0x0066) { # a..f
-        $char = $char * 0x10 + $self->{c} - 0x0061 + 0xA;
-        $self->{state} = ++$i == 7 ? ESCAPE_BEFORE_NL_STATE : ESCAPE_STATE;
+      if (IS_HEX_DIGIT->{$self->{c}}) {
+        $self->{escape_value} .= chr $self->{c};
+        if (6 == length $self->{escape_value}) {
+          $self->{state} = ESCAPE_BEFORE_NL_STATE;
+        } ## else, stay in this state.
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0020 or # SP
                $self->{c} == 0x000A or # \n
                $self->{c} == 0x0009 or # \t
                $self->{c} == 0x000C) { # \f
-        $self->{t}->{value} .= $self->_escaped_char ($char);
-        $self->{state} = $q == 0 ? NAME_STATE :
-            $q == 1 ? URI_UNQUOTED_STATE : STRING_STATE;
+        $self->{t}->{value} .= $self->_escaped_char;
+        $self->{state} = EM2STATE->{$self->{escape_mode}};
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x000D) { # \r
-        $self->{t}->{value} .= $self->_escaped_char ($char);
+        $self->{t}->{value} .= $self->_escaped_char;
         $self->{state} = ESCAPE_BEFORE_LF_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
-        $self->{t}->{value} .= $self->_escaped_char ($char);
-        $self->{state} = $q == 0 ? NAME_STATE :
-            $q == 1 ? URI_UNQUOTED_STATE : STRING_STATE;
+        $self->{t}->{value} .= $self->_escaped_char;
+        $self->{state} = EM2STATE->{$self->{escape_mode}};
         # reconsume
         redo A;
       }
@@ -1166,33 +1238,29 @@ sub get_next_token ($) {
           $self->{c} == 0x000A or # \n
           $self->{c} == 0x0009 or # \t
           $self->{c} == 0x000C) { # \f
-        $self->{t}->{value} .= $self->_escaped_char ($char);
-        $self->{state} = $q == 0 ? NAME_STATE :
-            $q == 1 ? URI_UNQUOTED_STATE : STRING_STATE;
+        $self->{t}->{value} .= $self->_escaped_char;
+        $self->{state} = EM2STATE->{$self->{escape_mode}};
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x000D) { # \r
-        $self->{t}->{value} .= $self->_escaped_char ($char);
+        $self->{t}->{value} .= $self->_escaped_char;
         $self->{state} = ESCAPE_BEFORE_LF_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
-        $self->{t}->{value} .= $self->_escaped_char ($char);
-        $self->{state} = $q == 0 ? NAME_STATE :
-            $q == 1 ? URI_UNQUOTED_STATE : STRING_STATE;
+        $self->{t}->{value} .= $self->_escaped_char;
+        $self->{state} = EM2STATE->{$self->{escape_mode}};
         # reconsume
         redo A;
       }
     } elsif ($self->{state} == ESCAPE_BEFORE_LF_STATE) {
       ## NOTE: |\n| in |\r\n| in |nl| in |escape|.
       if ($self->{c} == 0x000A) { # \n
-        $self->{state} = $q == 0 ? NAME_STATE :
-            $q == 1 ? URI_UNQUOTED_STATE : STRING_STATE;
+        $self->{state} = EM2STATE->{$self->{escape_mode}};
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
-        $self->{state} = $q == 0 ? NAME_STATE :
-            $q == 1 ? URI_UNQUOTED_STATE : STRING_STATE;
+        $self->{state} = EM2STATE->{$self->{escape_mode}};
         # reprocess
         redo A;
       }
@@ -1207,6 +1275,7 @@ sub get_next_token ($) {
       ## Or, in |URI|.
       if ($self->{c} == 0x005C) { # \
         $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_STRING;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == $self->{end_char}) { # ending character (" | ')
@@ -1303,9 +1372,6 @@ sub get_next_token ($) {
       }
 
     } elsif ($self->{state} == MINUS_STATE) {
-      ## Consume a number
-      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-number>.
-
       if (IS_DIGIT->{$self->{c}}) {
         $self->{t}->{type} = NUMBER_TOKEN;
         $self->{t}->{value} .= chr $self->{c};
@@ -1328,15 +1394,7 @@ sub get_next_token ($) {
         $self->{state} = BEFORE_NMSTART_STATE;
         ## Reconsume the current input character.
         redo A;
-
-        # XXX
-        $self->{t}->{type} = MINUS_TOKEN;
-        delete $self->{t}->{value};
-        $self->{state} = BEFORE_TOKEN_STATE;
-        ## Reconsume the current input character.
-        return $self->{t};
       }
-
     } elsif ($self->{state} == MINUS_DOT_STATE) {
       ## Consume a number
       ## <http://dev.w3.org/csswg/css-syntax/#consume-a-number>.
@@ -1356,7 +1414,6 @@ sub get_next_token ($) {
         ## Reconsume the current input character.
         return $self->{t};
       }
-
     } elsif ($self->{state} == MINUS_MINUS_STATE) {
       if ($self->{c} == 0x003E) { # >
         $self->{t}->{type} = CDC_TOKEN;
@@ -1715,14 +1772,15 @@ sub serialize_token ($$) {
 } # serialize_token
 
 sub _escaped_char {
-  if ($_[1] == 0x0000) {
+  my $v = hex $_[0]->{escape_value};
+  if ($v == 0x0000) {
     $_[0]->onerror->(type => 'css:escape:null',
                      level => 'm',
                      uri => $_[0]->context->urlref,
                      line => $_[0]->{line_prev},
                      column => $_[0]->{column_prev});
-    return chr $_[1];
-  } elsif ($_[1] > 0x10FFFF) {
+    return "\x{FFFD}";
+  } elsif ($v > 0x10FFFF) {
     $_[0]->onerror->(type => 'css:escape:not unicode',
                      level => 's',
                      uri => $_[0]->context->urlref,
@@ -1730,7 +1788,7 @@ sub _escaped_char {
                      column => $_[0]->{column_prev});
     return "\x{FFFD}";
   } else {
-    return chr $_[1];
+    return chr $v;
   }
 } # _escaped_char
 

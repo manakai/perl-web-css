@@ -115,6 +115,7 @@ sub MDO_STATE () { 30 }
 sub MDO_HYPHEN_STATE () { 31 }
 sub NUMBER_E_STATE () { 32 }
 sub NUMBER_E_NUMBER_STATE () { 33 }
+sub NUMBER_HYPHEN_STATE () { 34 }
 
 sub ESCAPE_MODE_IDENT () { 1 }
 sub ESCAPE_MODE_URL () { 2 }
@@ -294,14 +295,14 @@ sub onerror ($;$) {
 ## |  |   v  v
 ## |  |>Consume a name.............................
 ## |  | | :-        :ns                           :
-## |  | | :..       :...............              :
-## |  | | :::                      :              :
-## |  | | :::         ,........... : ............ : .....
-## |  | | ::v         v            :              :     :
-## |  | | :vMINUS_STATE.........,  :              :     :
-## |  | | :AFTER_AT_HYPHEN_STATE.. : ............ : ..> MINUS_MINUS_STATE
-## |  | | v v                ,..'  :              :
-## |  | | BEFORE_NMSTART_STATE.....:..............:
+## |  | | `.,       `..............,              :
+## |  | |  ::                      :              :
+## |  | |  ::         ,........... : ............ : .....          ,...,
+## |  | |  :v         v            :              :     :          :   :
+## |  | |  vMINUS_STATE.........,- :              :     :          v   :-
+## |  | |  AFTER_AT_HYPHEN_STATE.. : ............ : ..> MINUS_MINUS_STATE
+## |  | |   :ns                    :              :
+## |  | |   `...............,      :              :
 ## |  | |                   :      :              :
 ## |  | |                   v      v              :
 ## |  | |                  NAME_STATE.............:\
@@ -399,6 +400,7 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0055 or $self->{c} == 0x0075) { # U or u
+        # XXX
         $self->{t} = {type => IDENT_TOKEN, value => chr $self->{c},
                       line => $self->{line}, column => $self->{column}};
         $self->{c} = $self->{get_char}->($self);
@@ -606,6 +608,7 @@ sub get_next_token ($) {
         #redo A;
       }
 
+    # XXX
     } elsif ($self->{state} == BEFORE_NMSTART_STATE) {
       ## NOTE: |nmstart| in |ident| in (|IDENT|, |DIMENSION|, or
       ## |FUNCTION|)
@@ -697,6 +700,7 @@ sub get_next_token ($) {
                 line => $self->{line}, column => $self->{column} - 1};
         ## BUG: column might be wrong if on the line boundary.
       }
+
     } elsif ($self->{state} == AFTER_AT_STATE) {
       if ((0x0041 <= $self->{c} and $self->{c} <= 0x005A) or # A..Z
           (0x0061 <= $self->{c} and $self->{c} <= 0x007A) or # a..z
@@ -762,10 +766,7 @@ sub get_next_token ($) {
     } elsif ($self->{state} == AFTER_NUMBER_STATE) {
       if ($self->{c} == 0x002D) { # -
         ## NOTE: |-| in |ident|.
-        $self->{t}->{hyphen} = 1;
-        $self->{t}->{value} = '-';
-        $self->{t}->{type} = DIMENSION_TOKEN;
-        $self->{state} = BEFORE_NMSTART_STATE;
+        $self->{state} = NUMBER_HYPHEN_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ((0x0041 <= $self->{c} and $self->{c} <= 0x005A) or # A..Z
@@ -796,6 +797,40 @@ sub get_next_token ($) {
         $self->{state} = BEFORE_TOKEN_STATE;
         # reprocess
         return $self->{t};
+        #redo A;
+      }
+    } elsif ($self->{state} == NUMBER_HYPHEN_STATE) {
+      if (IS_NAME_START ($self->{c})) {
+        $self->{t}->{type} = DIMENSION_TOKEN;
+        $self->{t}->{value} = '-' . chr $self->{c};
+        $self->{state} = NAME_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } elsif ($self->{c} == 0x002D) { # -  123--
+        my $t = $self->{t};
+        $self->{t} = {type => IDENT_TOKEN, hyphen => 1, value => '-',
+                      line => $self->{line_prev},
+                      column => $self->{column_prev}};
+        $self->{state} = MINUS_MINUS_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        return $t;
+        #redo A;
+      } elsif ($self->{c} == 0x005C) { # \
+        $self->{t}->{hyphen} = 1;
+        $self->{t}->{type} = DIMENSION_TOKEN;
+        $self->{t}->{value} = '-';
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_IDENT;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        my $t = $self->{t};
+        $self->{t} = {type => IDENT_TOKEN, hyphen => 1, value => '-',
+                      line => $self->{line_prev},
+                      column => $self->{column_prev}};
+        $self->{state} = MINUS_STATE;
+        ## Reprocess the current input character.
+        return $t;
         #redo A;
       }
 
@@ -1045,16 +1080,21 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x000A or # \n
-               $self->{c} == 0x000C) { # \f # XXX
+               $self->{c} == 0x000C or # \f # XXX
+               $self->{c} == 0x000D) { # \r # XXX
         $self->onerror->(type => 'css:escape:broken', # XXX
                          level => 'm',
                          uri => $self->context->urlref,
                          line => $self->{line_prev},
                          column => $self->{column_prev});
         $self->{t}->{has_escape} = 1;
-        if (defined $self->{end_char}) {
+        if (defined $self->{end_char}) { # === ESCAPE_MODE_STRING
           ## Note: In |nl| in ... in |string| or |ident|.
-          $self->{state} = STRING_STATE;
+          if ($self->{c} == 0x000D) { # XXX
+            $self->{state} = STRING_STATE;
+          } else {
+            $self->{state} = ESCAPE_BEFORE_LF_STATE;
+          }
           $self->{c} = $self->{get_char}->($self);
           redo A;
         } elsif ($self->{escape_mode} == ESCAPE_MODE_URL) {
@@ -1066,32 +1106,88 @@ sub get_next_token ($) {
               URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
           }->{$self->{t}->{type}};
           $self->{t}->{value} .= chr $self->{c};
-          $self->{state} = URI_UNQUOTED_STATE;
+          if ($self->{c} == 0x000D) { # XXX
+            $self->{state} = ESCAPE_BEFORE_LF_STATE;
+          } else {
+            $self->{state} = URI_UNQUOTED_STATE;
+          }
           $self->{c} = $self->{get_char}->($self);
           redo A;
-        } else {
-          #
-        }
-      } elsif ($self->{c} == 0x000D) { # \r # XXX
-        $self->{t}->{has_escape} = 1;
-        if (defined $self->{end_char}) {
-          ## Note: In |nl| in ... in |string| or |ident|.
-          $self->{state} = ESCAPE_BEFORE_LF_STATE;
-          $self->{c} = $self->{get_char}->($self);
-          redo A;
-        } elsif ($self->{escape_mode} == ESCAPE_MODE_URL) {
-          ## NOTE: In |escape| in |URI|.
-          $self->{t}->{type} = {
-              URI_TOKEN, URI_INVALID_TOKEN,
-              URI_INVALID_TOKEN, URI_INVALID_TOKEN,
-              URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-              URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
-          }->{$self->{t}->{type}};
-          $self->{state} = ESCAPE_BEFORE_LF_STATE;
-          $self->{c} = $self->{get_char}->($self);
-          redo A;
-        } else {
-          #
+        } else { # === ESCAPE_MODE_IDENT
+          if ($self->{t}->{type} == DIMENSION_TOKEN) {
+            if ($self->{t}->{hyphen} and $self->{t}->{value} eq '-') {
+              $self->{state} = BEFORE_TOKEN_STATE;
+              # reprocess
+              unshift @{$self->{token}}, {type => DELIM_TOKEN, value => '\\',
+                                          line => $self->{line_prev},
+                                          column => $self->{column_prev}};
+              unshift @{$self->{token}}, {type => MINUS_TOKEN,
+                                          line => $self->{line_prev},
+                                          column => $self->{column_prev}-1};
+              $self->{t}->{type} = NUMBER_TOKEN;
+              $self->{t}->{value} = '';
+              return $self->{t};
+              #redo A;
+            } elsif (length $self->{t}->{value}) {
+              $self->{state} = BEFORE_TOKEN_STATE;
+              # reprocess
+              unshift @{$self->{token}}, {type => DELIM_TOKEN, value => '\\',
+                                          line => $self->{line_prev},
+                                          column => $self->{column_prev}};
+              return $self->{t};
+              #redo A;
+            } else {
+              $self->{state} = BEFORE_TOKEN_STATE;
+              # reprocess
+              unshift @{$self->{token}}, {type => DELIM_TOKEN, value => '\\',
+                                          line => $self->{line_prev},
+                                          column => $self->{column_prev}};
+              $self->{t}->{type} = NUMBER_TOKEN;
+              $self->{t}->{value} = '';
+              return $self->{t};
+              #redo A;
+            }
+          } else {
+            ## \ -> [DELIM \]
+            ## #\ -> [DELIM #][DELIM \]
+            ## -\ -> [MINUS][DELIM \]
+            ## #-\ -> [HASH -][DELIM \]
+            ## a\ -> [IDENT a][DELIM \]
+            ## #a\ -> [HASH a][DELIM \]
+
+            unshift @{$self->{token}},
+                {type => DELIM_TOKEN, value => '\\',
+                 line => $self->{line_prev}, column => $self->{column_prev}};
+            
+            if ($self->{t}->{hyphen} and $self->{t}->{value} eq '-' and
+                not $self->{t}->{type} == HASH_TOKEN) {
+              unshift @{$self->{token}},
+                  {type => MINUS_TOKEN,
+                   line => $self->{line_prev},
+                   column => $self->{column_prev} - 1};
+              $self->{t}->{value} = '';
+            }
+
+            if (length $self->{t}->{value}) {
+              $self->normalize_surrogate ($self->{t}->{value});
+              $self->{t}->{not_ident} = 1
+                  if $self->{t}->{type} == HASH_TOKEN and
+                      $self->{t}->{value} eq '-' and $self->{t}->{hyphen};
+              $self->{state} = BEFORE_TOKEN_STATE;
+              # reprocess
+              return $self->{t};
+              #redo A;
+            } elsif ($self->{t}->{type} == HASH_TOKEN) {
+              unshift @{$self->{token}},
+                  {type => DELIM_TOKEN, value => '#',
+                   line => $self->{line_prev}, column => $self->{column_prev}-1};
+            }
+            
+            $self->{state} = BEFORE_TOKEN_STATE;
+            # reprocess
+            return shift @{$self->{token}};
+            #redo A;
+          }
         }
       } elsif ($self->{c} == EOF_CHAR) {
         $self->onerror->(type => 'css:escape:broken', # XXX
@@ -1109,98 +1205,6 @@ sub get_next_token ($) {
         $self->{t}->{has_escape} = 1;
         $self->{t}->{value} .= chr $self->{c};
         $self->{state} = EM2STATE->{$self->{escape_mode}};
-        $self->{c} = $self->{get_char}->($self);
-        redo A;
-      }
-
-      if (defined $self->{end_char}) {
-        $self->{t}->{type} = {
-          STRING_TOKEN, INVALID_TOKEN,
-          URI_TOKEN, URI_INVALID_TOKEN,
-          URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-        }->{$self->{t}->{type}} || $self->{t}->{type};
-        $self->{state} = BEFORE_TOKEN_STATE;
-        delete $self->{end_char};
-        # reprocess
-        return $self->{t};
-        #redo A;
-      } elsif ($self->{escape_mode} == ESCAPE_MODE_IDENT) {
-        if ($self->{t}->{type} == DIMENSION_TOKEN) {
-          if ($self->{t}->{hyphen} and $self->{t}->{value} eq '-') {
-            $self->{state} = BEFORE_TOKEN_STATE;
-            # reprocess
-            unshift @{$self->{token}}, {type => DELIM_TOKEN, value => '\\',
-                                        line => $self->{line_prev},
-                                        column => $self->{column_prev} - 1};
-            unshift @{$self->{token}}, {type => MINUS_TOKEN,
-                                        line => $self->{line_prev},
-                                        column => $self->{column_prev}};
-            $self->{t}->{type} = NUMBER_TOKEN;
-            $self->{t}->{value} = '';
-            return $self->{t};
-            #redo A;
-          } elsif (length $self->{t}->{value}) {
-            $self->{state} = BEFORE_TOKEN_STATE;
-            # reprocess
-            unshift @{$self->{token}}, {type => DELIM_TOKEN, value => '\\',
-                                        line => $self->{line_prev},
-                                        column => $self->{column_prev}};
-            return $self->{t};
-            #redo A;
-          } else {
-            $self->{state} = BEFORE_TOKEN_STATE;
-            # reprocess
-            unshift @{$self->{token}}, {type => DELIM_TOKEN, value => '\\',
-                                        line => $self->{line_prev},
-                                        column => $self->{column_prev}};
-            $self->{t}->{type} = NUMBER_TOKEN;
-            $self->{t}->{value} = '';
-            return $self->{t};
-            #redo A;
-          }
-        } else {
-          ## \ -> [DELIM \]
-          ## #\ -> [DELIM #][DELIM \]
-          ## -\ -> [MINUS][DELIM \]
-          ## #-\ -> [HASH -][DELIM \]
-          ## a\ -> [IDENT a][DELIM \]
-          ## #a\ -> [HASH a][DELIM \]
-
-          unshift @{$self->{token}},
-              {type => DELIM_TOKEN, value => '\\',
-               line => $self->{line_prev}, column => $self->{column_prev}};
-
-          if ($self->{t}->{hyphen} and $self->{t}->{value} eq '-' and
-              not $self->{t}->{type} == HASH_TOKEN) {
-            unshift @{$self->{token}},
-                {type => MINUS_TOKEN,
-                 line => $self->{line_prev},
-                 column => $self->{column_prev} - 1};
-            $self->{t}->{value} = '';
-          }
-
-          if (length $self->{t}->{value}) {
-            $self->normalize_surrogate ($self->{t}->{value});
-            $self->{t}->{not_ident} = 1
-                if $self->{t}->{type} == HASH_TOKEN and
-                   $self->{t}->{value} eq '-' and $self->{t}->{hyphen};
-            $self->{state} = BEFORE_TOKEN_STATE;
-            # reprocess
-            return $self->{t};
-            #redo A;
-          } elsif ($self->{t}->{type} == HASH_TOKEN) {
-            unshift @{$self->{token}},
-                {type => DELIM_TOKEN, value => '#',
-                 line => $self->{line_prev}, column => $self->{column_prev}-1};
-          }
-
-          $self->{state} = BEFORE_TOKEN_STATE;
-          # reprocess
-          return shift @{$self->{token}};
-          #redo A;
-        }
-      } elsif ($self->{escape_mode} == ESCAPE_MODE_URL) {
-        $self->{state} = URI_UNQUOTED_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
       }
@@ -1390,10 +1394,24 @@ sub get_next_token ($) {
         $self->{state} = MINUS_MINUS_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
-      } else {
-        $self->{state} = BEFORE_NMSTART_STATE;
-        ## Reconsume the current input character.
+      } elsif (IS_NAME_START ($self->{c})) {
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{state} = NAME_STATE;
+        $self->{c} = $self->{get_char}->($self);
         redo A;
+      } elsif ($self->{c} == 0x005C) { # \
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_IDENT;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{t}->{type} = MINUS_TOKEN;
+        delete $self->{t}->{value};
+        delete $self->{t}->{hyphen};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        ## Reconsume the current input character.
+        return $self->{t};
+        #redo A;
       }
     } elsif ($self->{state} == MINUS_DOT_STATE) {
       ## Consume a number

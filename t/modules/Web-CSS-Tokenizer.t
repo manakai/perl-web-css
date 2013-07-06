@@ -11,7 +11,11 @@ use Test::Differences;
 
 sub S ($) { [$_[0], S_TOKEN] }
 sub Delim ($$) { [$_[0], DELIM_TOKEN, $_[1]] }
-sub Ident ($$) { [$_[0], IDENT_TOKEN, $_[1]] }
+sub ID ($$) { [$_[0], IDENT_TOKEN, $_[1]] }
+sub N ($$) { [$_[0], NUMBER_TOKEN, $_[1]] }
+sub Dim ($$$) { [$_[0], DIMENSION_TOKEN, $_[1], $_[2]] }
+sub Minus ($) { [$_[0], MINUS_TOKEN] }
+sub BS ($) { Delim($_[0],'\\') }
 sub Abort () { [undef, ABORT_TOKEN] }
 
 for my $test (
@@ -244,9 +248,19 @@ for my $test (
   [['12ab', '-->'] => [[1, DIMENSION_TOKEN, '12', 'ab--'], [7, GREATER_TOKEN]]],
   [['12-', '->'] => [[1, NUMBER_TOKEN, '12'], [3, CDC_TOKEN]]],
   [['12ab-', '->'] => [[1, DIMENSION_TOKEN, '12', 'ab--'], [7, GREATER_TOKEN]]],
-# XXX  [['12--', '>'] => [[1, NUMBER_TOKEN, '12'], [3, CDC_TOKEN]]],
+  [['12--', '>'] => [[1, NUMBER_TOKEN, '12'], [3, CDC_TOKEN]]],
   [['12ab--', '>'] => [[1, DIMENSION_TOKEN, '12', 'ab--'], [7, GREATER_TOKEN]]],
   [['12a', 'b', '-->'] => [[1, DIMENSION_TOKEN, '12', 'ab--'], [7, GREATER_TOKEN]]],
+  [['12-ab'] => [Dim(1,'12','-ab')]],
+  [['12-\\ab'] => [Dim(1,'12',"-\xab")]],
+  [['12-\\'] => ['4;css:escape:broken', Dim(1,'12',"-\x{FFFD}")]],
+  [["12-\\\x0A"] => ['4;css:escape:broken', N(1,'12'), Minus(3), BS(4), S(5)]],
+  [["12-`"] => [N(1,'12'), Minus(3), Delim(4,'`')]],
+  [['12e4-ab'] => [Dim(1,'12e4','-ab')]],
+  [['12e4-\\ab'] => [Dim(1,'12e4',"-\xab")]],
+  [['12e4-\\'] => ['6;css:escape:broken', Dim(1,'12e4',"-\x{FFFD}")]],
+  [["12e4-\\\x0A"] => ['6;css:escape:broken', N(1,'12e4'), Minus(5), BS(6), S(7)]],
+  [["12e4-`"] => [N(1,'12e4'), Minus(5), Delim(6,'`')]],
   [["12\\"] => ['3;css:escape:broken', [1, DIMENSION_TOKEN, '12', "\x{FFFD}"]]],
   [["12\\\x0A"] => ['3;css:escape:broken', [1, NUMBER_TOKEN, '12'], Delim(3,'\\'), S(4)]],
   [['0903%'] => [[1, PERCENTAGE_TOKEN, '0903']]],

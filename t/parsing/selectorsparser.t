@@ -172,7 +172,7 @@ sub _parse_char_string : Tests {
 
     my $aerrors = join "\n", sort { $a cmp $b } @error;
     my $xerrors = join "\n", sort { $a cmp $b } @{$test->{errors}->[0] or []};
-    eq_or_diff $aerrors, $xerrors;
+    eq_or_diff $aerrors, $xerrors, $test->{data}->[0];
   }) for map { $data_d->file ($_)->stringify } qw(
     parse-1.dat
     parse-spaces-1.dat

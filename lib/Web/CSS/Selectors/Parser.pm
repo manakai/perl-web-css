@@ -73,6 +73,7 @@ sub BEFORE_B_STATE () { 20 }
 sub AFTER_B_STATE () { 21 }
 sub AFTER_NEGATION_SIMPLE_SELECTOR_STATE () { 22 }
 sub BEFORE_CONTAINS_STRING_STATE () { 23 }
+sub AFTER_A_PLUS_STATE () { 24 }
 
 sub NAMESPACE_SELECTOR () { 1 }
 sub LOCAL_NAME_SELECTOR () { 2 }
@@ -846,19 +847,23 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
                            token => $t);
         return ($t, undef);
       }
+
+    ## The |an+b| microsyntax
+    ## <http://dev.w3.org/csswg/css-syntax/#anb>.
+
     } elsif ($state == BEFORE_AN_STATE) {
       if ($t->{type} == DIMENSION_TOKEN) {
-        if ($t->{number} =~ /\A[0-9]+\z/) {
+        if ($t->{number} =~ /\A[+-]?[0-9]+\z/) {
           my $n = $t->{value};
           $n =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-          if ($n eq 'n') {
+          if ($n eq 'n') { # <n-dimension> | <n-dimension> <signed-integer>
             $simple_selector = [PSEUDO_CLASS_SELECTOR, $name,
                                 0+$t->{number}, 0];
             
             $state = AFTER_AN_STATE;
             $t = $tt->get_next_token;
             redo S;
-          } elsif ($n =~ /\An-([0-9]+)\z/) {
+          } elsif ($n =~ /\An-([0-9]+)\z/) { # <ndashdigit-dimension>
             push @$sss, [PSEUDO_CLASS_SELECTOR, $name, 0+$t->{number}, 0-$1];
 
             $state = AFTER_B_STATE;
@@ -890,7 +895,7 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
           return ($t, undef);
         }
       } elsif ($t->{type} == NUMBER_TOKEN) {
-        if ($t->{number} =~ /\A[0-9]+\z/) {
+        if ($t->{number} =~ /\A[+-]?[0-9]+\z/) { # <integer>
           push @$sss, [PSEUDO_CLASS_SELECTOR, $name, 0, 0+$t->{number}];
 
           $state = AFTER_B_STATE;
@@ -906,19 +911,20 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
       } elsif ($t->{type} == IDENT_TOKEN) {
         my $value = $t->{value};
         $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive
-        if ($value eq 'odd') {
+        if ($value eq 'odd') { # odd
           push @$sss, [PSEUDO_CLASS_SELECTOR, $name, 2, 1];
 
           $state = AFTER_B_STATE;
           $t = $tt->get_next_token;
           redo S;
-        } elsif ($value eq 'even') {
+        } elsif ($value eq 'even') { # even
           push @$sss, [PSEUDO_CLASS_SELECTOR, $name, 2, 0];
 
           $state = AFTER_B_STATE;
           $t = $tt->get_next_token;
           redo S;
         } elsif ($value eq 'n' or $value eq '-n') {
+          # n | -n | n <signed-integer> | -n <signed-integer>
           $simple_selector = [PSEUDO_CLASS_SELECTOR, $name,
                               $value eq 'n' ? 1 : -1, 0];
 
@@ -926,6 +932,7 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
           $t = $tt->get_next_token;
           redo S;
         } elsif ($value =~ /\A(-?)n-([0-9]+)\z/) {
+          # <ndashdigit-ident> | <dashndashdigit-ident>
           push @$sss, [PSEUDO_CLASS_SELECTOR, $name, 0+($1.'1'), -$2];
 
           $state = AFTER_B_STATE;
@@ -938,65 +945,10 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
                              token => $t);
           return ($t, undef);
         }
-      } elsif ($t->{type} == MINUS_TOKEN or
-               $t->{type} == PLUS_TOKEN) {
-        my $sign = $t->{type} == MINUS_TOKEN ? -1 : +1;
+      } elsif ($t->{type} == PLUS_TOKEN) {
+        $state = AFTER_A_PLUS_STATE;
         $t = $tt->get_next_token;
-        if ($t->{type} == DIMENSION_TOKEN || $t->{type} == IDENT_TOKEN) {
-          my $num = $t->{type} == IDENT_TOKEN ? 1 : $t->{number};
-          if ($num =~ /\A[0-9]+\z/) {
-            my $n = $t->{value};
-            $n =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-            if ($n eq 'n') {
-              $simple_selector = [PSEUDO_CLASS_SELECTOR, $name,
-                                  $sign * $num, 0];
-              
-              $state = AFTER_AN_STATE;
-              $t = $tt->get_next_token;
-              redo S;
-            } elsif ($n =~ /\An-([0-9]+)\z/) {
-              $simple_selector = [PSEUDO_CLASS_SELECTOR, $name,
-                                  $sign * $num, -$1];
-
-              $state = AFTER_AN_STATE;
-              $t = $tt->get_next_token;
-              redo S;
-            } else {
-              $self->{onerror}->(type => 'an+b syntax error',
-                                 level => 'm',
-                                 uri => $self->context->urlref,
-                                 token => $t);
-              return ($t, undef);
-            }
-          } else {
-            $self->{onerror}->(type => 'an+b syntax error',
-                               level => 'm',
-                               uri => $self->context->urlref,
-                               token => $t);
-            return ($t, undef);
-          }
-        } elsif ($t->{type} == NUMBER_TOKEN) {
-          if ($t->{number} =~ /\A[0-9]+\z/) {
-            push @$sss, [PSEUDO_CLASS_SELECTOR, $name,
-                         0, $sign * $t->{number}];
-
-            $state = AFTER_B_STATE;
-            $t = $tt->get_next_token;
-            redo S;
-          } else {
-            $self->{onerror}->(type => 'an+b syntax error',
-                               level => 'm',
-                               uri => $self->context->urlref,
-                               token => $t);
-            return ($t, undef);
-          }
-        } else {
-          $self->{onerror}->(type => 'an+b syntax error',
-                             level => 'm',
-                             uri => $self->context->urlref,
-                             token => $t);
-          return ($t, undef);
-        }
+        redo S;
       } elsif ($t->{type} == S_TOKEN) {
         ## Stay in the state.
         $t = $tt->get_next_token;
@@ -1008,17 +960,52 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
                            token => $t);
         return ($t, undef);
       }
+    } elsif ($state == AFTER_A_PLUS_STATE) {
+      if ($t->{type} == IDENT_TOKEN and
+          ($t->{value} eq 'n' or $t->{value} eq 'N')) {
+        # '+' n |
+        # '+' n <signed-integer> |
+        # '+' n '+' <signless-integer> |
+        # '+' n '-' <signless-integer>
+        $simple_selector = [PSEUDO_CLASS_SELECTOR, $name, 1, 0];
+        $state = AFTER_AN_STATE;
+        $t = $tt->get_next_token;
+        redo S;
+      } elsif ($t->{type} == IDENT_TOKEN and
+               $t->{value} =~ /\A[Nn](-[0-9]+)\z/) {
+        # '+' <ndashdigit-ident>
+        $simple_selector = [PSEUDO_CLASS_SELECTOR, $name, 1, 0+$1];
+        $state = AFTER_AN_STATE;
+        $t = $tt->get_next_token;
+        redo S;
+      } else {
+        $self->{onerror}->(type => 'an+b syntax error',
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $t);
+        return ($t, undef);
+      }
     } elsif ($state == AFTER_AN_STATE) {
-      if ($t->{type} == PLUS_TOKEN) {
-        $simple_selector->[3] = +1;
-
+      if ($t->{type} == PLUS_TOKEN or $t->{type} == MINUS_TOKEN) {
+        # <n-dimension> '+' <signless-integer> |
+        # <n-dimension> '-' <signless-integer> |
+        # '+'? n '+' <signless-integer> |
+        # '+'? n '-' <signless-integer> |
+        # -n '+' <signless-integer> |
+        # -n '-' <signless-integer>
+        $simple_selector->[3] = $t->{type} == PLUS_TOKEN ? +1 : -1;
         $state = BEFORE_B_STATE;
         $t = $tt->get_next_token;
         redo S;
-      } elsif ($t->{type} == MINUS_TOKEN) {
-        $simple_selector->[3] = -1;
-
-        $state = BEFORE_B_STATE;
+      } elsif ($t->{type} == NUMBER_TOKEN and
+               $t->{number} =~ /\A[+-][0-9]+\z/) {
+        # <n-dimension> <signed-integer> |
+        # '+'? n <signed-integer> |
+        # -n <signed-integer>
+        $simple_selector->[3] = 0+$t->{number};
+        push @$sss, $simple_selector;
+        
+        $state = AFTER_B_STATE;
         $t = $tt->get_next_token;
         redo S;
       } elsif ($t->{type} == RPAREN_TOKEN) {
@@ -1039,21 +1026,15 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
         return ($t, undef);
       }
     } elsif ($state == BEFORE_B_STATE) {
-      if ($t->{type} == NUMBER_TOKEN) {
-        if ($t->{number} =~ /\A[0-9]+\z/) {
-          $simple_selector->[3] *= $t->{number};
-          push @$sss, $simple_selector;
-          
-          $state = AFTER_B_STATE;
-          $t = $tt->get_next_token;
-          redo S;
-        } else {
-          $self->{onerror}->(type => 'an+b syntax error',
-                             level => 'm',
-                             uri => $self->context->urlref,
-                             token => $t);
-          return ($t, undef);
-        }
+      if ($t->{type} == NUMBER_TOKEN and $t->{number} =~ /\A[0-9]+\z/) {
+        # ... '+' <signless-integer> |
+        # ... '-' <signless-integer>
+        $simple_selector->[3] *= $t->{number};
+        push @$sss, $simple_selector;
+        
+        $state = AFTER_B_STATE;
+        $t = $tt->get_next_token;
+        redo S;
       } elsif ($t->{type} == S_TOKEN) {
         ## Stay in the state.
         $t = $tt->get_next_token;
@@ -1081,6 +1062,7 @@ sub _parse_selectors_with_tokenizer ($$$;$) {
                            token => $t);
         return ($t, undef);
       }
+
     } elsif ($state == AFTER_NEGATION_SIMPLE_SELECTOR_STATE) {
       if ($t->{type} == RPAREN_TOKEN) {
         undef $in_negation;

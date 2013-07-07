@@ -40,16 +40,15 @@ sub parse_char_string ($$) {
   my $tt = Web::CSS::Tokenizer->new;
   $tt->context ($self->context);
   $tt->onerror ($self->onerror);
-  $tt->{line} = 1;
-  $tt->{column} = 1;
-  $tt->{get_char} = sub {
-    if (pos $s < length $s) {
-      $tt->{column} = 1 + pos $s;
-      return ord substr $s, pos ($s)++, 1;
-    } else {
-      return -1;
-    }
-  }; # $tt->{get_char}
+
+  $tt->{line_prev} = $tt->{line} = 1;
+  $tt->{column_prev} = -1;
+  $tt->{column} = 0;
+
+  $tt->{chars} = [split //, $s];
+  $tt->{chars_pos} = 0;
+  delete $tt->{chars_was_cr};
+  $tt->{chars_pull_next} = sub { 0 };
   $tt->init_tokenizer;
 
   my $t = $tt->get_next_token;

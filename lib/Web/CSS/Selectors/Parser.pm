@@ -125,37 +125,15 @@ sub parse_char_string ($$) {
   my $tt = Web::CSS::Tokenizer->new;
   $tt->context ($self->context);
   $tt->onerror ($self->onerror); # setting $self->{onerror}
-  $tt->{get_char} = sub ($) {
-    if (pos $s < length $s) {
-      my $c = ord substr $s, pos ($s)++, 1;
-      if ($c == 0x000A) {
-        $line++;
-        $column = 0;
-      } elsif ($c == 0x000D) {
-        unless (substr ($s, pos ($s), 1) eq "\x0A") {
-          $line++;
-          $column = 0;
-        } else {
-          $column++;
-        }
-      } else {
-        $column++;
-      }
-      $_[0]->{line_prev} = $_[0]->{line};
-      $_[0]->{column_prev} = $_[0]->{column};
-      $_[0]->{line} = $line;
-      $_[0]->{column} = $column;
-      return $c;
-    } else {
-      $_[0]->{line_prev} = $_[0]->{line};
-      $_[0]->{column_prev} = $_[0]->{column};
-      $_[0]->{line} = $line;
-      $_[0]->{column} = $column + 1; ## Set the same number always.
-      return -1;
-    }
-  }; # $tt->{get_char}
-  $tt->{line} = $line;
-  $tt->{column} = $column;
+
+  $tt->{line_prev} = $tt->{line} = 1;
+  $tt->{column_prev} = -1;
+  $tt->{column} = 0;
+
+  $tt->{chars} = [split //, $s];
+  $tt->{chars_pos} = 0;
+  delete $tt->{chars_was_cr};
+  $tt->{chars_pull_next} = sub { 0 };
   $tt->init_tokenizer;
 
   my $mr = $self->media_resolver;

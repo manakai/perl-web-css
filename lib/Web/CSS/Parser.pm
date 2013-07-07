@@ -78,37 +78,15 @@ sub _init_subcomponents {
     $self->{tt} = Web::CSS::Tokenizer->new;
     $self->{tt}->context ($self->context);
     $self->{tt}->onerror ($onerror);
-    $self->{tt}->{get_char} = sub ($) {
-      if (pos $s < length $s) {
-        my $c = ord substr $s, pos ($s)++, 1;
-        if ($c == 0x000A) {
-          $line++;
-          $column = 0;
-        } elsif ($c == 0x000D) {
-          unless (substr ($s, pos ($s), 1) eq "\x0A") {
-            $line++;
-            $column = 0;
-          } else {
-            $column++;
-          }
-        } else {
-          $column++;
-        }
-        $_[0]->{line_prev} = $_[0]->{line};
-        $_[0]->{column_prev} = $_[0]->{column};
-        $_[0]->{line} = $line;
-        $_[0]->{column} = $column;
-        return $c;
-      } else {
-        $_[0]->{line_prev} = $_[0]->{line};
-        $_[0]->{column_prev} = $_[0]->{column};
-        $_[0]->{line} = $line;
-        $_[0]->{column} = $column + 1; ## Set the same number always.
-        return -1;
-      }
-    }; # $self->{tt}->{get_char}
-    $self->{tt}->{line} = $line;
-    $self->{tt}->{column} = $column;
+
+    $self->{tt}->{line_prev} = $self->{tt}->{line} = 1;
+    $self->{tt}->{column_prev} = -1;
+    $self->{tt}->{column} = 0;
+
+    $self->{tt}->{chars} = [split //, $s];
+    $self->{tt}->{chars_pos} = 0;
+    delete $self->{tt}->{chars_was_cr};
+    $self->{tt}->{chars_pull_next} = sub { 0 };
     $self->{tt}->init_tokenizer;
   }
 

@@ -296,7 +296,7 @@ sub _set_nc ($) {
       if ($self->{chars_pull_next}->()) {
         $self->{c} = ABORT_CHAR;
       } else {
-        unless ($self->{c} == EOF_CHAR) {
+        if (not defined $self->{c} or not $self->{c} == EOF_CHAR) {
           $self->{line_prev} = $self->{line};
           $self->{column_prev} = $self->{column};
           $self->{column}++;
@@ -1697,12 +1697,10 @@ sub get_next_token ($) {
   } # A
 } # get_next_token
 
+## Serialize the specified token for debugging purpose.  This method
+## is not intended for roundtripable serialization.
 sub serialize_token ($$) {
-  shift;
-  my $t = shift;
-
-  ## NOTE: This function is not intended for roundtrip-able serialization.
-
+  my $t = $_[1];
   if ($t->{type} == IDENT_TOKEN) {
     return $t->{value};
   } elsif ($t->{type} == ATKEYWORD_TOKEN) {
@@ -1769,6 +1767,8 @@ sub serialize_token ($$) {
     return '-->';
   } elsif ($t->{type} == EOF_TOKEN) {
     return '{EOF}';
+  } elsif ($t->{type} == ABORT_TOKEN) {
+    return '{Abort}';
   } elsif ($t->{type} == MINUS_TOKEN) {
     return '-';
   } elsif ($t->{type} == STAR_TOKEN) {
@@ -1777,6 +1777,8 @@ sub serialize_token ($$) {
     return '|';
   } elsif ($t->{type} == COLON_TOKEN) {
     return ':';
+  } elsif ($t->{type} == COLUMN_TOKEN) {
+    return '::';
   } elsif ($t->{type} == MATCH_TOKEN) {
     return '=';
   } elsif ($t->{type} == EXCLAMATION_TOKEN) {
@@ -1786,7 +1788,7 @@ sub serialize_token ($$) {
   }
 } # serialize_token
 
-sub _escaped_char {
+sub _escaped_char ($) {
   my $v = hex $_[0]->{escape_value};
   if ($v == 0x0000) {
     $_[0]->onerror->(type => 'css:escape:null',

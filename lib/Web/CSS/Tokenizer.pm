@@ -82,7 +82,7 @@ sub IS_VALID_ESCAPE ($$) {
 ## ------ Tokenizer states ------
 
 sub BEFORE_TOKEN_STATE () { 0 }
-sub BEFORE_NMSTART_STATE () { 1 }
+# 1
 sub NAME_STATE () { 2 }
 sub ESCAPE_OPEN_STATE () { 3 }
 sub STRING_STATE () { 4 }
@@ -116,6 +116,13 @@ sub MDO_HYPHEN_STATE () { 31 }
 sub NUMBER_E_STATE () { 32 }
 sub NUMBER_E_NUMBER_STATE () { 33 }
 sub NUMBER_HYPHEN_STATE () { 34 }
+sub UNICODE_U_STATE () { 35 }
+sub UNICODE_UPLUS_STATE () { 36 }
+sub UNICODE_START_HEX_STATE () { 37 }
+sub UNICODE_QUESTION_STATE () { 38 }
+sub UNICODE_BEFORE_HYPHEN_STATE () { 39 }
+sub UNICODE_BEFORE_END_STATE () { 40 }
+sub UNICODE_END_STATE () { 41 }
 
 sub ESCAPE_MODE_IDENT () { 1 }
 sub ESCAPE_MODE_URL () { 2 }
@@ -400,80 +407,11 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0055 or $self->{c} == 0x0075) { # U or u
-        # XXX
         $self->{t} = {type => IDENT_TOKEN, value => chr $self->{c},
                       line => $self->{line}, column => $self->{column}};
+        $self->{state} = UNICODE_U_STATE;
         $self->{c} = $self->{get_char}->($self);
-        if ($self->{c} == 0x002B) { # +
-          my ($l, $c) = ($self->{line}, $self->{column});
-          $self->{c} = $self->{get_char}->($self);
-          if ((0x0030 <= $self->{c} and $self->{c} <= 0x0039) or # 0..9
-              (0x0041 <= $self->{c} and $self->{c} <= 0x0046) or # A..F
-              (0x0061 <= $self->{c} and $self->{c} <= 0x0066) or # a..f
-              $self->{c} == 0x003F) { # ?
-            $self->{t}->{value} = chr $self->{c};
-            $self->{t}->{type} = UNICODE_RANGE_TOKEN;
-            $self->{c} = $self->{get_char}->($self);
-            C: for (2..6) {
-              if ((0x0030 <= $self->{c} and $self->{c} <= 0x0039) or # 0..9
-                  (0x0041 <= $self->{c} and $self->{c} <= 0x0046) or # A..F
-                  (0x0061 <= $self->{c} and $self->{c} <= 0x0066) or # a..f
-                  $self->{c} == 0x003F) { # ?
-                $self->{t}->{value} .= chr $self->{c};
-                $self->{c} = $self->{get_char}->($self);
-              } else {
-                last C;
-              }
-            } # C
-
-            if ($self->{c} == 0x002D) { # -
-              $self->{c} = $self->{get_char}->($self);
-              if ((0x0030 <= $self->{c} and $self->{c} <= 0x0039) or # 0..9
-                  (0x0041 <= $self->{c} and $self->{c} <= 0x0046) or # A..F
-                  (0x0061 <= $self->{c} and $self->{c} <= 0x0066)) { # a..f
-                $self->{t}->{value} .= '-' . chr $self->{c};
-                $self->{c} = $self->{get_char}->($self);
-                C: for (2..6) {
-                  if ((0x0030 <= $self->{c} and $self->{c} <= 0x0039) or # 0..9
-                      (0x0041 <= $self->{c} and $self->{c} <= 0x0046) or # A..F
-                      (0x0061 <= $self->{c} and $self->{c} <= 0x0066)) { # a..f
-                    $self->{t}->{value} .= chr $self->{c};
-                    $self->{c} = $self->{get_char}->($self);
-                  } else {
-                    last C;
-                  }
-                } # C
-                
-                #
-              } else {
-                my $token = $self->{t};
-                $self->{t} = {type => IDENT_TOKEN, value => '-',
-                              line => $self->{line},
-                              column => $self->{column}};
-                $self->{state} = BEFORE_NMSTART_STATE;
-                # reprocess
-                return $token;
-                #redo A;
-              }
-            }
-
-            $self->{state} = BEFORE_TOKEN_STATE;
-            # reprocess
-            return $self->{t};
-            #redo A;
-          } else {
-            unshift @{$self->{token}},
-                {type => PLUS_TOKEN, line => $l, column => $c};
-            $self->{state} = BEFORE_TOKEN_STATE;
-            # reprocess
-            return $self->{t};
-            #redo A;
-          }
-        } else {
-          $self->{state} = NAME_STATE;
-          # reprocess
-          redo A;
-        }
+        redo A;
       } elsif (IS_NAME_START ($self->{c})) {
         ## NOTE: |nmstart| in |ident| in |IDENT|
         $self->{t} = {type => IDENT_TOKEN, value => chr $self->{c},
@@ -606,99 +544,6 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         return $self->{t};
         #redo A;
-      }
-
-    # XXX
-    } elsif ($self->{state} == BEFORE_NMSTART_STATE) {
-      ## NOTE: |nmstart| in |ident| in (|IDENT|, |DIMENSION|, or
-      ## |FUNCTION|)
-      if (IS_NAME_START ($self->{c})) {
-        $self->{t}->{value} .= chr $self->{c};
-        $self->{t}->{type} = DIMENSION_TOKEN
-            if $self->{t}->{type} == NUMBER_TOKEN;
-        $self->{state} = NAME_STATE;
-        $self->{c} = $self->{get_char}->($self);
-        redo A;
-      } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE;
-        $self->{escape_mode} = ESCAPE_MODE_IDENT;
-        $self->{c} = $self->{get_char}->($self);
-        redo A;
-      } elsif ($self->{c} == 0x002D) { # -
-        #XXX
-        if ($self->{t}->{type} == IDENT_TOKEN) {
-          #$self->normalize_surrogate ($self->{t}->{value});
-          $self->{c} = $self->{get_char}->($self);
-          if ($self->{c} == 0x003E) { # >
-            $self->{state} = BEFORE_TOKEN_STATE;
-            $self->{c} = $self->{get_char}->($self);
-            return {type => CDC_TOKEN,
-                    line => $self->{t}->{line},
-                    column => $self->{t}->{column}}; # XXX
-            #redo A;
-          } else {
-            ## NOTE: |-|, |-|, $self->{c}
-            #$self->{t} = {type => IDENT_TOKEN, value => '-'};
-            $self->{t}->{column}++;
-            # stay in the state
-            # reconsume
-            return {type => MINUS_TOKEN,
-                    line => $self->{t}->{line},
-                    column => $self->{t}->{column} - 1};
-            #redo A;
-          }
-        } elsif ($self->{t}->{type} == DIMENSION_TOKEN) {
-          my ($l, $c) = ($self->{line}, $self->{column}); # second '-'
-          $self->{c} = $self->{get_char}->($self);
-          if ($self->{c} == 0x003E) { # >
-            unshift @{$self->{token}}, {type => CDC_TOKEN,
-                                        line => $self->{line_prev},
-                                        column => $self->{column_prev}-1}; # XXX
-            $self->{t}->{type} = NUMBER_TOKEN;
-            $self->{t}->{value} = '';
-            $self->{state} = BEFORE_TOKEN_STATE;
-            $self->{c} = $self->{get_char}->($self);
-            return $self->{t};
-            #redo A;
-          } else {
-            ## NOTE: NUMBER, |-|, |-|, $self->{c}
-            my $t = $self->{t};
-            $t->{type} = NUMBER_TOKEN;
-            $t->{value} = '';
-            $self->{t} = {type => IDENT_TOKEN, value => '-', hyphen => 1,
-                          line => $l, column => $c};
-            unshift @{$self->{token}}, {type => MINUS_TOKEN,
-                                        line => $l, column => $c - 1};
-            # stay in the state
-            # reconsume
-            return $t;
-            #redo A;
-          }
-        } else {
-          #
-        }
-      } else {
-        #
-      }
-      
-      if ($self->{t}->{type} == DIMENSION_TOKEN) {
-        ## NOTE: |-| after |NUMBER|.
-        unshift @{$self->{token}}, {type => MINUS_TOKEN,
-                                    line => $self->{line},
-                                    column => $self->{column} - 1};
-        ## BUG: column might be wrong if on the line boundary.
-        $self->{state} = BEFORE_TOKEN_STATE;
-        # reprocess
-        $self->{t}->{type} = NUMBER_TOKEN;
-        $self->{t}->{value} = '';
-        return $self->{t};
-      } else {
-        ## NOTE: |-| not followed by |nmstart|.
-        $self->{state} = BEFORE_TOKEN_STATE;
-        # reprocess
-        return {type => MINUS_TOKEN,
-                line => $self->{line}, column => $self->{column} - 1};
-        ## BUG: column might be wrong if on the line boundary.
       }
 
     } elsif ($self->{state} == AFTER_AT_STATE) {
@@ -835,10 +680,6 @@ sub get_next_token ($) {
       }
 
     } elsif ($self->{state} == HASH_OPEN_STATE) {
-      ## Consume a token
-      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-token> -
-      ## U+0023 NUMBER SIGN (#)
-
       ## NOTE: The first |nmchar| in |name| in |HASH|.
       if ((0x0041 <= $self->{c} and $self->{c} <= 0x005A) or # A..Z
           (0x0061 <= $self->{c} and $self->{c} <= 0x007A) or # a..z
@@ -1689,6 +1530,134 @@ sub get_next_token ($) {
         return $t;
         #redo A;
       }
+
+    } elsif ($self->{state} == UNICODE_U_STATE) {
+      if ($self->{c} == 0x002B) { # +
+        $self->{state} = UNICODE_UPLUS_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{state} = NAME_STATE;
+        ## Reconsume the current input character.
+        redo A;
+      }
+    } elsif ($self->{state} == UNICODE_UPLUS_STATE) {
+      if (IS_HEX_DIGIT->{$self->{c}}) {
+        $self->{t}->{type} = UNICODE_RANGE_TOKEN;
+        $self->{t}->{value} = chr $self->{c};
+        $self->{state} = UNICODE_START_HEX_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } elsif ($self->{c} == 0x003F) {
+        $self->{t}->{type} = UNICODE_RANGE_TOKEN;
+        $self->{t}->{value} = '?';
+        $self->{state} = UNICODE_QUESTION_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        my $t = $self->{t};
+        $self->{t} = {type => NUMBER_TOKEN, value => '+',
+                      line => $self->{line_prev},
+                      column => $self->{column_prev}};
+        $self->{state} = PLUS_STATE;
+        ## Reconsume the current input character.
+        return $t;
+        #redo A;
+      }
+    } elsif ($self->{state} == UNICODE_START_HEX_STATE) {
+      if (IS_HEX_DIGIT->{$self->{c}}) {
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{c} = $self->{get_char}->($self);
+        if (6 == length $self->{t}->{value}) {
+          #
+        } else {
+          ## Stay in this state.
+          redo A;
+        }
+      } elsif ($self->{c} == 0x003F) { # ?
+        $self->{state} = UNICODE_QUESTION_STATE;
+        ## Reconsume the current input character.
+        redo A;
+      } else {
+        ## Reconsume the current input character.
+        #
+      }
+
+      $self->{state} = UNICODE_BEFORE_HYPHEN_STATE;
+      redo A;
+    } elsif ($self->{state} == UNICODE_QUESTION_STATE) {
+      if ($self->{c} == 0x003F) { # ?
+        $self->{t}->{value} .= '?';
+        $self->{c} = $self->{get_char}->($self);
+        if (6 == length $self->{t}->{value}) {
+          #
+        } else {
+          ## Stay in the state.
+          redo A;
+        }
+      } else {
+        ## Reconsume the current input character.
+        #
+      }
+
+      my $v = $self->{t}->{value};
+      $v =~ tr/?/0/;
+      $self->{t}->{start} = hex $v;
+      $v = delete $self->{t}->{value};
+      $v =~ tr/?/f/;
+      $self->{t}->{end} = hex $v;
+      # XXX
+      $self->{state} = BEFORE_TOKEN_STATE;
+      return $self->{t};
+      #redo A;
+    } elsif ($self->{state} == UNICODE_BEFORE_HYPHEN_STATE) {
+      $self->{t}->{start} = $self->{t}->{end} = hex delete $self->{t}->{value};
+      if ($self->{c} == 0x002D) { # -
+        $self->{state} = UNICODE_BEFORE_END_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        $self->{state} = BEFORE_TOKEN_STATE;
+        ## Reconsume the current input character.
+        return $self->{t};
+        #redo A;
+      }
+    } elsif ($self->{state} == UNICODE_BEFORE_END_STATE) {
+      if (IS_HEX_DIGIT->{$self->{c}}) {
+        $self->{t}->{value} = chr $self->{c};
+        $self->{state} = UNICODE_END_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        my $t = $self->{t};
+        $self->{t} = {type => IDENT_TOKEN, hyphen => 1, value => '-',
+                      line => $self->{line_prev},
+                      column => $self->{column_prev}};
+        $self->{state} = MINUS_STATE;
+        ## Reconsume the current input character.
+        return $t;
+        #redo A;
+      }
+    } elsif ($self->{state} == UNICODE_END_STATE) {
+      if (IS_HEX_DIGIT->{$self->{c}}) {
+        $self->{t}->{value} .= chr $self->{c};
+        $self->{c} = $self->{get_char}->($self);
+        if (6 == length $self->{t}->{value}) {
+          #
+        } else {
+          ## Stay in this state.
+          redo A;
+        }
+      } else {
+        ## Reconsume the current input character.
+        #
+      }
+
+      # XXX
+      $self->{t}->{end} = hex delete $self->{t}->{value};
+      $self->{state} = BEFORE_TOKEN_STATE;
+      return $self->{t};
+      #redo A;
 
     } else {
       die "$0: Unknown state |$self->{state}|";

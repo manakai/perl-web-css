@@ -193,17 +193,43 @@ for my $test (
   [['u-'] => [[1, IDENT_TOKEN, 'u-']]],
   [['U*'] => [[1, IDENT_TOKEN, 'U'], [2, STAR_TOKEN]]],
   [['u*'] => [[1, IDENT_TOKEN, 'u'], [2, STAR_TOKEN]]],
-  [['U+?'] => [[1, UNICODE_RANGE_TOKEN, '?']]],
-  [['u+?'] => [[1, UNICODE_RANGE_TOKEN, '?']]],
-  [['U+1'] => [[1, UNICODE_RANGE_TOKEN, '1']]],
-  [['u+2'] => [[1, UNICODE_RANGE_TOKEN, '2']]],
-  [['U+a'] => [[1, UNICODE_RANGE_TOKEN, 'a']]],
-  [['u+f'] => [[1, UNICODE_RANGE_TOKEN, 'f']]],
-  [['u+A9f'] => [[1, UNICODE_RANGE_TOKEN, 'A9f']]],
-  [['u+00?A9f'] => [[1, UNICODE_RANGE_TOKEN, '00?A9f']]],
-  [['u+A9f+'] => [[1, UNICODE_RANGE_TOKEN, 'A9f'], [6, PLUS_TOKEN]]],
+  [['U+?'] => [[1, UNICODE_RANGE_TOKEN, 0x0000=>0x000F]]],
+  [['u+?'] => [[1, UNICODE_RANGE_TOKEN, 0x0000=>0x000F]]],
+  [['U+1'] => [[1, UNICODE_RANGE_TOKEN, 0x0001=>0x0001]]],
+  [['u+2'] => [[1, UNICODE_RANGE_TOKEN, 0x0002=>0x0002]]],
+  [['U+a'] => [[1, UNICODE_RANGE_TOKEN, 0x000A=>0x000A]]],
+  [['u+f'] => [[1, UNICODE_RANGE_TOKEN, 0x000F=>0x000F]]],
+  [['u+A9f'] => [[1, UNICODE_RANGE_TOKEN, 0x0A9F=>0x0A9F]]],
+  [['u+00?A9f'] => [[1, UNICODE_RANGE_TOKEN, 0x0000=>0x000F], ID(6,'A9f')]],
+  [['u+A9f+'] => [[1, UNICODE_RANGE_TOKEN, 0x0A9F=>0x0A9F], [6, PLUS_TOKEN]]],
   [['\\U+2'] => [[1, IDENT_TOKEN, 'U'], [3, NUMBER_TOKEN, '+2']]],
   [['\\u+2'] => [[1, IDENT_TOKEN, 'u'], [3, NUMBER_TOKEN, '+2']]],
+  [['U+1034567'] => [[1, UNICODE_RANGE_TOKEN, 0x103456=>0x103456], N(9,'7')]],
+  [['U+???????'] => [[1, UNICODE_RANGE_TOKEN, 0x000000=>0xFFFFFF], Delim(9,'?')]],
+  [['U+1034567-ffffff'] => [[1, UNICODE_RANGE_TOKEN, 0x103456=>0x103456], Dim(9,'7','-ffffff')]],
+  [['U+103?-1fff'] => [[1, UNICODE_RANGE_TOKEN, 0x1030=>0x103F], Dim(7,'-1','fff')]],
+  [['U+1-5f1'] => [[1, UNICODE_RANGE_TOKEN, 0x0001=>0x05F1]]],
+  [['U+1-0005f1'] => [[1, UNICODE_RANGE_TOKEN, 0x0001=>0x05F1]]],
+  [['U+1-00005f1'] => [[1, UNICODE_RANGE_TOKEN, 0x0001=>0x005F], N(11,'1')]],
+  [['U+1-00', '005f1'] => [[1, UNICODE_RANGE_TOKEN, 0x0001=>0x005F], N(11,'1')]],
+  [['U+1-00005fx'] => [[1, UNICODE_RANGE_TOKEN, 0x0001=>0x005F], ID(11,'x')]],
+  [['u+zad'] => [ID(1,'u'), [2, PLUS_TOKEN], ID(3,'zad')]],
+  [['u+105-'] => [[1, UNICODE_RANGE_TOKEN, 0x0105=>0x0105], [6, MINUS_TOKEN]]],
+  [['u+105000-'] => [[1, UNICODE_RANGE_TOKEN, 0x0105000=>0x0105000], [9, MINUS_TOKEN]]],
+  [['u+105000', '-'] => [[1, UNICODE_RANGE_TOKEN, 0x0105000=>0x0105000], [9, MINUS_TOKEN]]],
+  [['u+105-z'] => [[1, UNICODE_RANGE_TOKEN, 0x0105=>0x0105], ID(6,'-z')]],
+  [['u+105000-z'] => [[1, UNICODE_RANGE_TOKEN, 0x0105000=>0x0105000], ID(9,'-z')]],
+  [['u+105\\-12'] => [[1, UNICODE_RANGE_TOKEN, 0x0105=>0x0105], ID(6,'-12')]],
+  [['u+105000\\-12'] => [[1, UNICODE_RANGE_TOKEN, 0x0105000=>0x0105000], ID(9,'-12')]],
+  [['u+1', '0500', '0\\-12'] => [[1, UNICODE_RANGE_TOKEN, 0x0105000=>0x0105000], ID(9,'-12')]],
+  [['u+105-\\12'] => [[1, UNICODE_RANGE_TOKEN, 0x0105=>0x0105], ID(6,"-\x12")]],
+  [['u+105000-\\12'] => [[1, UNICODE_RANGE_TOKEN, 0x0105000=>0x0105000], ID(9,"-\x12")]],
+  [['u+105--\\12'] => [[1, UNICODE_RANGE_TOKEN, 0x0105=>0x0105], [6, MINUS_TOKEN], ID(7,"-\x12")]],
+  [['u+105000--\\12'] => [[1, UNICODE_RANGE_TOKEN, 0x0105000=>0x0105000], [9, MINUS_TOKEN], ID(10,"-\x12")]],
+  [['u+105-->'] => [[1, UNICODE_RANGE_TOKEN, 0x0105=>0x0105], [6, CDC_TOKEN]]],
+  [['u+105000-->'] => [[1, UNICODE_RANGE_TOKEN, 0x0105000=>0x0105000], [9, CDC_TOKEN]]],
+  [['u+314-429??'] => [[1, UNICODE_RANGE_TOKEN, 0x0314=>0x0429], Delim(10,'?'), Delim(11,'?')]],
+  [['u', '+', '314-', '429??'] => [[1, UNICODE_RANGE_TOKEN, 0x0314=>0x0429], Delim(10,'?'), Delim(11,'?')]],
   [['abc'] => [[1, IDENT_TOKEN, 'abc']]],
   [['Zbc'] => [[1, IDENT_TOKEN, 'Zbc']]],
   [['_Zbc'] => [[1, IDENT_TOKEN, '_Zbc']]],
@@ -322,6 +348,7 @@ for my $test (
   [["\\124\x0A", "bc"] => [[1, IDENT_TOKEN, "\x{124}bc"]]],
   [["\\\x0A", "bc"] => ['1;css:escape:broken', Delim(1,'\\'), S(2), [3, IDENT_TOKEN, "bc"]]],
   [["a\\\x0A", "bc"] => ['2;css:escape:broken', [1, IDENT_TOKEN, 'a'], Delim(2,'\\'), S(3), [4, IDENT_TOKEN, "bc"]]],
+  [['url(a  b  \\) ad)a'] => [[1, URI_INVALID_TOKEN], ID(17,'a')]],
 ) {
   for (@{$test->[1]}) {
     next unless ref $_;
@@ -343,6 +370,10 @@ for my $test (
     if ($_->{type} == PERCENTAGE_TOKEN) {
       $_->{number} = $_->{value};
       $_->{value} = '';
+    }
+    if ($_->{type} == UNICODE_RANGE_TOKEN) {
+      $_->{start} = delete $_->{value};
+      $_->{end} = $f;
     }
   }
   test {
@@ -390,6 +421,9 @@ for my $test (
       last if $t->{type} == EOF_TOKEN;
       delete $t->{hyphen}; # XXX
       delete $t->{has_escape}; # XXX
+      if ($t->{type} == URI_INVALID_TOKEN) {
+        delete $t->{value};
+      }
       push @$tokens, $t;
       redo;
     }

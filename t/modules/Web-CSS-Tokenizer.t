@@ -23,26 +23,26 @@ for my $test (
   [['hoge'] => [[1, IDENT_TOKEN, 'hoge']]],
   [['-hoge'] => [[1, IDENT_TOKEN, '-hoge']]],
   [["\x80hoge"] => [[1, IDENT_TOKEN, "\x80hoge"]]],
-  [['-\\'] => ['2;css:escape:broken', [1, IDENT_TOKEN, "-\x{FFFD}"]]],
+  [['-\\'] => ['1;2;css:escape:broken', [1, IDENT_TOKEN, "-\x{FFFD}"]]],
   [[" \x0C"] => [[1, S_TOKEN]]],
   [["\x09+"] => [S(1), [2, PLUS_TOKEN]]],
   [[' ', ' '] => [S(1), S(2)]],
-  [[' ', '', ' '] => [[1, S_TOKEN], Abort, S(2)]],
-  [['"aa'] => ['4;css:string:eof', [1, STRING_TOKEN, 'aa']]],
-  [["'aa"] => ['4;css:string:eof', [1, STRING_TOKEN, 'aa']]],
+  [[' ', '', ' '] => [S(1), Abort, S(2)]],
+  [['"aa'] => ['1;4;css:string:eof', [1, STRING_TOKEN, 'aa']]],
+  [["'aa"] => ['1;4;css:string:eof', [1, STRING_TOKEN, 'aa']]],
   [['"aa"'] => [[1, STRING_TOKEN, 'aa']]],
   [["'aa'"] => [[1, STRING_TOKEN, 'aa']]],
-  [["'aa\x0A"] => ['4;css:string:newline', [1, INVALID_TOKEN], S(4)]],
-  [["\"aa\x0C"] => ['4;css:string:newline', [1, INVALID_TOKEN], S(4)]],
-  [["\"aa\\\x0A"] => ['6;css:string:eof', [1, STRING_TOKEN, 'aa']]],
-  [['"aa\\'] => ['4;css:escape:broken', '6;css:string:eof', [1, STRING_TOKEN, "aa\x{FFFD}"]]],
-  [["'aa\x0C"] => ['4;css:string:newline', [1, INVALID_TOKEN], S(4)]],
-  [["'aa\\\x0A"] => ['6;css:string:eof', [1, STRING_TOKEN, 'aa']]],
-  [["'aa\\"] => ['4;css:escape:broken', '6;css:string:eof', [1, STRING_TOKEN, "aa\x{FFFD}"]]],
+  [["'aa\x0A"] => ['2;0;css:string:newline', [1, INVALID_TOKEN], S([2,0])]],
+  [["\"aa\x0C"] => ['2;0;css:string:newline', [1, INVALID_TOKEN], S([2,0])]],
+  [["\"aa\\\x0A"] => ['2;1;css:string:eof', [1, STRING_TOKEN, 'aa']]],
+  [['"aa\\'] => ['1;4;css:escape:broken', '1;5;css:string:eof', [1, STRING_TOKEN, "aa\x{FFFD}"]]],
+  [["'aa\x0C"] => ['2;0;css:string:newline', [1, INVALID_TOKEN], S([2,0])]],
+  [["'aa\\\x0A"] => ['2;1;css:string:eof', [1, STRING_TOKEN, 'aa']]],
+  [["'aa\\"] => ['1;4;css:escape:broken', '1;5;css:string:eof', [1, STRING_TOKEN, "aa\x{FFFD}"]]],
   [['#'] => [Delim(1,'#')]],
-  [['#\\'] => ['2;css:escape:broken', [1, HASH_TOKEN, "\x{FFFD}", 'id']]],
+  [['#\\'] => ['1;2;css:escape:broken', [1, HASH_TOKEN, "\x{FFFD}", 'id']]],
   [['#\\x'] => [[1, HASH_TOKEN, 'x', 'id']]],
-  [['#-\\'] => ['3;css:escape:broken', [1, HASH_TOKEN, "-\x{FFFD}", 'id']]],
+  [['#-\\'] => ['1;3;css:escape:broken', [1, HASH_TOKEN, "-\x{FFFD}", 'id']]],
   [['#--'] => [[1, HASH_TOKEN, '--', '']]],
   [['#-\\-'] => [[1, HASH_TOKEN, '--', 'id']]],
   [['#-a'] => [[1, HASH_TOKEN, '-a', 'id']]],
@@ -51,7 +51,7 @@ for my $test (
   [['#z1235'] => [[1, HASH_TOKEN, 'z1235', 'id']]],
   [['#_z1235'] => [[1, HASH_TOKEN, '_z1235', 'id']]],
   [['#\\1235'] => [[1, HASH_TOKEN, "\x{1235}", 'id']]],
-  [["#\\\x0A1235"] => ['2;css:escape:broken', Delim(1, '#'), Delim(2, '\\'), S(3), [4, NUMBER_TOKEN, '1235']]],
+  [["#\\\x0A1235"] => ['1;2;css:escape:broken', Delim(1, '#'), Delim(2, '\\'), S([2,0]), [[2,1], NUMBER_TOKEN, '1235']]],
   [['$'] => [Delim(1, '$')]],
   [['$ab'] => [Delim(1, '$'), [2, IDENT_TOKEN, 'ab']]],
   [['$='] => [[1, SUFFIXMATCH_TOKEN]]],
@@ -105,8 +105,8 @@ for my $test (
   [['-00.12'] => [[1, NUMBER_TOKEN, '-00.12']]],
   [['-910\\a'] => [[1, DIMENSION_TOKEN, '-910', "\x0A"]]],
   [['-a'] => [[1, IDENT_TOKEN, '-a']]],
-  [['-\\'] => ['2;css:escape:broken', [1, IDENT_TOKEN, "-\x{FFFD}"]]],
-  [["-\\\x0Ac"] => ['2;css:escape:broken', [1, MINUS_TOKEN], [2, DELIM_TOKEN, '\\'], S(3), [4, IDENT_TOKEN, 'c']]],
+  [['-\\'] => ['1;2;css:escape:broken', [1, IDENT_TOKEN, "-\x{FFFD}"]]],
+  [["-\\\x0Ac"] => ['1;2;css:escape:broken', [1, MINUS_TOKEN], [2, DELIM_TOKEN, '\\'], S([2,0]), [[2,1], IDENT_TOKEN, 'c']]],
   [['-\\-'] => [[1, IDENT_TOKEN, '--']]],
   [['-abc'] => [[1, IDENT_TOKEN, '-abc']]],
   [['--120'] => [[1, MINUS_TOKEN], [2, NUMBER_TOKEN, '-120']]],
@@ -179,8 +179,8 @@ for my $test (
   [[']'] => [[1, RBRACKET_TOKEN]]],
   [['{'] => [[1, LBRACE_TOKEN]]],
   [['}'] => [[1, RBRACE_TOKEN]]],
-  [['\\'] => ['1;css:escape:broken', [1, IDENT_TOKEN, "\x{FFFD}"]]],
-  [["\\\x0A"] => ['1;css:escape:broken', Delim(1,'\\'), S(2)]],
+  [['\\'] => ['1;1;css:escape:broken', [1, IDENT_TOKEN, "\x{FFFD}"]]],
+  [["\\\x0A"] => ['1;1;css:escape:broken', Delim(1,'\\'), S([2,0])]],
   [["\\120"] => [[1, IDENT_TOKEN, "\x{120}"]]],
   [["\\120 x"] => [[1, IDENT_TOKEN, "\x{120}x"]]],
   [['612'] => [[1, NUMBER_TOKEN, '612']]],
@@ -209,7 +209,7 @@ for my $test (
   [['\\U+2'] => [[1, IDENT_TOKEN, 'U'], [3, NUMBER_TOKEN, '+2']]],
   [['\\u+2'] => [[1, IDENT_TOKEN, 'u'], [3, NUMBER_TOKEN, '+2']]],
   [['U+1034567'] => [[1, UNICODE_RANGE_TOKEN, 0x103456=>0x103456], N(9,'7')]],
-  [['U+???????'] => ['1;css:unicode-range:end not unicode', [1, UNICODE_RANGE_TOKEN, 0x000000=>0x10FFFF], Delim(9,'?')]],
+  [['U+???????'] => ['1;1;css:unicode-range:end not unicode', [1, UNICODE_RANGE_TOKEN, 0x000000=>0x10FFFF], Delim(9,'?')]],
   [['U+1034567-ffffff'] => [[1, UNICODE_RANGE_TOKEN, 0x103456=>0x103456], Dim(9,'7','-ffffff')]],
   [['U+103?-1fff'] => [[1, UNICODE_RANGE_TOKEN, 0x1030=>0x103F], Dim(7,'-1','fff')]],
   [['U+1-5f1'] => [[1, UNICODE_RANGE_TOKEN, 0x0001=>0x05F1]]],
@@ -236,10 +236,10 @@ for my $test (
   [['u', '+', '314-', '429??'] => [[1, UNICODE_RANGE_TOKEN, 0x0314=>0x0429], Delim(10,'?'), Delim(11,'?')]],
   [['U+10FFFF'] => [[1, UNICODE_RANGE_TOKEN, 0x10FFFF=>0x10FFFF]]],
   [['U+010FFFF'] => [[1, UNICODE_RANGE_TOKEN, 0x10FFF=>0x10FFF], ID(9,'F')]],
-  [['U+110000'] => ['1;css:unicode-range:start not unicode', [1, UNICODE_RANGE_TOKEN, -1=>-1]]],
-  [['U+1000-110000'] => ['1;css:unicode-range:end not unicode', [1, UNICODE_RANGE_TOKEN, 0x1000=>0x10FFFF]]],
-  [['U+1?????'] => ['1;css:unicode-range:end not unicode', [1, UNICODE_RANGE_TOKEN, 0x100000=>0x10FFFF]]],
-  [['U+655-21'] => ['1;css:unicode-range:start gt end', [1, UNICODE_RANGE_TOKEN, -1=>-1]]],
+  [['U+110000'] => ['1;1;css:unicode-range:start not unicode', [1, UNICODE_RANGE_TOKEN, -1=>-1]]],
+  [['U+1000-110000'] => ['1;1;css:unicode-range:end not unicode', [1, UNICODE_RANGE_TOKEN, 0x1000=>0x10FFFF]]],
+  [['U+1?????'] => ['1;1;css:unicode-range:end not unicode', [1, UNICODE_RANGE_TOKEN, 0x100000=>0x10FFFF]]],
+  [['U+655-21'] => ['1;1;css:unicode-range:start gt end', [1, UNICODE_RANGE_TOKEN, -1=>-1]]],
   [['U+513-0513'] => [[1, UNICODE_RANGE_TOKEN, 0x0513=>0x0513]]],
   [['abc'] => [[1, IDENT_TOKEN, 'abc']]],
   [['Zbc'] => [[1, IDENT_TOKEN, 'Zbc']]],
@@ -290,16 +290,16 @@ for my $test (
   [['12a', 'b', '-->'] => [[1, DIMENSION_TOKEN, '12', 'ab--'], [7, GREATER_TOKEN]]],
   [['12-ab'] => [Dim(1,'12','-ab')]],
   [['12-\\ab'] => [Dim(1,'12',"-\xab")]],
-  [['12-\\'] => ['4;css:escape:broken', Dim(1,'12',"-\x{FFFD}")]],
-  [["12-\\\x0A"] => ['4;css:escape:broken', N(1,'12'), Minus(3), BS(4), S(5)]],
+  [['12-\\'] => ['1;4;css:escape:broken', Dim(1,'12',"-\x{FFFD}")]],
+  [["12-\\\x0A"] => ['1;4;css:escape:broken', N(1,'12'), Minus(3), BS(4), S([2,0])]],
   [["12-`"] => [N(1,'12'), Minus(3), Delim(4,'`')]],
   [['12e4-ab'] => [Dim(1,'12e4','-ab')]],
   [['12e4-\\ab'] => [Dim(1,'12e4',"-\xab")]],
-  [['12e4-\\'] => ['6;css:escape:broken', Dim(1,'12e4',"-\x{FFFD}")]],
-  [["12e4-\\\x0A"] => ['6;css:escape:broken', N(1,'12e4'), Minus(5), BS(6), S(7)]],
+  [['12e4-\\'] => ['1;6;css:escape:broken', Dim(1,'12e4',"-\x{FFFD}")]],
+  [["12e4-\\\x0A"] => ['1;6;css:escape:broken', N(1,'12e4'), Minus(5), BS(6), S([2,0])]],
   [["12e4-`"] => [N(1,'12e4'), Minus(5), Delim(6,'`')]],
-  [["12\\"] => ['3;css:escape:broken', [1, DIMENSION_TOKEN, '12', "\x{FFFD}"]]],
-  [["12\\\x0A"] => ['3;css:escape:broken', [1, NUMBER_TOKEN, '12'], Delim(3,'\\'), S(4)]],
+  [["12\\"] => ['1;3;css:escape:broken', [1, DIMENSION_TOKEN, '12', "\x{FFFD}"]]],
+  [["12\\\x0A"] => ['1;3;css:escape:broken', [1, NUMBER_TOKEN, '12'], Delim(3,'\\'), S([2,0])]],
   [['0903%'] => [[1, PERCENTAGE_TOKEN, '0903']]],
   [['0903\\%'] => [[1, DIMENSION_TOKEN, '0903', '%']]],
   [['0903.44%'] => [[1, PERCENTAGE_TOKEN, '0903.44']]],
@@ -325,7 +325,7 @@ for my $test (
   [['url(\\xyz)'] => [[1, URI_TOKEN, 'xyz']]],
   [['url( \\xyz)'] => [[1, URI_TOKEN, 'xyz']]],
   [['url(a\\xyz)'] => [[1, URI_TOKEN, 'axyz']]],
-  [['url(a \\xyz)'] => ['7;css:url:bad', [1, URI_INVALID_TOKEN]]],
+  [['url(a \\xyz)'] => ['1;7;css:url:bad', [1, URI_INVALID_TOKEN]]],
   [['"\\xyz"'] => [[1, STRING_TOKEN, 'xyz']]],
   [['"a\\xyz"'] => [[1, STRING_TOKEN, 'axyz']]],
   [["'\\xyz'"] => [[1, STRING_TOKEN, 'xyz']]],
@@ -340,25 +340,25 @@ for my $test (
   [['\\1234'] => [[1, IDENT_TOKEN, "\x{1234}"]]],
   [['\\12345'] => [[1, IDENT_TOKEN, "\x{12345}"]]],
   [['\\103456'] => [[1, IDENT_TOKEN, "\x{103456}"]]],
-  [['\\123456'] => ['7;css:escape:not unicode', [1, IDENT_TOKEN, "\x{FFFD}"]]],
+  [['\\123456'] => ['1;7;css:escape:not unicode', [1, IDENT_TOKEN, "\x{FFFD}"]]],
   [['\\1034567'] => [[1, IDENT_TOKEN, "\x{103456}7"]]],
   [["\\103 4567"] => [[1, IDENT_TOKEN, "\x{103}4567"]]],
   [["\\103\x0A4567"] => [[1, IDENT_TOKEN, "\x{103}4567"]]],
   [["\\103456 7"] => [[1, IDENT_TOKEN, "\x{103456}7"]]],
   [['\\Ba45f'] => [[1, IDENT_TOKEN, "\x{ba45f}"]]],
   [['\\Ba4z5f'] => [[1, IDENT_TOKEN, "\x{ba4}z5f"]]],
-  [['\\0000001'] => ['7;css:escape:null', [1, IDENT_TOKEN, "\x{FFFD}1"]]],
-  [['"\\0000001"'] => ['8;css:escape:null', [1, STRING_TOKEN, "\x{FFFD}1"]]],
-  [['\\000000 '] => ['7;css:escape:null', [1, IDENT_TOKEN, "\x{FFFD}"]]],
-  [['a\\000000 '] => ['8;css:escape:null', [1, IDENT_TOKEN, "a\x{FFFD}"]]],
-  [['a\\', '000000 '] => ['8;css:escape:null', [1, IDENT_TOKEN, "a\x{FFFD}"]]],
+  [['\\0000001'] => ['1;7;css:escape:null', [1, IDENT_TOKEN, "\x{FFFD}1"]]],
+  [['"\\0000001"'] => ['1;8;css:escape:null', [1, STRING_TOKEN, "\x{FFFD}1"]]],
+  [['\\000000 '] => ['1;7;css:escape:null', [1, IDENT_TOKEN, "\x{FFFD}"]]],
+  [['a\\000000 '] => ['1;8;css:escape:null', [1, IDENT_TOKEN, "a\x{FFFD}"]]],
+  [['a\\', '000000 '] => ['1;8;css:escape:null', [1, IDENT_TOKEN, "a\x{FFFD}"]]],
   [['\\', '1034567'] => [[1, IDENT_TOKEN, "\x{103456}7"]]],
   [['\\1', '034567'] => [[1, IDENT_TOKEN, "\x{103456}7"]]],
   [['\\1034', '567'] => [[1, IDENT_TOKEN, "\x{103456}7"]]],
   [["\\124\x0Abc"] => [[1, IDENT_TOKEN, "\x{124}bc"]]],
   [["\\124\x0A", "bc"] => [[1, IDENT_TOKEN, "\x{124}bc"]]],
-  [["\\\x0A", "bc"] => ['1;css:escape:broken', Delim(1,'\\'), S(2), [3, IDENT_TOKEN, "bc"]]],
-  [["a\\\x0A", "bc"] => ['2;css:escape:broken', [1, IDENT_TOKEN, 'a'], Delim(2,'\\'), S(3), [4, IDENT_TOKEN, "bc"]]],
+  [["\\\x0A", "bc"] => ['1;1;css:escape:broken', Delim(1,'\\'), S([2,0]), [[2,1], IDENT_TOKEN, "bc"]]],
+  [["a\\\x0A", "bc"] => ['1;2;css:escape:broken', [1, IDENT_TOKEN, 'a'], Delim(2,'\\'), S([2,0]), [[2,1], IDENT_TOKEN, "bc"]]],
   [['hoge('] => [[1, FUNCTION_TOKEN, 'hoge']]],
   [['ho\\ge('] => [[1, FUNCTION_TOKEN, 'hoge']]],
   [['\\55ho\\ge('] => [[1, FUNCTION_TOKEN, "\x55hoge"]]],
@@ -372,80 +372,102 @@ for my $test (
   [["url(  xy\x09)a"] => [[1, URI_TOKEN, 'xy'], ID(11,'a')]],
   [['u\\rl(  xy  )a'] => [[1, URI_TOKEN, 'xy'], ID(13,'a')]],
   [['url(  /**/xy)a'] => [[1, URI_TOKEN, '/**/xy'], ID(14,'a')]],
-  [['url(a  b  \\) ad)a'] => ['8;css:url:bad', [1, URI_INVALID_TOKEN], ID(17,'a')]],
+  [['url(a  b  \\) ad)a'] => ['1;8;css:url:bad', [1, URI_INVALID_TOKEN], ID(17,'a')]],
   [['url(\xab)'] => [[1, URI_TOKEN, 'xab']]],
   [['url(d\xab)'] => [[1, URI_TOKEN, 'dxab']]],
   [['url(\ab)'] => [[1, URI_TOKEN, "\xAB"]]],
   [['url(\ab f)'] => [[1, URI_TOKEN, "\xABf"]]],
   [['url(\ab\)aa)'] => [[1, URI_TOKEN, "\xAB)aa"]]],
   [['url(\ab )'] => [[1, URI_TOKEN, "\xAB"]]],
-  [['url('] => ['5;css:url:eof', [1, URI_TOKEN, ""]]],
-  [['url(  '] => ['7;css:url:eof', [1, URI_TOKEN, ""]]],
-  [['url( a'] => ['7;css:url:eof', [1, URI_TOKEN, "a"]]],
-  [['url( a  '] => ['9;css:url:eof', [1, URI_TOKEN, "a"]]],
-  [['url( \a  '] => ['10;css:url:eof', [1, URI_TOKEN, "\x0A"]]],
-  [['url(aa\\'] => ['7;css:escape:broken', '9;css:url:eof', [1, URI_TOKEN, "aa\x{FFFD}"]]],
-  [["url(aa\\\x0A"] => ['7;css:escape:broken', [1, URI_INVALID_TOKEN]]],
-  [["url(aa\\\x0A)a"] => ['7;css:escape:broken', [1, URI_INVALID_TOKEN], ID(10,'a')]],
-  [["url(a a\\\x0A)a"] => ['7;css:url:bad', '8;css:escape:broken', [1, URI_INVALID_TOKEN], ID(11,'a')]],
-  [["url(a a\\\x0A\\)c)a"] => ['7;css:url:bad', '8;css:escape:broken', [1, URI_INVALID_TOKEN], ID(14,'a')]],
-  [['url(a(b)c'] => ['6;css:url:bad', [1, URI_INVALID_TOKEN], ID(9,'c')]],
-  [['url(a"b)c'] => ['6;css:url:bad', [1, URI_INVALID_TOKEN], ID(9,'c')]],
-  [["url(a'b)c"] => ['6;css:url:bad', [1, URI_INVALID_TOKEN], ID(9,'c')]],
-  [["url(a\x0Ab)c"] => ['7;css:url:bad', [1, URI_INVALID_TOKEN], ID(9,'c')]],
-  [['url(a a\)bb)c'] => ['7;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'c')]],
-  [['url(a \)b b)c'] => ['7;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'c')]],
-  [['url( aa c '] => ['9;css:url:bad', [1, URI_INVALID_TOKEN]]],
-  [['url( aa c\\'] => ['9;css:url:bad', '10;css:escape:broken', [1, URI_INVALID_TOKEN]]],
+  [['url('] => ['1;5;css:url:eof', [1, URI_TOKEN, ""]]],
+  [['url(  '] => ['1;7;css:url:eof', [1, URI_TOKEN, ""]]],
+  [['url( a'] => ['1;7;css:url:eof', [1, URI_TOKEN, "a"]]],
+  [['url( a  '] => ['1;9;css:url:eof', [1, URI_TOKEN, "a"]]],
+  [['url( \a  '] => ['1;10;css:url:eof', [1, URI_TOKEN, "\x0A"]]],
+  [['url(aa\\'] => ['1;7;css:escape:broken', '1;8;css:url:eof', [1, URI_TOKEN, "aa\x{FFFD}"]]],
+  [["url(aa\\\x0A"] => ['1;7;css:escape:broken', [1, URI_INVALID_TOKEN]]],
+  [["url(aa\\\x0A)a"] => ['1;7;css:escape:broken', [1, URI_INVALID_TOKEN], ID([2,2],'a')]],
+  [["url(a a\\\x0A)a"] => ['1;7;css:url:bad', '1;8;css:escape:broken', [1, URI_INVALID_TOKEN], ID([2,2],'a')]],
+  [["url(a a\\\x0A\\)c)a"] => ['1;7;css:url:bad', '1;8;css:escape:broken', [1, URI_INVALID_TOKEN], ID([2,5],'a')]],
+  [['url(a(b)c'] => ['1;6;css:url:bad', [1, URI_INVALID_TOKEN], ID(9,'c')]],
+  [['url(a"b)c'] => ['1;6;css:url:bad', [1, URI_INVALID_TOKEN], ID(9,'c')]],
+  [["url(a'b)c"] => ['1;6;css:url:bad', [1, URI_INVALID_TOKEN], ID(9,'c')]],
+  [["url(a\x0Ab)c"] => ['2;1;css:url:bad', [1, URI_INVALID_TOKEN], ID([2,3],'c')]],
+  [['url(a a\)bb)c'] => ['1;7;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'c')]],
+  [['url(a \)b b)c'] => ['1;7;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'c')]],
+  [['url( aa c '] => ['1;9;css:url:bad', [1, URI_INVALID_TOKEN]]],
+  [['url( aa c\\'] => ['1;9;css:url:bad', '1;10;css:escape:broken', [1, URI_INVALID_TOKEN]]],
   [['url("")'] => [[1, URI_TOKEN, '']]],
   [['url("abc")'] => [[1, URI_TOKEN, 'abc']]],
   [['url("abc\\z")'] => [[1, URI_TOKEN, 'abcz']]],
   [['url("abc\\z\\123")'] => [[1, URI_TOKEN, "abcz\x{123}"]]],
   [['url( "abc\\z\\123"  )'] => [[1, URI_TOKEN, "abcz\x{123}"]]],
-  [['url( "abc\\z\\123"  '] => ['19;css:url:eof', [1, URI_TOKEN, "abcz\x{123}"]]],
-  [['url( "abc\\z\\123  '] => ['18;css:string:eof', [1, URI_TOKEN, "abcz\x{123} "]]],
-  [['url( "abc\\z\\123'] => ['16;css:string:eof', [1, URI_TOKEN, "abcz\x{123}"]]],
-  [['url( "abc'] => ['10;css:string:eof', [1, URI_TOKEN, "abc"]]],
-  [[qq{url( "abc\x0A}] => ['10;css:string:newline', [1, URI_INVALID_TOKEN], S(10)]],
-  [[qq{url( "abc\\\x0A}] => ['12;css:string:eof', [1, URI_TOKEN, 'abc']]],
-  [[qq{url( "abc\\}.qq{\x0A}] => ['12;css:string:eof', [1, URI_TOKEN, 'abc']]],
-  [['url("abc" a)d'] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
-  [['url("abcd"a)d'] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
-  [['url("abcd""")d'] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(14,'d')]],
-  [[q{url("abcd"'')d}] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(14,'d')]],
-  [[q{url("abcd"\\)'')d}] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(16,'d')]],
+  [['url( "abc\\z\\123"  '] => ['1;19;css:url:eof', [1, URI_TOKEN, "abcz\x{123}"]]],
+  [['url( "abc\\z\\123  '] => ['1;18;css:string:eof', [1, URI_TOKEN, "abcz\x{123} "]]],
+  [['url( "abc\\z\\123'] => ['1;16;css:string:eof', [1, URI_TOKEN, "abcz\x{123}"]]],
+  [['url( "abc'] => ['1;10;css:string:eof', [1, URI_TOKEN, "abc"]]],
+  [[qq{url( "abc\x0A}] => ['2;0;css:string:newline', [1, URI_INVALID_TOKEN], S([2,0])]],
+  [[qq{url( "abc\\\x0A}] => ['2;1;css:string:eof', [1, URI_TOKEN, 'abc']]],
+  [[qq{url( "abc\\}.qq{\x0A}] => ['2;1;css:string:eof', [1, URI_TOKEN, 'abc']]],
+  [['url("abc" a)d'] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
+  [['url("abcd"a)d'] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
+  [['url("abcd""")d'] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(14,'d')]],
+  [[q{url("abcd"'')d}] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(14,'d')]],
+  [[q{url("abcd"\\)'')d}] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(16,'d')]],
   [["url('')"] => [[1, URI_TOKEN, '']]],
   [["url('abc')"] => [[1, URI_TOKEN, 'abc']]],
   [["url('abc\\z')"] => [[1, URI_TOKEN, 'abcz']]],
   [["url('abc\\z\\123')"] => [[1, URI_TOKEN, "abcz\x{123}"]]],
   [["url( 'abc\\z\\123'  )"] => [[1, URI_TOKEN, "abcz\x{123}"]]],
-  [["url( 'abc\\z\\123'  "] => ['19;css:url:eof', [1, URI_TOKEN, "abcz\x{123}"]]],
-  [["url( 'abc\\z\\123  "] => ['18;css:string:eof', [1, URI_TOKEN, "abcz\x{123} "]]],
-  [["url( 'abc\\z\\123"] => ['16;css:string:eof', [1, URI_TOKEN, "abcz\x{123}"]]],
-  [["url( 'abc"] => ['10;css:string:eof', [1, URI_TOKEN, "abc"]]],
-  [[qq{url( 'abc\x0A}] => ['10;css:string:newline', [1, URI_INVALID_TOKEN], S(10)]],
-  [[qq{url( 'abc\\\x0A}] => ['12;css:string:eof', [1, URI_TOKEN, 'abc']]],
-  [[qq{url( 'abc\\}.qq{\x0A}] => ['12;css:string:eof', [1, URI_TOKEN, 'abc']]],
-  [["url('abc' a)d"] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
-  [["url('abcd'a)d"] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
-  [[q{url('abcd'"")d}] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(14,'d')]],
-  [[q{url('abcd''')d}] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(14,'d')]],
-  [[q{url('abcd'\\)'')d}] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(16,'d')]],
-  [[q{url('abcd'\\)"")d}] => ['11;css:url:bad', [1, URI_INVALID_TOKEN], ID(16,'d')]],
+  [["url( 'abc\\z\\123'  "] => ['1;19;css:url:eof', [1, URI_TOKEN, "abcz\x{123}"]]],
+  [["url( 'abc\\z\\123  "] => ['1;18;css:string:eof', [1, URI_TOKEN, "abcz\x{123} "]]],
+  [["url( 'abc\\z\\123"] => ['1;16;css:string:eof', [1, URI_TOKEN, "abcz\x{123}"]]],
+  [["url( 'abc"] => ['1;10;css:string:eof', [1, URI_TOKEN, "abc"]]],
+  [[qq{url( 'abc\x0A}] => ['2;0;css:string:newline', [1, URI_INVALID_TOKEN], S([2,0])]],
+  [[qq{url( 'abc\\\x0A}] => ['2;1;css:string:eof', [1, URI_TOKEN, 'abc']]],
+  [[qq{url( 'abc\\}.qq{\x0A}] => ['2;1;css:string:eof', [1, URI_TOKEN, 'abc']]],
+  [["url('abc' a)d"] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
+  [["url('abcd'a)d"] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
+  [[q{url('abcd'"")d}] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(14,'d')]],
+  [[q{url('abcd''')d}] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(14,'d')]],
+  [[q{url('abcd'\\)'')d}] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(16,'d')]],
+  [[q{url('abcd'\\)"")d}] => ['1;11;css:url:bad', [1, URI_INVALID_TOKEN], ID(16,'d')]],
   [[q{url("a\\"b")c}] => [[1, URI_TOKEN, 'a"b'], ID(12,'c')]],
   [[q{url('a\\'b')c}] => [[1, URI_TOKEN, "a'b"], ID(12,'c')]],
-  [[q{url(a"b\\"c")d}] => ['6;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
-  [[q{url(a"b)c")d}] => ['6;css:url:bad', [1, URI_INVALID_TOKEN], ID(9,'c'), '13;css:string:eof', [10, STRING_TOKEN, ')d']]],
+  [[q{url(a"b\\"c")d}] => ['1;6;css:url:bad', [1, URI_INVALID_TOKEN], ID(13,'d')]],
+  [[q{url(a"b)c")d}] => ['1;6;css:url:bad', [1, URI_INVALID_TOKEN], ID(9,'c'), '1;13;css:string:eof', [10, STRING_TOKEN, ')d']]],
   [[qq{url("a\\\x0Ab")}] => [[1, URI_TOKEN, 'ab']]],
   [[qq{url('a\\\x0Ab')}] => [[1, URI_TOKEN, 'ab']]],
   [[qq{url("a\\}.qq{\x0Ab")}] => [[1, URI_TOKEN, 'ab']]],
   [[qq{url('a\\}.qq{\x0A}.qq{b')}] => [[1, URI_TOKEN, 'ab']]],
   [[qq{url('a\\}.qq{\x0A}.qq{ b')}] => [[1, URI_TOKEN, 'a b']]],
+  [[qq{"a\\\x0Cb"}] => [[1, STRING_TOKEN, "ab"]]],
+  [[qq{"a\\\x0Db"}] => [[1, STRING_TOKEN, "ab"]]],
+  [[qq{"a\\\x0Ab"}] => [[1, STRING_TOKEN, "ab"]]],
+  [[qq{"a\\\x0D\x0Ab"}] => [[1, STRING_TOKEN, "ab"]]],
+  [[qq{"a\\\x0A\x0Db"}] => ['3;0;css:string:newline', [1, INVALID_TOKEN], S([3,0]), ID([3,1],'b'), '3;3;css:string:eof', [[3,2], STRING_TOKEN, '']]],
+  [[qq{"a\\\x09b"}] => [[1, STRING_TOKEN, "a\x09b"]]],
+  [[qq{"a\\\x0Bb"}] => [[1, STRING_TOKEN, "a\x0Bb"]]],
+  [[qq{a\\x\x0Ab}] => [ID(1,"ax"), S([2,0]), ID([2,1],'b')]],
+  [[qq{a\\1\x0Ab}] => [ID(1,"a\x01b")]],
+  [[qq{a\\1\x0D\x0Ab}] => [ID(1,"a\x01b")]],
+  [[qq{a\\1\x0Bb}] => [ID(1,"a\x01"), Delim(4,"\x0B"), ID(5,'b')]],
+  [[qq{a\\1\x0Cb}] => [ID(1,"a\x01b")]],
+  [[qq{a\\1\x0Db}] => [ID(1,"a\x01b")]],
+  [[qq{a\\1\x09b}] => [ID(1,"a\x01b")]],
+  [[qq{url(\x09\x0A\x0D\x0D\x0A\x0Caaaa\x0A\x0C\x0D\x0D\x0A\x09)}] => [[1, URI_TOKEN, 'aaaa']]],
+  [[qq{\x00}] => ['1;1;NULL', ID(1,"\x{FFFD}")]],
+  [[qq{ab\x00c}] => ['1;3;NULL', ID(1,"ab\x{FFFD}c")]],
+  [[qq{12\x00}] => ['1;3;NULL', Dim(1,'12',"\x{FFFD}")]],
+  [[qq{'12\x00'}] => ['1;4;NULL', [1, STRING_TOKEN, "12\x{FFFD}"]]],
+  [[qq{\\\x00}] => ['1;2;NULL', ID(1,"\x{FFFD}")]],
 ) {
   for (@{$test->[1]}) {
     next unless ref $_;
     my $f = $_->[3];
-    $_ = {line => 1, column => $_->[0], type => $_->[1], value => $_->[2]};
+    $_ = {line => ref $_->[0] ? $_->[0]->[0] : 1,
+          column => ref $_->[0] ? $_->[0]->[1] : $_->[0],
+          type => $_->[1], value => $_->[2]};
     delete $_->{line} if $_->{type} == ABORT_TOKEN;
     delete $_->{value} unless defined $_->{value};
     if ($_->{type} == HASH_TOKEN) {
@@ -473,37 +495,25 @@ for my $test (
 
     my $tokens = [];
     my $tt = do {
-      my @s = @{$test->[0]};
-      my $s = shift @s;
-      pos $s = 0;
-      my $column = 1;
       my $tt = Web::CSS::Tokenizer->new;
       $tt->onerror (sub {
         my %args = @_;
-        push @$tokens, $args{column} . ';' . $args{type};
+        push @$tokens, join ';', $args{line}, $args{column}, $args{type};
       });
-      $tt->{get_char} = sub ($) {
-        if (defined $s and (pos $s < length $s)) {
-          my $c = ord substr $s, pos ($s)++, 1;
-          $_[0]->{line_prev} = 1;
-          $_[0]->{column_prev} = $_[0]->{column};
-          $_[0]->{line} = 1;
-          $_[0]->{column} = $column++;
-          return $c;
-        } elsif (defined $s) {
-          $s = shift @s;
-          pos $s = 0 if defined $s;
-          return -3; # ABORT_CHAR
-        } else {
-          $_[0]->{line_prev} = 1;
-          $_[0]->{column_prev} = $_[0]->{column};
-          $_[0]->{line} = 1;
-          $_[0]->{column} = $column++;
-          return -1;
-        }
-      }; # $tt->{get_char}
-      $tt->{line} = 1;
-      $tt->{column} = $column;
+
+      $tt->{line_prev} = $tt->{line} = 1;
+      $tt->{column_prev} = -1;
+      $tt->{column} = 0;
+
+      $tt->{chars} = [];
+      $tt->{chars_pos} = 0;
+      delete $tt->{chars_was_cr};
+      my @s = @{$test->[0]};
+      $tt->{chars_pull_next} = sub {
+        my $s = shift @s;
+        push @{$tt->{chars}}, split //, $s if defined $s;
+        return defined $s;
+      };
       $tt->init_tokenizer;
       $tt;
     };

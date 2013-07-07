@@ -511,8 +511,7 @@ for my $test (
     {
       my $t = $tt->get_next_token;
       last if $t->{type} == EOF_TOKEN;
-      delete $t->{hyphen}; # XXX
-      delete $t->{has_escape}; # XXX
+      delete $t->{hyphen};
       push @$tokens, $t;
       redo;
     }

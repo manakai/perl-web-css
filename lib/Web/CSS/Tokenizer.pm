@@ -226,7 +226,7 @@ sub import ($;@) {
 ## ------ Initialization ------
 
 sub new ($) {
-  my $self = bless {token => [], get_char => sub { -1 }}, shift;
+  my $self = bless {token => [], get_char => sub { EOF_CHAR }}, shift;
   return $self;
 } # new
 
@@ -235,6 +235,7 @@ sub init ($) {
   delete $self->{get_char};
   delete $self->{context};
   delete $self->{onerror};
+  delete $self->{t};
 } # init
 
 ## ------ Parameters ------
@@ -370,6 +371,29 @@ sub onerror ($;$) {
 ## URI_UNQUOTED_STATE
 ## BEFORE_TOKEN_STATE
 
+## A token is represented by a hash reference, containing some of
+## following key-value pairs:
+##
+## - type:      Token type, represented by one of *_TOKEN constants.
+## - value:     The value of the token, if any.  The value for <dimension>
+##              is the unit component.  Any escape is unescaped.
+## - number:    The number of the token for <number>, <dimension>, or
+##              <percentage>.  It might contain sign, scientific notation,
+##              decimal point, and/or leading zeros.
+## - line:      The line number of the first character of the token.
+## - column:    The column number of the first character of the token.
+## - not_ident: Whether the <hash> does not contain an identifier or not.
+## - start:     The code point of the start of the range of <unicode-range>.
+## - end:       The code point of the end of the range of <unicode-range>.
+## - hyphen:    An internal flag for leading hyphen of names.  Parsers must
+##              not use this flag.
+##
+## <number>/<dimension>/<percentage>'s type flag is represented by
+## |$t->{number} =~ /[.Ee]/ ? 'number' : 'integer'|.
+##
+## The start and end of the range for a <unicode-range> whose range is
+## empty is set to -1.
+
 sub init_tokenizer ($) {
   my $self = shift;
   $self->{state} = BEFORE_TOKEN_STATE;
@@ -379,11 +403,7 @@ sub init_tokenizer ($) {
   #              number => number,
   #              line => ..., column => ...,
   #              hyphen => bool,
-  #              not_ident => bool}; # HASH_TOKEN does not contain an identifier
-
-  ## <number>/<dimension>'s type flag is represented by |$t->{number}
-  ## =~ /[.Ee]/ ? 'number' : 'integer'|.
-
+  #              not_ident => bool};
 } # init_tokenizer
 
 sub get_next_token ($) {
@@ -881,7 +901,6 @@ sub get_next_token ($) {
     } elsif ($self->{state} == ESCAPE_OPEN_STATE) {
       if (IS_HEX_DIGIT->{$self->{c}}) {
         ## NOTE: second character of |unicode| in |escape|.
-        $self->{t}->{has_escape} = 1;
         $self->{escape_value} = chr $self->{c};
         $self->{state} = ESCAPE_STATE;
         $self->{c} = $self->{get_char}->($self);
@@ -889,7 +908,6 @@ sub get_next_token ($) {
       } elsif ($self->{c} == 0x000A or # \n
                $self->{c} == 0x000C or # \f # XXX
                $self->{c} == 0x000D) { # \r # XXX
-        $self->{t}->{has_escape} = 1;
         if (defined $self->{end_char}) { # === ESCAPE_MODE_STRING/ string in ESCAPE_MODE_URL
           ## Note: In |nl| in ... in |string| or |ident|.
           if ($self->{c} == 0x000D) { # XXX
@@ -997,14 +1015,12 @@ sub get_next_token ($) {
                          uri => $self->context->urlref,
                          line => $self->{line_prev},
                          column => $self->{column_prev});
-        $self->{t}->{has_escape} = 1;
         $self->{t}->{value} .= "\x{FFFD}";
         $self->{state} = EM2STATE->{$self->{escape_mode}};
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
         ## NOTE: second character of |escape|.
-        $self->{t}->{has_escape} = 1;
         $self->{t}->{value} .= chr $self->{c};
         $self->{state} = EM2STATE->{$self->{escape_mode}};
         $self->{c} = $self->{get_char}->($self);

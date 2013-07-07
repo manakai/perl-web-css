@@ -1606,7 +1606,21 @@ sub get_next_token ($) {
       $v = delete $self->{t}->{value};
       $v =~ tr/?/f/;
       $self->{t}->{end} = hex $v;
-      # XXX
+      if (0x10FFFF < $self->{t}->{start}) {
+        $self->onerror->(type => 'css:unicode-range:start not unicode', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{t}->{line},
+                         column => $self->{t}->{column});
+        $self->{t}->{start} = $self->{t}->{end} = -1;
+      } elsif (0x10FFFF < $self->{t}->{end}) {
+        $self->onerror->(type => 'css:unicode-range:end not unicode', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{t}->{line},
+                         column => $self->{t}->{column});
+        $self->{t}->{end} = 0x10FFFF;
+      }
       $self->{state} = BEFORE_TOKEN_STATE;
       return $self->{t};
       #redo A;
@@ -1617,6 +1631,14 @@ sub get_next_token ($) {
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } else {
+        if (0x10FFFF < $self->{t}->{start}) {
+          $self->onerror->(type => 'css:unicode-range:start not unicode', # XXX
+                           level => 'w',
+                           uri => $self->context->urlref,
+                           line => $self->{t}->{line},
+                           column => $self->{t}->{column});
+          $self->{t}->{start} = $self->{t}->{end} = -1;
+        }
         $self->{state} = BEFORE_TOKEN_STATE;
         ## Reconsume the current input character.
         return $self->{t};
@@ -1653,8 +1675,29 @@ sub get_next_token ($) {
         #
       }
 
-      # XXX
       $self->{t}->{end} = hex delete $self->{t}->{value};
+      if (0x10FFFF < $self->{t}->{start}) {
+        $self->onerror->(type => 'css:unicode-range:start not unicode', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{t}->{line},
+                         column => $self->{t}->{column});
+        $self->{t}->{start} = $self->{t}->{end} = -1;
+      } elsif ($self->{t}->{end} < $self->{t}->{start}) {
+        $self->onerror->(type => 'css:unicode-range:start gt end', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{t}->{line},
+                         column => $self->{t}->{column});
+        $self->{t}->{start} = $self->{t}->{end} = -1;
+      } elsif (0x10FFFF < $self->{t}->{end}) {
+        $self->onerror->(type => 'css:unicode-range:end not unicode', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{t}->{line},
+                         column => $self->{t}->{column});
+        $self->{t}->{end} = 0x10FFFF;
+      }
       $self->{state} = BEFORE_TOKEN_STATE;
       return $self->{t};
       #redo A;

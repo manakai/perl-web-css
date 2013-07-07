@@ -106,7 +106,9 @@ my $data_d = file (__FILE__)->dir->parent->parent
         $p->onerror (sub {
           my (%opt) = @_;
           push @actual_error, join ';',
-              '', $opt{token}->{line}, $opt{token}->{column},
+              '',
+              $opt{token}->{line} || $opt{line} || 0,
+              $opt{token}->{column} || $opt{column} || 0,
               $opt{level},
               $opt{type} .
               (defined $opt{text} ? ';'.$opt{text} : '');

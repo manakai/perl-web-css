@@ -58,8 +58,8 @@ sub onerror ($;$) {
     Carp::carp
         (sprintf 'Document <%s>: Line %d column %d (token %s): %s%s',
              ${$opt{uri}},
-             $opt{token}->{line},
-             $opt{token}->{column},
+             defined $opt{line} ? $opt{line} : $opt{token}->{line},
+             defined $opt{column} ? $opt{column} : $opt{token}->{column},
              Web::CSS::Tokenizer->serialize_token ($opt{token}),
              $opt{type},
              defined $opt{value} ? " (value $opt{value})" : '');

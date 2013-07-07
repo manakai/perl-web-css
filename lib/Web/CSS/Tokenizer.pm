@@ -123,14 +123,17 @@ sub UNICODE_QUESTION_STATE () { 38 }
 sub UNICODE_BEFORE_HYPHEN_STATE () { 39 }
 sub UNICODE_BEFORE_END_STATE () { 40 }
 sub UNICODE_END_STATE () { 41 }
+sub BAD_URL_STATE () { 42 }
 
 sub ESCAPE_MODE_IDENT () { 1 }
 sub ESCAPE_MODE_URL () { 2 }
-sub ESCAPE_MODE_STRING () { 3 }
+sub ESCAPE_MODE_BAD_URL () { 3 }
+sub ESCAPE_MODE_STRING () { 4 }
 
 sub EM2STATE () { {
   ESCAPE_MODE_IDENT, NAME_STATE,
   ESCAPE_MODE_URL, URI_UNQUOTED_STATE,
+  ESCAPE_MODE_BAD_URL, BAD_URL_STATE,
   ESCAPE_MODE_STRING, STRING_STATE,
 } }
 
@@ -145,8 +148,8 @@ sub HASH_TOKEN               () {  3 } # <hash>
 sub FUNCTION_TOKEN           () {  4 } # <function>
 sub URI_TOKEN                () {  5 } # <url>
 sub URI_INVALID_TOKEN        () {  6 } # <bad-url>
-sub URI_PREFIX_TOKEN         () {  7 }
-sub URI_PREFIX_INVALID_TOKEN () {  8 }
+#sub URI_PREFIX_TOKEN         () {  7 }
+#sub URI_PREFIX_INVALID_TOKEN () {  8 }
 sub STRING_TOKEN             () {  9 } # <string>
 sub INVALID_TOKEN            () { 10 } # <bad-string>
 sub NUMBER_TOKEN             () { 11 } # <number>
@@ -187,7 +190,7 @@ sub COLUMN_TOKEN             () { 46 } # <column>          ||
 sub ABORT_TOKEN              () { 47 }
 
 our @TokenName = qw(
-  0 IDENT ATKEYWORD HASH FUNCTION URI URI_INVALID URI_PREFIX URI_PREFIX_INVALID
+  0 IDENT ATKEYWORD HASH FUNCTION URI URI_INVALID
   STRING INVALID NUMBER DIMENSION PERCENTAGE UNICODE_RANGE
   0 DELIM PLUS GREATER COMMA TILDE DASHMATCH
   PREFIXMATCH SUFFIXMATCH SUBSTRINGMATCH INCLUDES SEMICOLON
@@ -198,7 +201,7 @@ our @TokenName = qw(
 
 our @EXPORT = qw(
   IDENT_TOKEN ATKEYWORD_TOKEN HASH_TOKEN FUNCTION_TOKEN URI_TOKEN
-  URI_INVALID_TOKEN URI_PREFIX_TOKEN URI_PREFIX_INVALID_TOKEN
+  URI_INVALID_TOKEN
   STRING_TOKEN INVALID_TOKEN NUMBER_TOKEN DIMENSION_TOKEN PERCENTAGE_TOKEN
   UNICODE_RANGE_TOKEN DELIM_TOKEN PLUS_TOKEN GREATER_TOKEN COMMA_TOKEN
   TILDE_TOKEN DASHMATCH_TOKEN PREFIXMATCH_TOKEN SUFFIXMATCH_TOKEN
@@ -734,13 +737,9 @@ sub get_next_token ($) {
       } elsif ($self->{c} == 0x0028 and # (
                $self->{t}->{type} == IDENT_TOKEN) { # (
         my $func_name = $self->{t}->{value};
-        $func_name =~ tr/A-Z/a-z/; ## TODO: Unicode or ASCII case-insensitive?
-        if ($func_name eq 'url' or $func_name eq 'url-prefix') {
-          if ($self->{t}->{has_escape}) {
-            ## TODO: warn
-          }
-          $self->{t}->{type}
-              = $func_name eq 'url' ? URI_TOKEN : URI_PREFIX_TOKEN;
+        $func_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($func_name eq 'url') {
+          $self->{t}->{type} = URI_TOKEN;
           $self->{t}->{value} = '';
           $self->{state} = URI_BEFORE_WSP_STATE;
           $self->{c} = $self->{get_char}->($self);
@@ -761,36 +760,10 @@ sub get_next_token ($) {
         return $self->{t};
         #redo A;
       }
+
     } elsif ($self->{state} == URI_BEFORE_WSP_STATE) {
-      while ({
-                0x0020 => 1, # SP
-                0x0009 => 1, # \t
-                0x000D => 1, # \r
-                0x000A => 1, # \n
-                0x000C => 1, # \f
-             }->{$self->{c}}) {
-        $self->{c} = $self->{get_char}->($self);
-      }
-      if ($self->{c} == -1) {
-        $self->{t}->{type} = {
-            URI_TOKEN, URI_INVALID_TOKEN,
-            URI_INVALID_TOKEN, URI_INVALID_TOKEN,
-            URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-            URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
-        }->{$self->{t}->{type}};        
-        $self->{state} = BEFORE_TOKEN_STATE;
-        $self->{c} = $self->{get_char}->($self);
-        return $self->{t};
-        #redo A;
-      } elsif ($self->{c} < 0x0020 or $self->{c} == 0x0028) { # C0 or (
-        ## TODO: Should we consider matches of "(" and ")"?
-        $self->{t}->{type} = {
-            URI_TOKEN, URI_INVALID_TOKEN,
-            URI_INVALID_TOKEN, URI_INVALID_TOKEN,
-            URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-            URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
-        }->{$self->{t}->{type}};
-        $self->{state} = URI_UNQUOTED_STATE;
+      if (IS_WHITE_SPACE->{$self->{c}}) {
+        ## Stay in this state.
         $self->{c} = $self->{get_char}->($self);
         redo A;
       } elsif ($self->{c} == 0x0022 or $self->{c} == 0x0027) { # " or '
@@ -798,64 +771,50 @@ sub get_next_token ($) {
         $self->{end_char} = $self->{c};
         $self->{c} = $self->{get_char}->($self);
         redo A;
-      } elsif ($self->{c} == 0x0029) { # )
-        $self->{state} = BEFORE_TOKEN_STATE;
-        $self->{c} = $self->{get_char}->($self);
-        return $self->{t};
-        #redo A;
-      } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE;
-        $self->{escape_mode} = ESCAPE_MODE_URL;
-        $self->{c} = $self->{get_char}->($self);
-        redo A;
       } else {
-        $self->{t}->{value} .= chr $self->{c};
         $self->{state} = URI_UNQUOTED_STATE;
-        $self->{c} = $self->{get_char}->($self);
+        ## Reconsume the current input character.
         redo A;
       }
     } elsif ($self->{state} == URI_UNQUOTED_STATE) {
-      if ({
-           0x0020 => 1, # SP
-           0x0009 => 1, # \t
-           0x000D => 1, # \r
-           0x000A => 1, # \n
-           0x000C => 1, # \f
-          }->{$self->{c}}) {
+      if (IS_WHITE_SPACE->{$self->{c}}) {
         $self->{state} = URI_AFTER_WSP_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
-      } elsif ($self->{c} == -1) {
-        $self->{t}->{type} = {
-            URI_TOKEN, URI_INVALID_TOKEN,
-            URI_INVALID_TOKEN, URI_INVALID_TOKEN,
-            URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-            URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
-        }->{$self->{t}->{type}};        
+      } elsif ($self->{c} == 0x0029) { # )
+        $self->normalize_surrogate ($self->{t}->{value});
         $self->{state} = BEFORE_TOKEN_STATE;
         $self->{c} = $self->{get_char}->($self);
         return $self->{t};
         #redo A;
-      } elsif ($self->{c} < 0x0020 or {
-          0x0022 => 1, # "
-          0x0027 => 1, # '
-          0x0028 => 1, # (
-      }->{$self->{c}}) { # C0 or (
-        ## TODO: Should we consider matches of "(" and ")", '"', or "'"?
-        $self->{t}->{type} = {
-            URI_TOKEN, URI_INVALID_TOKEN,
-            URI_INVALID_TOKEN, URI_INVALID_TOKEN,
-            URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-            URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
-        }->{$self->{t}->{type}};
-        # stay in the state.
+      } elsif ($self->{c} == EOF_CHAR) {
+        $self->onerror->(type => 'css:url:eof', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{line},
+                         column => $self->{column});
+        $self->normalize_surrogate ($self->{t}->{value});
+        $self->{state} = BEFORE_TOKEN_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        return $self->{t};
+        #redo A;
+      } elsif ({
+        0x0022 => 1, # "
+        0x0027 => 1, # '
+        0x0028 => 1, # (
+
+        ## Non-printable character
+        0x007F => 1, # DELETE
+      }->{$self->{c}} or $self->{c} < 0x0020) { # except for U+0009-000C,U+000D
+        $self->onerror->(type => 'css:url:bad', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{line},
+                         column => $self->{column});
+        $self->{t}->{type} = URI_INVALID_TOKEN;
+        $self->{state} = BAD_URL_STATE;
         $self->{c} = $self->{get_char}->($self);
         redo A;
-      } elsif ($self->{c} == 0x0029) { # )
-        $self->{state} = BEFORE_TOKEN_STATE;
-        $self->{c} = $self->{get_char}->($self);
-        return $self->{t};
-        #redo A;
       } elsif ($self->{c} == 0x005C) { # \
         $self->{state} = ESCAPE_OPEN_STATE;
         $self->{escape_mode} = ESCAPE_MODE_URL;
@@ -863,52 +822,59 @@ sub get_next_token ($) {
         redo A;
       } else {
         $self->{t}->{value} .= chr $self->{c};
-        # stay in the state.
+        ## Stay in this state.
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      }
+    } elsif ($self->{state} == BAD_URL_STATE) {
+      if ($self->{c} == 0x0029 or # )
+          $self->{c} == EOF_CHAR) {
+        delete $self->{t}->{value};
+        $self->{state} = BEFORE_TOKEN_STATE;
+        $self->{c} = $self->{get_char}->($self);
+        return $self->{t};
+        #redo A;
+      } elsif ($self->{c} == 0x005C) { # \
+        $self->{state} = ESCAPE_OPEN_STATE;
+        $self->{escape_mode} = ESCAPE_MODE_BAD_URL;
+        $self->{c} = $self->{get_char}->($self);
+        redo A;
+      } else {
+        ## Stay in this state.
         $self->{c} = $self->{get_char}->($self);
         redo A;
       }
     } elsif ($self->{state} == URI_AFTER_WSP_STATE) {
-      if ({
-           0x0020 => 1, # SP
-           0x0009 => 1, # \t
-           0x000D => 1, # \r
-           0x000A => 1, # \n
-           0x000C => 1, # \f
-          }->{$self->{c}}) {
-        # stay in the state.
+      if (IS_WHITE_SPACE->{$self->{c}}) {
+        ## Stay in this state.
         $self->{c} = $self->{get_char}->($self);
         redo A;
-      } elsif ($self->{c} == -1) {
-        $self->{t}->{type} = {
-            URI_TOKEN, URI_INVALID_TOKEN,
-            URI_INVALID_TOKEN, URI_INVALID_TOKEN,
-            URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-            URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
-        }->{$self->{t}->{type}};        
+      } elsif ($self->{c} == EOF_CHAR) {
+        $self->onerror->(type => 'css:url:eof', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{line},
+                         column => $self->{column});
+        $self->normalize_surrogate ($self->{t}->{value});
         $self->{state} = BEFORE_TOKEN_STATE;
         $self->{c} = $self->{get_char}->($self);
         return $self->{t};
         #redo A;
       } elsif ($self->{c} == 0x0029) { # )
+        $self->normalize_surrogate ($self->{t}->{value});
         $self->{state} = BEFORE_TOKEN_STATE;
         $self->{c} = $self->{get_char}->($self);
         return $self->{t};
         #redo A;
-      } elsif ($self->{c} == 0x005C) { # \
-        $self->{state} = ESCAPE_OPEN_STATE;
-        $self->{escape_mode} = ESCAPE_MODE_URL;
-        $self->{c} = $self->{get_char}->($self);
-        redo A;
       } else {
-        ## TODO: Should we consider matches of "(" and ")", '"', or "'"?
-        $self->{t}->{type} = {
-            URI_TOKEN, URI_INVALID_TOKEN,
-            URI_INVALID_TOKEN, URI_INVALID_TOKEN,
-            URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-            URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
-        }->{$self->{t}->{type}};
-        # stay in the state.
-        $self->{c} = $self->{get_char}->($self);
+        $self->onerror->(type => 'css:url:bad', # XXX
+                         level => 'w',
+                         uri => $self->context->urlref,
+                         line => $self->{line},
+                         column => $self->{column});
+        $self->{t}->{type} = URI_INVALID_TOKEN;
+        $self->{state} = BAD_URL_STATE;
+        ## Reconsume the current input character.
         redo A;
       }
 
@@ -923,13 +889,8 @@ sub get_next_token ($) {
       } elsif ($self->{c} == 0x000A or # \n
                $self->{c} == 0x000C or # \f # XXX
                $self->{c} == 0x000D) { # \r # XXX
-        $self->onerror->(type => 'css:escape:broken', # XXX
-                         level => 'm',
-                         uri => $self->context->urlref,
-                         line => $self->{line_prev},
-                         column => $self->{column_prev});
         $self->{t}->{has_escape} = 1;
-        if (defined $self->{end_char}) { # === ESCAPE_MODE_STRING
+        if (defined $self->{end_char}) { # === ESCAPE_MODE_STRING/ string in ESCAPE_MODE_URL
           ## Note: In |nl| in ... in |string| or |ident|.
           if ($self->{c} == 0x000D) { # XXX
             $self->{state} = STRING_STATE;
@@ -938,23 +899,23 @@ sub get_next_token ($) {
           }
           $self->{c} = $self->{get_char}->($self);
           redo A;
-        } elsif ($self->{escape_mode} == ESCAPE_MODE_URL) {
-          ## NOTE: In |escape| in |URI|.
-          $self->{t}->{type} = {
-              URI_TOKEN, URI_INVALID_TOKEN,
-              URI_INVALID_TOKEN, URI_INVALID_TOKEN,
-              URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-              URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
-          }->{$self->{t}->{type}};
-          $self->{t}->{value} .= chr $self->{c};
-          if ($self->{c} == 0x000D) { # XXX
-            $self->{state} = ESCAPE_BEFORE_LF_STATE;
-          } else {
-            $self->{state} = URI_UNQUOTED_STATE;
-          }
+        } elsif ($self->{escape_mode} == ESCAPE_MODE_URL or
+                 $self->{escape_mode} == ESCAPE_MODE_BAD_URL) {
+          $self->onerror->(type => 'css:escape:broken', # XXX
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           line => $self->{line_prev},
+                           column => $self->{column_prev});
+          $self->{t}->{type} = URI_INVALID_TOKEN;
+          $self->{state} = BAD_URL_STATE;
           $self->{c} = $self->{get_char}->($self);
           redo A;
         } else { # === ESCAPE_MODE_IDENT
+          $self->onerror->(type => 'css:escape:broken', # XXX
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           line => $self->{line_prev},
+                           column => $self->{column_prev});
           if ($self->{t}->{type} == DIMENSION_TOKEN) {
             if ($self->{t}->{hyphen} and $self->{t}->{value} eq '-') {
               $self->{state} = BEFORE_TOKEN_STATE;
@@ -1160,9 +1121,8 @@ sub get_next_token ($) {
           INVALID_TOKEN, INVALID_TOKEN,
           URI_TOKEN, URI_INVALID_TOKEN,
           URI_INVALID_TOKEN, URI_INVALID_TOKEN,
-          URI_PREFIX_TOKEN, URI_PREFIX_INVALID_TOKEN,
-          URI_PREFIX_INVALID_TOKEN, URI_PREFIX_INVALID_TOKEN,
         }->{$self->{t}->{type}};
+        delete $self->{t}->{value};
         $self->{state} = BEFORE_TOKEN_STATE;
         # reconsume
         return $self->{t};
@@ -1726,10 +1686,6 @@ sub serialize_token ($$) {
     return 'url(' . $t->{value} . ')';
   } elsif ($t->{type} == URI_INVALID_TOKEN) {
     return 'url(' . $t->{value};
-  } elsif ($t->{type} == URI_PREFIX_TOKEN) {
-    return 'url-prefix(' . $t->{value} . ')';
-  } elsif ($t->{type} == URI_PREFIX_INVALID_TOKEN) {
-    return 'url-prefix(' . $t->{value};
   } elsif ($t->{type} == STRING_TOKEN) {
     return '"' . $t->{value} . '"';
   } elsif ($t->{type} == INVALID_TOKEN) {

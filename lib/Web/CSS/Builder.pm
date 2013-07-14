@@ -26,6 +26,23 @@ sub BAD_DECLARATION_STATE () { 8 }
 sub DECLARATION_COLON_STATE () { 9 }
 sub FUNCTION_STATE () { 10 }
 
+## <http://suika.suikawiki.org/~wakaba/wiki/sw/n/rule#anchor-3>
+sub AtBlockState () {
+  {
+    # <stylesheet>
+    media => LIST_OF_RULES_STATE,
+    '-moz-document' => LIST_OF_RULES_STATE,
+
+    # <rule-list>
+    keyframes => LIST_OF_RULES_STATE,
+
+    # <declaration-list>
+    'font-face' => LIST_OF_DECLARATIONS_STATE,
+    page => LIST_OF_DECLARATIONS_STATE,
+    global => LIST_OF_DECLARATIONS_STATE,
+  }
+}
+
 ## ------ Construct types ------
 
 sub RULE_LIST_CONSTRUCT () { 10000 + 1 }
@@ -41,7 +58,7 @@ sub init_builder ($) {
   $self->{constructs} = []; ## Stack of open constructs
   ## bs Builder's state
   ## bt Builder's current token
-  delete $self->{top_level_flag}; ## Top-level flag
+  delete $self->{top_level_flag}; ## Top-level flag # XXX
   delete $self->{parsed_construct};
 } # init_builder
 
@@ -53,6 +70,13 @@ sub init_builder ($) {
 ##     AT_RULE_CONSTRUCT         - The first <at-keyword> token.
 ##     DECLARATION_CONSTRUCT     - The name token.
 ##     BLOCK_CONSTRUCT           - The opening token for the block or function.
+##   at
+##     BLOCK_CONSTRUCT & name.type == LBRACE_TOKEN - The lowercase-normalized
+##                                 name of the at-rule.
+##   parent_at
+##     QUALIFIED_RULE_CONSTRUCT  - The lowercase-normalized name of the at-rule
+##                                 in which the qualified rule is directly
+##                                 contained.
 ##   value
 ##     RULE_LIST_CONSTRUCt       - Rules in the list of rules.
 ##     AT_RULE_CONSTRUCT         - Tokens and/or constructs after the
@@ -147,8 +171,29 @@ sub _consume_tokens ($) {
         $self->{bt} = $self->get_next_token;
         redo A;
       } elsif ($self->{bt}->{type} == EOF_TOKEN) {
-        return;
-        #redo A;
+        if (@{$self->{prev_bs}}) {
+          $self->{onerror}->(type => 'css:block:eof', # XXX
+                             level => 'w',
+                             uri => $self->context->urlref,
+                             token => $self->{bt})
+              unless $self->{eof_error_reported};
+          $self->{eof_error_reported} = 1;
+          $self->end_construct;
+          pop @{$self->{constructs}};
+          $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
+          ## Reconsume the current token.
+          redo A;
+        } else {
+          return;
+          #redo A;
+        }
+      } elsif (defined $self->{constructs}->[-1]->{end_type} and
+               $self->{bt}->{type} == $self->{constructs}->[-1]->{end_type}) {
+        $self->end_construct;
+        pop @{$self->{constructs}};
+        $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
+        $self->{bt} = $self->get_next_token;
+        redo A;
       } elsif ($self->{top_level_flag} and
                ($self->{bt}->{type} == CDO_TOKEN or
                 $self->{bt}->{type} == CDC_TOKEN)) {
@@ -159,8 +204,13 @@ sub _consume_tokens ($) {
         my $construct = {type => QUALIFIED_RULE_CONSTRUCT,
                          line => $self->{bt}->{line},
                          column => $self->{bt}->{column},
+                         parent_at => '',
                          value => [],
                          delim_type => LBRACE_TOKEN};
+        if ($self->{constructs}->[-1]->{type} == BLOCK_CONSTRUCT and
+            defined $self->{constructs}->[-1]->{at}) {
+          $construct->{parent_at} = $self->{constructs}->[-1]->{at};
+        }
         push @{$self->{constructs}->[-1]->{value}}, $construct;
         push @{$self->{constructs}}, $construct;
         $self->start_construct;
@@ -200,7 +250,7 @@ sub _consume_tokens ($) {
         redo A;
       } else {
         ## At this point $self->{constructs}->[-1]->{delim_type} is
-        ## set to LBRACE_TOKEN.  (Willful violation)
+        ## set to LBRACE_TOKEN.
         push @{$self->{prev_bs}}, $self->{bs};
         $self->{bs} = COMPONENT_VALUE_STATE;
         ## Reconsume the current token.
@@ -234,13 +284,15 @@ sub _consume_tokens ($) {
         my $construct = {type => BLOCK_CONSTRUCT,
                          line => $self->{bt}->{line},
                          column => $self->{bt}->{column},
+                         at => $self->{constructs}->[-1]->{name}->{value},
                          name => $self->{bt},
                          end_type => RBRACE_TOKEN,
                          value => []};
+        $construct->{at} =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
         push @{$self->{constructs}->[-1]->{value}}, $construct;
+        $self->{bs} = AtBlockState->{$construct->{at}} || SIMPLE_BLOCK_STATE;
         $self->{constructs}->[-1] = $construct;
         $self->start_construct;
-        $self->{bs} = SIMPLE_BLOCK_STATE;
         $self->{bt} = $self->get_next_token;
         redo A;
       } elsif ($self->{bt}->{type} == LBRACKET_TOKEN or

@@ -218,16 +218,18 @@ sub import ($;@) {
 ## ------ Initialization ------
 
 sub new ($) {
-  my $self = bless {token => []}, shift;
+  my $self = bless {}, shift;
   return $self;
 } # new
 
 sub init ($) {
   my $self = $_[0];
+  delete $self->{chars};
   delete $self->{chars_pull_next};
   delete $self->{context};
   delete $self->{onerror};
   delete $self->{t};
+  delete $self->{eof_error_reported};
 } # init
 
 ## ------ Parameters ------
@@ -442,7 +444,8 @@ sub _set_nc ($) {
 ## empty is set to -1.
 
 sub init_tokenizer ($) {
-  my $self = shift;
+  my $self = $_[0];
+  $self->{token} = [];
   $self->{state} = BEFORE_TOKEN_STATE;
   $self->_set_nc;
   #$self->{t} = {type => token-type,
@@ -451,6 +454,7 @@ sub init_tokenizer ($) {
   #              line => ..., column => ...,
   #              hyphen => bool,
   #              not_ident => bool};
+  delete $self->{eof_error_reported};
 } # init_tokenizer
 
 sub get_next_token ($) {
@@ -860,6 +864,7 @@ sub get_next_token ($) {
                          uri => $self->context->urlref,
                          line => $self->{line},
                          column => $self->{column});
+        $self->{eof_error_reported} = 1;
         $self->normalize_surrogate ($self->{t}->{value});
         $self->{state} = BEFORE_TOKEN_STATE;
         $self->_set_nc;
@@ -922,6 +927,7 @@ sub get_next_token ($) {
                          uri => $self->context->urlref,
                          line => $self->{line},
                          column => $self->{column});
+        $self->{eof_error_reported} = 1;
         $self->normalize_surrogate ($self->{t}->{value});
         $self->{state} = BEFORE_TOKEN_STATE;
         $self->_set_nc;
@@ -1134,6 +1140,7 @@ sub get_next_token ($) {
                          uri => $self->context->urlref,
                          line => $self->{line},
                          column => $self->{column});
+        $self->{eof_error_reported} = 1;
         $self->normalize_surrogate ($self->{t}->{value});
         $self->{state} = BEFORE_TOKEN_STATE;
         delete $self->{end_char};

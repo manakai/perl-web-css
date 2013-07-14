@@ -42,6 +42,17 @@ sub AtBlockState () {
     global => LIST_OF_DECLARATIONS_STATE,
   }
 }
+sub QualifiedBlockState () {
+  {
+    # <stylesheet> > <declaration-list>
+    '' => LIST_OF_DECLARATIONS_STATE,
+    media => LIST_OF_DECLARATIONS_STATE,
+    '-moz-document' => LIST_OF_DECLARATIONS_STATE,
+
+    # <declaration-list>
+    keyframes => LIST_OF_DECLARATIONS_STATE,
+  }
+}
 
 ## ------ Construct types ------
 
@@ -58,7 +69,6 @@ sub init_builder ($) {
   $self->{constructs} = []; ## Stack of open constructs
   ## bs Builder's state
   ## bt Builder's current token
-  delete $self->{top_level_flag}; ## Top-level flag # XXX
   delete $self->{parsed_construct};
 } # init_builder
 
@@ -95,6 +105,8 @@ sub init_builder ($) {
 ##   delim_type
 ##     DECLARATION_CONSTRUCT     - The type of the token closing the
 ##                                 declaration.
+##   top_level
+##     RULE_LIST_CONSTRUCT       - The top-level flag.
 
 sub start_building_style_sheet ($) {
   my $self = $_[0];
@@ -108,11 +120,11 @@ sub start_building_style_sheet ($) {
       {type => RULE_LIST_CONSTRUCT,
        line => $self->{line},
        column => $self->{column},
-       value => []};
+       value => [],
+       top_level => 1};
   $self->{bt} = $self->get_next_token;
   $self->start_construct;
 
-  $self->{top_level_flag} = 1;
   $self->_consume_tokens;
 
   if ($self->{bt}->{type} == EOF_TOKEN) {
@@ -163,6 +175,9 @@ sub _consume_tokens ($) {
                          column => $self->{bt}->{column},
                          name => $self->{bt},
                          value => []};
+        unless ($self->{constructs}->[-1]->{top_level}) {
+          $construct->{delim_type} = RBRACE_TOKEN;
+        }
         push @{$self->{constructs}->[-1]->{value}}, $construct;
         push @{$self->{constructs}}, $construct;
         $self->start_construct;
@@ -194,7 +209,7 @@ sub _consume_tokens ($) {
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
         $self->{bt} = $self->get_next_token;
         redo A;
-      } elsif ($self->{top_level_flag} and
+      } elsif ($self->{constructs}->[-1]->{top_level} and
                ($self->{bt}->{type} == CDO_TOKEN or
                 $self->{bt}->{type} == CDC_TOKEN)) {
         ## Stay in this state.
@@ -231,9 +246,10 @@ sub _consume_tokens ($) {
                          end_type => RBRACE_TOKEN,
                          value => []};
         push @{$self->{constructs}->[-1]->{value}}, $construct;
+        my $at = $self->{constructs}->[-1]->{parent_at} || '';
         $self->{constructs}->[-1] = $construct;
         $self->start_construct;
-        $self->{bs} = SIMPLE_BLOCK_STATE;
+        $self->{bs} = QualifiedBlockState->{$at} || SIMPLE_BLOCK_STATE;
         $self->{bt} = $self->get_next_token;
         redo A;
       } elsif ($self->{bt}->{type} == EOF_TOKEN) {
@@ -260,11 +276,20 @@ sub _consume_tokens ($) {
       ## Consume an at-rule
       ## <http://dev.w3.org/csswg/css-syntax/#consume-an-at-rule>
       if ($self->{bt}->{type} == SEMICOLON_TOKEN) {
-        ## An at-rule without block
+        ## An at-rule without block.
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
         $self->{bt} = $self->get_next_token;
+        redo A;
+      } elsif (defined $self->{constructs}->[-1]->{delim_type} and
+               $self->{bt}->{type} == $self->{constructs}->[-1]->{delim_type}) {
+        ## An at-rule without trailing semicolon or block at the end
+        ## of the <declaration-list> block.
+        $self->end_construct;
+        pop @{$self->{constructs}};
+        $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
+        ## Reconsume the current token.
         redo A;
       } elsif ($self->{bt}->{type} == EOF_TOKEN) {
         ## An at-rule without block or semicolon
@@ -345,7 +370,8 @@ sub _consume_tokens ($) {
                          line => $self->{bt}->{line},
                          column => $self->{bt}->{column},
                          name => $self->{bt},
-                         value => []};
+                         value => [],
+                         delim_type => RBRACE_TOKEN};
         push @{$self->{constructs}->[-1]->{value}}, $construct;
         push @{$self->{constructs}}, $construct;
         $self->start_construct;
@@ -363,7 +389,7 @@ sub _consume_tokens ($) {
         redo A;
       } elsif ($self->{bt}->{type} == EOF_TOKEN) {
         if (@{$self->{prev_bs}}) {
-          $self->{onerror}->(type => 'css:decls:eof', # XXX
+          $self->{onerror}->(type => 'css:block:eof', # XXX
                              level => 'w',
                              uri => $self->context->urlref,
                              token => $self->{bt})
@@ -383,9 +409,20 @@ sub _consume_tokens ($) {
                            level => 'm',
                            uri => $self->context->urlref,
                            token => $self->{bt});
+        my $construct = {type => DECLARATION_CONSTRUCT,
+                         line => $self->{bt}->{line},
+                         column => $self->{bt}->{column},
+                         name => $self->{bt},
+                         value => [],
+                         end_type => $self->{constructs}->[-1]->{end_type},
+                         delim_type => SEMICOLON_TOKEN};
+        push @{$self->{constructs}->[-1]->{value}}, $construct;
+        push @{$self->{constructs}}, $construct;
+        $self->start_construct;
+        push @{$self->{prev_bs}}, $self->{bs};
         push @{$self->{prev_bs}}, BAD_DECLARATION_STATE;
         $self->{bs} = COMPONENT_VALUE_STATE;
-        $self->{bt} = $self->get_next_token;
+        ## Reconsume the current token.
         redo A;
       }
     } elsif ($self->{bs} == DECLARATION_AFTER_NAME_STATE) {
@@ -420,11 +457,8 @@ sub _consume_tokens ($) {
                            level => 'm',
                            uri => $self->context->urlref,
                            token => $self->{bt});
-        $self->end_construct (error => 1);
-        pop @{$self->{constructs}};
-        pop @{$self->{constructs}->[-1]->{value}};
         $self->{bs} = BAD_DECLARATION_STATE;
-        $self->{bt} = $self->get_next_token;
+        ## Reconsume the current token.
         redo A;
       }
     } elsif ($self->{bs} == DECLARATION_COLON_STATE) {
@@ -447,7 +481,7 @@ sub _consume_tokens ($) {
       } elsif ($self->{bt}->{type} == EOF_TOKEN) {
         ## EOF_TOKEN at the end of the declaration
         if (@{$self->{prev_bs}} > 1) {
-          $self->{onerror}->(type => 'css:decl:eof', # XXX
+          $self->{onerror}->(type => 'css:block:eof', # XXX
                              level => 'w',
                              uri => $self->context->urlref,
                              token => $self->{bt})
@@ -460,7 +494,6 @@ sub _consume_tokens ($) {
         ## Reconsume the current token.
         redo A;
       } else {
-        ## Willful violation to the css-syntax spec for compat with browsers
         push @{$self->{prev_bs}}, $self->{bs};
         $self->{bs} = COMPONENT_VALUE_STATE;
         ## Reconsume the current token.
@@ -486,8 +519,9 @@ sub _consume_tokens ($) {
         ## Reconsume the current token.
         redo A;
       } else {
-        ## Stay in this state.
-        $self->{bt} = $self->get_next_token;
+        push @{$self->{prev_bs}}, $self->{bs};
+        $self->{bs} = COMPONENT_VALUE_STATE;
+        ## Reconsume the current token.
         redo A;
       }
 
@@ -570,6 +604,21 @@ sub _consume_tokens ($) {
       die "Unknown state |$self->{bs}|";
     }
   } # A
+
+  ## Differences from the css-syntax's parsing algorithm:
+  ##   - The parsing algorithm is implemented as a state machine
+  ##     rather than the set of recursivly invoked steps.
+  ##   - When a declaration is parsed, the "consume a component value"
+  ##     steps are used to fill the temporary list.
+  ##   - The "consume a component value" steps ignore the <{> token
+  ##     when they are invoked directly from the "consume an at-rule" or
+  ##     "consume a qualified rule" steps.
+  ##   - The "consume an at-rule" steps act as if there is a <;> token before
+  ##     the first <}> token which is not part of any block, if any, when
+  ##     the steps are /not/ invoked directly from the "parse a
+  ##     list of rules" steps.
+  ##   - When the end of file is reached before any block or function
+  ##     is closed, a warning is raised.
 } # _consume_tokens
 
 ## ------ Hooks ------

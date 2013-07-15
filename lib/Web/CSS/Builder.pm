@@ -70,6 +70,7 @@ sub init_builder ($) {
   ## bs Builder's state
   ## bt Builder's current token
   delete $self->{parsed_construct};
+  ## bctx Builder's context
 } # init_builder
 
 ## Construct
@@ -107,12 +108,19 @@ sub init_builder ($) {
 ##                                 declaration.
 ##   top_level
 ##     RULE_LIST_CONSTRUCT       - The top-level flag.
+##   single
+##     RULE_LIST_CONSTRUCT       - Whether only a rule is allowed or not.
 
-sub start_building_style_sheet ($) {
+sub start_building ($$) {
   my $self = $_[0];
+  $self->{bctx} = $_[1];
 
-  ## Parse a stylesheet
-  ## <http://dev.w3.org/csswg/css-syntax/#parse-a-stylesheet>.
+  ## Spec: <http://dev.w3.org/csswg/css-syntax/#parser-entry-points>.
+
+  ## $context
+  ##   'stylesheet' - parse a style sheet
+  ##   'rule-list'  - parse a list of rules
+  ##   'rule'       - parse a rule
 
   $self->{bs} = LIST_OF_RULES_STATE;
   $self->{prev_bs} = [];
@@ -121,31 +129,42 @@ sub start_building_style_sheet ($) {
        line => $self->{line},
        column => $self->{column},
        value => [],
-       top_level => 1};
+       top_level => $self->{bctx} eq 'stylesheet',
+       single => $self->{bctx} eq 'rule'};
   $self->{bt} = $self->get_next_token;
   $self->start_construct;
 
   $self->_consume_tokens;
-
-  if ($self->{bt}->{type} == EOF_TOKEN) {
-    $self->end_construct;
-    $self->{parsed_construct} = pop @{$self->{constructs}};
-    die "Stack of constructs is not empty" if @{$self->{constructs}};
-    return 1;
-  }
-  return 0;
-} # start_building_style_sheet
+  return $self->_end_building;
+} # start_building
 
 sub continue_building ($) {
   my $self = $_[0];
   die "Stack of constructs is empty" unless @{$self->{constructs}};
 
   $self->_consume_tokens;
+  return $self->_end_building;
+} # continue_building
+
+sub _end_building ($) {
+  my $self = $_[0];
 
   if ($self->{bt}->{type} == EOF_TOKEN) {
     die "Stack of constructs is empty" unless @{$self->{constructs}};
     $self->end_construct;
-    $self->{parsed_construct} = pop @{$self->{constructs}};
+    if ($self->{bctx} eq 'rule') {
+      if (@{$self->{constructs}->[0]->{value}}) {
+        $self->{parsed_construct} = $self->{constructs}->[0]->{value}->[0];
+      } else {
+        $self->{onerror}->(type => 'css:rule:not found', # XXX
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $self->{bt})
+      }
+      shift @{$self->{constructs}}; # RULE_LIST_CONSTRUCT
+    } else {
+      $self->{parsed_construct} = shift @{$self->{constructs}}; # RULE_LIST
+    }
     die "Stack of constructs is not empty" if @{$self->{constructs}};
     return 1;
   }
@@ -170,6 +189,13 @@ sub _consume_tokens ($) {
         $self->{bt} = $self->get_next_token;
         redo A;
       } elsif ($self->{bt}->{type} == ATKEYWORD_TOKEN) {
+        if ($self->{constructs}->[-1]->{single} and
+            @{$self->{constructs}->[0]->{value}} >= 1) {
+          $self->{onerror}->(type => 'css:rule:multiple', # XXX
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $self->{bt})
+        }
         my $construct = {type => AT_RULE_CONSTRUCT,
                          line => $self->{bt}->{line},
                          column => $self->{bt}->{column},
@@ -216,6 +242,13 @@ sub _consume_tokens ($) {
         $self->{bt} = $self->get_next_token;
         redo A;
       } else {
+        if ($self->{constructs}->[-1]->{single} and
+            @{$self->{constructs}->[-1]->{value}} >= 1) {
+          $self->{onerror}->(type => 'css:rule:multiple', # XXX
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $self->{bt})
+        }
         my $construct = {type => QUALIFIED_RULE_CONSTRUCT,
                          line => $self->{bt}->{line},
                          column => $self->{bt}->{column},

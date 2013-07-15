@@ -19,6 +19,7 @@ sub CDO ($$) { {line => $_[0], column => $_[1], type => 34} }
 sub CDC ($$) { {line => $_[0], column => $_[1], type => 35} }
 sub Colon ($$) { {line => $_[0], column => $_[1], type => 43} }
 sub Semi ($$) { {line => $_[0], column => $_[1], type => 26} }
+sub Gt ($$) { {line => $_[0], column => $_[1], type => 18} }
 sub RBrace ($$) { {line => $_[0], column => $_[1], type => 28} }
 sub RParen ($$) { {line => $_[0], column => $_[1], type => 30} }
 sub ID ($$$) { {line => $_[0], column => $_[1], type => 1, value => $_[2]} }
@@ -231,6 +232,13 @@ for my $test (
   ['decl-list', ['@a{};b:c'], Block(1,0,At(1,1,'a',Block(1,3)),D(1,6,'b',ID(1,8,'c')))],
   ['decl-list', ['b:c@a{}'], Block(1,0,D(1,1,'b',ID(1,3,'c'),AtToken(1,4,'a'),Block(1,6)))],
   ['decl-list', ['b:c;@a{}'], Block(1,0,D(1,1,'b',ID(1,3,'c')),At(1,5,'a',Block(1,7)))],
+
+  ['values', [''], Block(1,0)],
+  ['values', ['ab'], Block(1,0,ID(1,1,'ab'))],
+  ['values', ['ab}c'], Block(1,0,ID(1,1,'ab'),RBrace(1,3),ID(1,4,'c'))],
+  ['values', ['ab -->'], Block(1,0,ID(1,1,'ab'),S(1,3),CDC(1,4))],
+  ['values', ['ab-->'], Block(1,0,ID(1,1,'ab--'),Gt(1,5))],
+  ['values', ['ab{}c@aa{}'], Block(1,0,ID(1,1,'ab'),Block(1,3),ID(1,5,'c'),AtToken(1,6,'aa'),Block(1,9))],
 ) {
   test {
     my $c = shift;
@@ -267,6 +275,10 @@ for my $test (
       $b->start_building_decls or do {
         1 while not $b->continue_building_decls;
       };
+    } elsif ($test->[0] eq 'values') {
+      $b->start_building_values or do {
+        1 while not $b->continue_building_values;
+      };
     } else {
       $b->start_building_rules ($test->[0] eq 'rule') or do {
         1 while not $b->continue_building_rules;
@@ -279,7 +291,9 @@ for my $test (
       delete $test->[2]->{end_type};
       delete $test->[2]->{name};
       for (@{$test->[2]->{value}}) {
-        $_->{end_type} = undef if defined $_->{end_type};
+        $_->{end_type} = undef
+            if defined $_->{end_type} and
+                $_->{type} != 10000 + 4;
       }
     }
     eq_or_diff $b->{parsed_construct}, $test->[2], 'tree';

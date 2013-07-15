@@ -212,6 +212,47 @@ sub _end_building_decls ($) {
   return 0;
 } # continue_building_decls
 
+sub start_building_values ($) {
+  my $self = $_[0];
+
+  ## Parse a list of component values
+  ## <http://dev.w3.org/csswg/css-syntax/#parse-a-list-of-component-values>.
+
+  $self->{bs} = COMPONENT_VALUE_STATE;
+  $self->{prev_bs} = [];
+  push @{$self->{constructs}},
+      {type => BLOCK_CONSTRUCT,
+       line => $self->{line},
+       column => $self->{column},
+       value => []};
+  $self->{bt} = $self->get_next_token;
+  $self->start_construct;
+
+  $self->_consume_tokens;
+  return $self->_end_building_values;
+} # start_building_values
+
+sub continue_building_values ($) {
+  my $self = $_[0];
+  die "Stack of constructs is empty" unless @{$self->{constructs}};
+
+  $self->_consume_tokens;
+  return $self->_end_building_values;
+} # continue_building_values
+
+sub _end_building_values ($) {
+  my $self = $_[0];
+
+  if ($self->{bt}->{type} == EOF_TOKEN) {
+    die "Stack of constructs is empty" unless @{$self->{constructs}};
+    $self->end_construct;
+    $self->{parsed_construct} = shift @{$self->{constructs}}; # BLOCK_CONSTRUCT
+    die "Stack of constructs is not empty" if @{$self->{constructs}};
+    return 1;
+  }
+  return 0;
+} # continue_building_values
+
 sub _consume_tokens ($) {
   my $self = $_[0];
 
@@ -663,10 +704,15 @@ sub _consume_tokens ($) {
         $self->{bt} = $self->get_next_token;
         redo A;
       } elsif ($self->{bt}->{type} == EOF_TOKEN) {
-        ## "eof" error will be reported later.
-        $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
-        ## Reconsume the current token.
-        redo A;
+        if (@{$self->{constructs}} > 1) {
+          ## "eof" error will be reported later.
+          $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
+          ## Reconsume the current token.
+          redo A;
+        } else {
+          return;
+          #redo A;
+        }
       } else {
         push @{$self->{constructs}->[-1]->{value}}, $self->{bt};
         $self->{bt} = $self->get_next_token;

@@ -65,6 +65,10 @@ sub QUALIFIED_RULE_CONSTRUCT () { 10000 + 3 }
 sub BLOCK_CONSTRUCT () { 10000 + 4 }
 sub DECLARATION_CONSTRUCT () { 10000 + 5 }
 
+our @EXPORT = (@Web::CSS::Tokenizer::EXPORT,
+               qw(RULE_LIST_CONSTRUCT AT_RULE_CONSTRUCT QUALIFIED_RULE_CONSTRUCT
+                  BLOCK_CONSTRUCT DECLARATION_CONSTRUCT));
+
 ## ------ Builder implementation ------
 
 sub init_builder ($) {

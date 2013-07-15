@@ -207,10 +207,10 @@ our @EXPORT = qw(
 sub import ($;@) {
   my $from_class = shift;
   my ($to_class, $file, $line) = caller;
-  for (@_ ? @_ : @EXPORT) {
+  no strict 'refs';
+  for (@_ ? @_ : @{"$from_class\::EXPORT"}) {
     my $code = $from_class->can ($_)
         or croak qq{"$_" is not exported by the $from_class module at $file line $line};
-    no strict 'refs';
     *{$to_class . '::' . $_} = $code;
   }
 } # import

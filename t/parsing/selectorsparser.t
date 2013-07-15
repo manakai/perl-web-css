@@ -161,7 +161,8 @@ sub _parse_char_string : Tests {
       return $ns{$_[0] // ''};
     }));
 
-    my $selectors = $parser->parse_char_string ($test->{data}->[0]);
+    my $selectors = $parser->parse_char_string_as_selectors
+        ($test->{data}->[0]);
 
     if (defined $selectors) {
       my $serialized_selectors = serialize_selector_object $selectors;

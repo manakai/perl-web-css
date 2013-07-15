@@ -131,6 +131,7 @@ for my $test (
   ['stylesheet', ['@MedIA{@media{co{'], Rules(1,0,At(1,1,'MedIA',Block(1,7,At(1,8,'media',Block(1,14,Q(1,15,ID(1,15,'co'),Block(1,17))))))), ['1;18;css:block:eof']],
   ['stylesheet', ['@MedIA{@media{co{}}'], Rules(1,0,At(1,1,'MedIA',Block(1,7,At(1,8,'media',Block(1,14,Q(1,15,ID(1,15,'co'),Block(1,17))))))), ['1;20;css:block:eof']],
   ['stylesheet', ['@MedIA{@media{co{}}}'], Rules(1,0,At(1,1,'MedIA',Block(1,7,At(1,8,'media',Block(1,14,Q(1,15,ID(1,15,'co'),Block(1,17)))))))],
+  ['stylesheet', ['@supports{@supports{co{a:b}}}'], Rules(1,0,At(1,1,'supports',Block(1,10,At(1,11,'supports',Block(1,20,Q(1,21,ID(1,21,'co'),Block(1,23,D(1,24,'a',ID(1,26,'b')))))))))],
   ['stylesheet', ['@MedIA{@-moz-Document{co{}}}'], Rules(1,0,At(1,1,'MedIA',Block(1,7,At(1,8,'-moz-Document',Block(1,22,Q(1,23,ID(1,23,'co'),Block(1,25)))))))],
   ['stylesheet', ['@keyframes{@media{co{}}}'], Rules(1,0,At(1,1,'keyframes',Block(1,11,At(1,12,'media',Block(1,18,Q(1,19,ID(1,19,'co'),Block(1,21)))))))],
   ['stylesheet', ['@media{hoge{'], Rules(1,0,At(1,1,'media',Block(1,7,Q(1,8,ID(1,8,'hoge'),Block(1,12))))), ['1;13;css:block:eof']],
@@ -173,21 +174,22 @@ for my $test (
   ['stylesheet', ['a{hoge[]}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2))), ['1;7;css:decl:no colon']],
   ['stylesheet', ['a{hoge[}]'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2))), ['1;7;css:decl:no colon', '1;10;css:block:eof']],
   ['stylesheet', ['a{hoge[}];x:y'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,11,'x',ID(1,13,'y'))))), ['1;7;css:decl:no colon', '1;14;css:block:eof']],
-  ['stylesheet', ['a{!foo:bar]a;b:c'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'))))), ['1;3;css:decls:bad name', '1;17;css:block:eof']],
-  ['stylesheet', ['a{[foo:bar]a;b:c'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'))))), ['1;3;css:decls:bad name', '1;17;css:block:eof']],
-  ['stylesheet', ['a{[foo:bar]a;b:c}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'))))), ['1;3;css:decls:bad name']],
+  ['stylesheet', ['a{!foo:bar]a;b:c'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'))))), ['1;3;css:decl:bad name', '1;17;css:block:eof']],
+  ['stylesheet', ['a{[foo:bar]a;b:c'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'))))), ['1;3;css:decl:bad name', '1;17;css:block:eof']],
+  ['stylesheet', ['a{[foo:bar]a;b:c}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'))))), ['1;3;css:decl:bad name']],
   ['stylesheet', ['a{h[oo:bar]a;b:c}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'))))), ['1;4;css:decl:no colon']],
-  ['stylesheet', ['a{:[fo:bar]a;b:c}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'))))), ['1;3;css:decls:bad name']],
-  ['stylesheet', ['a{:[fo:bar]a;b:c@x}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'),AtToken(1,17,'x'))))), ['1;3;css:decls:bad name']],
-  ['stylesheet', ['a{:[fo:bar]a;b:c;@x}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x')))), ['1;3;css:decls:bad name']],
-  ['stylesheet', ['a{:[fo:bar]a;b:c;@x;}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x')))), ['1;3;css:decls:bad name']],
+  ['stylesheet', ['a{:[fo:bar]a;b:c}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'))))), ['1;3;css:decl:bad name']],
+  ['stylesheet', ['a{:[fo:bar]a;b:c@x}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c'),AtToken(1,17,'x'))))), ['1;3;css:decl:bad name']],
+  ['stylesheet', ['a{:[fo:bar]a;b:c;@x}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x')))), ['1;3;css:decl:bad name']],
+  ['stylesheet', ['a{:[fo:bar]a;b:c;@x;}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x')))), ['1;3;css:decl:bad name']],
   ['stylesheet', ['@media{@hoge}'], Rules(1,0,At(1,1,'media',Block(1,7,At(1,8,'hoge'))))],
   ['stylesheet', ['@media{@hoge;}'], Rules(1,0,At(1,1,'media',Block(1,7,At(1,8,'hoge'))))],
-  ['stylesheet', ['a{:[fo:bar]a;b:c;@x{};x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x',Block(1,20)),D(1,23,'x',ID(1,25,'y'))))), ['1;3;css:decls:bad name']],
-  ['stylesheet', ['a{:[fo:bar]a;b:c;@x{} x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x',Block(1,20)),D(1,23,'x',ID(1,25,'y'))))), ['1;3;css:decls:bad name']],
-  ['stylesheet', ['a{:[fo:bar]a;b:c;@x{}!x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x',Block(1,20))))), ['1;3;css:decls:bad name', '1;22;css:decls:bad name']],
-  ['stylesheet', ['a{:[fo:bar]a;b:c;@x  ;x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x',S(1,20)),D(1,23,'x',ID(1,25,'y'))))), ['1;3;css:decls:bad name']],
+  ['stylesheet', ['a{:[fo:bar]a;b:c;@x{};x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x',Block(1,20)),D(1,23,'x',ID(1,25,'y'))))), ['1;3;css:decl:bad name']],
+  ['stylesheet', ['a{:[fo:bar]a;b:c;@x{} x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x',Block(1,20)),D(1,23,'x',ID(1,25,'y'))))), ['1;3;css:decl:bad name']],
+  ['stylesheet', ['a{:[fo:bar]a;b:c;@x{}!x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x',Block(1,20))))), ['1;3;css:decl:bad name', '1;22;css:decl:bad name']],
+  ['stylesheet', ['a{:[fo:bar]a;b:c;@x  ;x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x',S(1,20)),D(1,23,'x',ID(1,25,'y'))))), ['1;3;css:decl:bad name']],
   ['stylesheet', ['a{@media{p{}}x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,At(1,3,'media',Block(1,9,Q(1,10,ID(1,10,'p'),Block(1,11)))),D(1,14,'x',ID(1,16,'y')))))],
+  ['stylesheet', ['@color-profile{a:b}'], Rules(1,0,At(1,1,'color-profile',Block(1,15,D(1,16,'a',ID(1,18,'b')))))],
 
 #  ['rule-list', ['hoge{}'], Rules(1,0,Q(1,1,ID(1,1,'hoge'),Block(1,5)))],
 #  ['rule-list', ['-->hoge{}'], Rules(1,0,Q(1,1,CDC(1,1),ID(1,4,'hoge'),Block(1,8)))],
@@ -210,6 +212,25 @@ for my $test (
   ['rule', ['@media{p{}@q{}}'], At(1,1,'media',Block(1,7,Q(1,8,ID(1,8,'p'),Block(1,9)),At(1,11,'q',Block(1,13))))],
   ['rule', ['@media{p{}@q{}}   '], At(1,1,'media',Block(1,7,Q(1,8,ID(1,8,'p'),Block(1,9)),At(1,11,'q',Block(1,13))))],
   ['rule', ['@media{p{}q{}'], At(1,1,'media',Block(1,7,Q(1,8,ID(1,8,'p'),Block(1,9)),Q(1,11,ID(1,11,'q'),Block(1,12)))), ['1;14;css:block:eof']],
+
+  ['decl-list', [''], Block(1,0)],
+  ['decl-list', [';;  ;  '], Block(1,0)],
+  ['decl-list', [';;  ;  }'], Block(1,0), ['1;8;css:decl:bad name']],
+  ['decl-list', ['foo:bar'], Block(1,0,D(1,1,'foo',ID(1,5,'bar')))],
+  ['decl-list', ['foo  :  bar'], Block(1,0,D(1,1,'foo',S(1,7),ID(1,9,'bar')))],
+  ['decl-list', ['foo:'], Block(1,0,D(1,1,'foo'))],
+  ['decl-list', ['foo'], Block(1,0), ['1;4;css:decl:no colon']],
+  ['decl-list', ['foo!'], Block(1,0), ['1;4;css:decl:no colon']],
+  ['decl-list', ['foo/**/bar'], Block(1,0), ['1;8;css:decl:no colon']],
+  ['decl-list', [' !'], Block(1,0), ['1;2;css:decl:bad name']],
+  ['decl-list', [' !;a:'], Block(1,0,D(1,4,'a')), ['1;2;css:decl:bad name']],
+  ['decl-list', [' };a:'], Block(1,0,D(1,4,'a')), ['1;2;css:decl:bad name']],
+  ['decl-list', ['{;b:c;};a:'], Block(1,0,D(1,9,'a')), ['1;1;css:decl:bad name']],
+  ['decl-list', ['x{;b:c};a:'], Block(1,0,D(1,9,'a')), ['1;2;css:decl:no colon']],
+  ['decl-list', ['@a{}b:c'], Block(1,0,At(1,1,'a',Block(1,3)),D(1,5,'b',ID(1,7,'c')))],
+  ['decl-list', ['@a{};b:c'], Block(1,0,At(1,1,'a',Block(1,3)),D(1,6,'b',ID(1,8,'c')))],
+  ['decl-list', ['b:c@a{}'], Block(1,0,D(1,1,'b',ID(1,3,'c'),AtToken(1,4,'a'),Block(1,6)))],
+  ['decl-list', ['b:c;@a{}'], Block(1,0,D(1,1,'b',ID(1,3,'c')),At(1,5,'a',Block(1,7)))],
 ) {
   test {
     my $c = shift;
@@ -242,12 +263,24 @@ for my $test (
       $b->init_builder;
     }
 
-    $b->start_building_rules ($test->[0] eq 'rule') or do {
-      1 while not $b->continue_building_rules;
-    };
+    if ($test->[0] eq 'decl-list') {
+      $b->start_building_decls or do {
+        1 while not $b->continue_building_decls;
+      };
+    } else {
+      $b->start_building_rules ($test->[0] eq 'rule') or do {
+        1 while not $b->continue_building_rules;
+      };
+    }
 
     if ($test->[2] and $test->[2]->{type} == 10000 + 1) {
       $test->[2]->{top_level} = $test->[0] eq 'stylesheet';
+    } elsif ($test->[2] and $test->[2]->{type} == 10000 + 4) {
+      delete $test->[2]->{end_type};
+      delete $test->[2]->{name};
+      for (@{$test->[2]->{value}}) {
+        $_->{end_type} = undef if defined $_->{end_type};
+      }
     }
     eq_or_diff $b->{parsed_construct}, $test->[2], 'tree';
     eq_or_diff $errors, $test->[3] || [], 'errors';

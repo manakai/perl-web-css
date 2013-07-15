@@ -189,9 +189,9 @@ for my $test (
   ['stylesheet', ['a{:[fo:bar]a;b:c;@x  ;x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,D(1,14,'b',ID(1,16,'c')),At(1,18,'x',S(1,20)),D(1,23,'x',ID(1,25,'y'))))), ['1;3;css:decls:bad name']],
   ['stylesheet', ['a{@media{p{}}x:y}'], Rules(1,0,Q(1,1,ID(1,1,'a'),Block(1,2,At(1,3,'media',Block(1,9,Q(1,10,ID(1,10,'p'),Block(1,11)))),D(1,14,'x',ID(1,16,'y')))))],
 
-  ['rule-list', ['hoge{}'], Rules(1,0,Q(1,1,ID(1,1,'hoge'),Block(1,5)))],
-  ['rule-list', ['-->hoge{}'], Rules(1,0,Q(1,1,CDC(1,1),ID(1,4,'hoge'),Block(1,8)))],
-  ['rule-list', ['-->hoge{}<!--'], Rules(1,0,Q(1,1,CDC(1,1),ID(1,4,'hoge'),Block(1,8))), ['1;14;css:qrule:no block']],
+#  ['rule-list', ['hoge{}'], Rules(1,0,Q(1,1,ID(1,1,'hoge'),Block(1,5)))],
+#  ['rule-list', ['-->hoge{}'], Rules(1,0,Q(1,1,CDC(1,1),ID(1,4,'hoge'),Block(1,8)))],
+#  ['rule-list', ['-->hoge{}<!--'], Rules(1,0,Q(1,1,CDC(1,1),ID(1,4,'hoge'),Block(1,8))), ['1;14;css:qrule:no block']],
 
   ['rule', [''], undef, ['1;1;css:rule:not found']],
   ['rule', ['   '], undef, ['1;4;css:rule:not found']],
@@ -242,8 +242,8 @@ for my $test (
       $b->init_builder;
     }
 
-    $b->start_building ($test->[0]) or do {
-      1 while not $b->continue_building;
+    $b->start_building_rules ($test->[0] eq 'rule') or do {
+      1 while not $b->continue_building_rules;
     };
 
     if ($test->[2] and $test->[2]->{type} == 10000 + 1) {

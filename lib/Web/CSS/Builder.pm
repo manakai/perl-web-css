@@ -70,7 +70,6 @@ sub init_builder ($) {
   ## bs Builder's state
   ## bt Builder's current token
   delete $self->{parsed_construct};
-  ## bctx Builder's context
 } # init_builder
 
 ## Construct
@@ -111,16 +110,14 @@ sub init_builder ($) {
 ##   single
 ##     RULE_LIST_CONSTRUCT       - Whether only a rule is allowed or not.
 
-sub start_building ($$) {
+sub start_building_rules ($$) {
   my $self = $_[0];
-  $self->{bctx} = $_[1];
+  my $single = $_[1];
 
-  ## Spec: <http://dev.w3.org/csswg/css-syntax/#parser-entry-points>.
-
-  ## $context
-  ##   'stylesheet' - parse a style sheet
-  ##   'rule-list'  - parse a list of rules
-  ##   'rule'       - parse a rule
+  ## Parse a stylesheet
+  ## <http://dev.w3.org/csswg/css-syntax/#parse-a-stylesheet>.
+  ##
+  ## Parse a rule <http://dev.w3.org/csswg/css-syntax/#parse-a-rule>.
 
   $self->{bs} = LIST_OF_RULES_STATE;
   $self->{prev_bs} = [];
@@ -129,30 +126,30 @@ sub start_building ($$) {
        line => $self->{line},
        column => $self->{column},
        value => [],
-       top_level => $self->{bctx} eq 'stylesheet',
-       single => $self->{bctx} eq 'rule'};
+       top_level => !$single,
+       single => !!$single};
   $self->{bt} = $self->get_next_token;
   $self->start_construct;
 
   $self->_consume_tokens;
-  return $self->_end_building;
-} # start_building
+  return $self->_end_building_rules;
+} # start_building_rules
 
-sub continue_building ($) {
+sub continue_building_rules ($) {
   my $self = $_[0];
   die "Stack of constructs is empty" unless @{$self->{constructs}};
 
   $self->_consume_tokens;
-  return $self->_end_building;
-} # continue_building
+  return $self->_end_building_rules;
+} # continue_building_rules
 
-sub _end_building ($) {
+sub _end_building_rules ($) {
   my $self = $_[0];
 
   if ($self->{bt}->{type} == EOF_TOKEN) {
     die "Stack of constructs is empty" unless @{$self->{constructs}};
     $self->end_construct;
-    if ($self->{bctx} eq 'rule') {
+    if ($self->{constructs}->[0]->{single}) {
       if (@{$self->{constructs}->[0]->{value}}) {
         $self->{parsed_construct} = $self->{constructs}->[0]->{value}->[0];
       } else {
@@ -169,7 +166,7 @@ sub _end_building ($) {
     return 1;
   }
   return 0;
-} # continue_building
+} # continue_building_rules
 
 sub _consume_tokens ($) {
   my $self = $_[0];

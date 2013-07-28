@@ -212,7 +212,7 @@ sub parse_char_string_as_selectors ($$;%) {
   A: {
     $t = shift @$tokens while $t->{type} == S_TOKEN;
 
-    my $found = 0;
+    my $found_tu = 0;
     if ($t->{type} == IDENT_TOKEN or $t->{type} == STAR_TOKEN) {
       my $t1 = $t;
       $t = shift @$tokens;
@@ -234,10 +234,13 @@ sub parse_char_string_as_selectors ($$;%) {
           if ($t->{type} == IDENT_TOKEN) {
             push @$sss, [LOCAL_NAME_SELECTOR, $t->{value}];
           }
-          $found = 1;
+          $found_tu = 1;
           $t = shift @$tokens;
         } else {
-          # XXX
+          $self->{onerror}->(type => 'no local name selector',
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
           next A;
         }
       } else {
@@ -248,7 +251,7 @@ sub parse_char_string_as_selectors ($$;%) {
         if ($t1->{type} == IDENT_TOKEN) {
           push @$sss, [LOCAL_NAME_SELECTOR, $t1->{value}];
         }
-        $found = 1;
+        $found_tu = 1;
       }
     } elsif ($t->{type} == VBAR_TOKEN) {
       $t = shift @$tokens;
@@ -256,10 +259,16 @@ sub parse_char_string_as_selectors ($$;%) {
         push @$sss, [NAMESPACE_SELECTOR, undef];
         push @$sss, [LOCAL_NAME_SELECTOR, $t->{value}];
         $t = shift @$tokens;
+        $found_tu = 1;
       } elsif ($t->{type} == STAR_TOKEN) {
         push @$sss, [NAMESPACE_SELECTOR, undef];
         $t = shift @$tokens;
+        $found_tu = 1;
       } else {
+        $self->{onerror}->(type => 'no local name selector',
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $t);
         next A;
       }
     }
@@ -267,7 +276,7 @@ sub parse_char_string_as_selectors ($$;%) {
     my $has_pseudo_element;
     B: {
       if ($t->{type} == BLOCK_CONSTRUCT and
-          $t->{name}->{type} == LBRACKET_TOKEN) {
+          $t->{name}->{type} == LBRACKET_TOKEN) { ## Attribute selector
         if ($has_pseudo_element) {
           $self->{onerror}->(type => 'ss after pseudo-element',
                              level => 'm',
@@ -276,9 +285,128 @@ sub parse_char_string_as_selectors ($$;%) {
           next A;
         }
 
-        # XXX
-        next A;
-      } elsif ($t->{type} == DOT_TOKEN) {
+        my $us = $t->{value};
+        push @$us, {type => EOF_TOKEN}; # XXX
+        my $u = shift @$us;
+        $u = shift @$us while $u->{type} == S_TOKEN;
+
+        my $t1;
+        my $nsurl = '';
+        if ($u->{type} == IDENT_TOKEN) { # [hoge] or [hoge|fuga]
+          $t1 = $u;
+          $u = shift @$us;
+          if ($u->{type} == VBAR_TOKEN) {
+            $u = shift @$us;
+            if ($u->{type} == IDENT_TOKEN) {
+              my $p_t = $t1;
+              $t1 = $u;
+              $nsurl = $self->context->get_url_by_prefix ($p_t->{value});
+              unless (defined $nsurl) {
+                $self->{onerror}->(type => 'namespace prefix:not declared',
+                                   level => 'm',
+                                   uri => $self->context->urlref,
+                                   token => $p_t,
+                                   value => $p_t->{value});
+                next A;
+              }
+              $u = shift @$us;
+            } else {
+              $self->{onerror}->(type => 'no attr local name',
+                                 level => 'm',
+                                 uri => $self->context->urlref,
+                                 token => $u);
+              next A;
+            }
+          }
+        } elsif ($u->{type} == STAR_TOKEN) { # [*|hoge]
+          $u = shift @$us;
+          if ($u->{type} == VBAR_TOKEN) {
+            $u = shift @$us;
+            if ($u->{type} == IDENT_TOKEN) {
+              $t1 = $u;
+              $nsurl = undef; # any namespace
+              $u = shift @$us;
+            } else {
+              $self->{onerror}->(type => 'no attr local name',
+                                 level => 'm',
+                                 uri => $self->context->urlref,
+                                 token => $u);
+              next A;
+            }
+          } else {
+            $self->{onerror}->(type => 'no attr namespace separator',
+                               level => 'm',
+                               uri => $self->context->urlref,
+                               token => $u);
+            next A;
+          }
+        } elsif ($u->{type} == VBAR_TOKEN) { # [|hoge]
+          $u = shift @$us;
+          if ($u->{type} == IDENT_TOKEN) {
+            $t1 = $u;
+            $u = shift @$us;
+          } else {
+            $self->{onerror}->(type => 'no attr local name',
+                               level => 'm',
+                               uri => $self->context->urlref,
+                               token => $u);
+            next A;
+          }
+        } else {
+          $self->{onerror}->(type => 'no attr name',
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $u);
+          next A;
+        }
+
+        $u = shift @$us while $u->{type} == S_TOKEN;
+        if ({
+          MATCH_TOKEN, 1,
+          INCLUDES_TOKEN, 1,
+          DASHMATCH_TOKEN, 1,
+          PREFIXMATCH_TOKEN, 1,
+          SUFFIXMATCH_TOKEN, 1,
+          SUBSTRINGMATCH_TOKEN, 1,
+        }->{$u->{type}}) {
+          my $match = $u->{type};
+          $u = shift @$us;
+          $u = shift @$us while $u->{type} == S_TOKEN;
+          if ($u->{type} == IDENT_TOKEN or
+              $u->{type} == STRING_TOKEN) { # [name(match)value]
+            push @$sss, [ATTRIBUTE_SELECTOR,
+                         $nsurl, $t1->{value},
+                         $match, $u->{value}];
+            $u = shift @$us;
+            $u = shift @$us while $u->{type} == S_TOKEN;
+            if ($u->{type} != EOF_TOKEN) {
+              $self->{onerror}->(type => 'selectors:attr:broken', # XXX
+                                 level => 'm',
+                                 uri => $self->context->urlref,
+                                 token => $u);
+              next A;
+            }
+            $t = shift @$tokens;
+            redo B;
+          } else {
+            $self->{onerror}->(type => 'no attr value',
+                               level => 'm',
+                               uri => $self->context->urlref,
+                               token => $u);
+            next A;
+          }
+        } elsif ($u->{type} == EOF_TOKEN) { # [name]
+          push @$sss, [ATTRIBUTE_SELECTOR, $nsurl, $t1->{value}];
+          $t = shift @$tokens;
+          redo B;
+        } else {
+          $self->{onerror}->(type => 'no attr match',
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $u);
+          next A;
+        }
+      } elsif ($t->{type} == DOT_TOKEN) { ## Class selector
         if ($has_pseudo_element) {
           $self->{onerror}->(type => 'ss after pseudo-element',
                              level => 'm',
@@ -297,7 +425,7 @@ sub parse_char_string_as_selectors ($$;%) {
                              token => $t);
           next A;
         }
-      } elsif ($t->{type} == HASH_TOKEN) {
+      } elsif ($t->{type} == HASH_TOKEN) { ## ID selector
         if ($has_pseudo_element) {
           $self->{onerror}->(type => 'ss after pseudo-element',
                              level => 'm',
@@ -314,7 +442,7 @@ sub parse_char_string_as_selectors ($$;%) {
         }
         push @$sss, [ID_SELECTOR, $t->{value}];
         $t = shift @$tokens;
-      } elsif ($t->{type} == COLON_TOKEN) {
+      } elsif ($t->{type} == COLON_TOKEN) { ## Pseudo-class or pseudo-element
         if ($has_pseudo_element) {
           $self->{onerror}->(type => 'ss after pseudo-element',
                              level => 'm',
@@ -323,7 +451,7 @@ sub parse_char_string_as_selectors ($$;%) {
           next A;
         }
         $t = shift @$tokens;
-        if ($t->{type} == COLON_TOKEN) { ## ::
+        if ($t->{type} == COLON_TOKEN) { ## Pseudo-element (::)
           $t = shift @$tokens;
           if ($t->{type} == IDENT_TOKEN) {
             my $pe = $t->{value};
@@ -377,7 +505,7 @@ sub parse_char_string_as_selectors ($$;%) {
                                token => $t);
             next A;
           }
-        } elsif ($t->{type} == IDENT_TOKEN) {
+        } elsif ($t->{type} == IDENT_TOKEN) { ## Pseudo-class (no argument)
           my $class = $t->{value};
           $class =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
           if ($IdentOnlyPseudoClasses->{$class}) {
@@ -417,12 +545,12 @@ sub parse_char_string_as_selectors ($$;%) {
 
           $t = shift @$tokens;
         } elsif ($t->{type} == BLOCK_CONSTRUCT and
-                 $t->{name}->{type} == FUNCTION_TOKEN) {
+                 $t->{name}->{type} == FUNCTION_TOKEN) { ## Pseudo-class w/args
           my $class = $t->{name}->{value};
           $class =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
 
           my $known;
-          if ($class eq 'lang') {
+          if ($class eq 'lang') { ## :class(<ident>)
             if ($self->media_resolver->{pseudo_class}->{$class}) {
               my $us = $t->{value};
               push @$us, {type => EOF_TOKEN}; # XXX
@@ -451,7 +579,7 @@ sub parse_char_string_as_selectors ($$;%) {
             } else {
               $known = 1;
             }
-          } elsif ($class eq 'not' and not $args{in_negation}) {
+          } elsif ($class eq 'not' and not $args{in_negation}) { ## :class(<selectors>)
             if ($self->media_resolver->{pseudo_class}->{$class}) {
               # XXX
               next A;
@@ -463,7 +591,7 @@ sub parse_char_string_as_selectors ($$;%) {
             'nth-last-child' => 1,
             'nth-of-type' => 1,
             'nth-last-of-type' => 1,
-          }->{$class}) {
+          }->{$class}) { ## :class(<an+b>)
             if ($self->media_resolver->{pseudo_class}->{$class}) {
               ## an+n <http://dev.w3.org/csswg/css-syntax/#anb>.
               my $us = $t->{value};
@@ -485,9 +613,9 @@ sub parse_char_string_as_selectors ($$;%) {
                       $u->{number} =~ /\A[+-][0-9]+\z/) { # n <signed-integer> = 1n+b | -n <signed-integer> = -1n+b
                     push @$sss, [PSEUDO_CLASS_SELECTOR, $class, $a, 0+$u->{number}];
                     $u = shift @$us;
-                  } elsif ($t->{type} == PLUS_TOKEN or
-                           $t->{type} == MINUS_TOKEN) {
-                    my $bs = $t->{type} == PLUS_TOKEN ? +1 : -1;
+                  } elsif ($u->{type} == PLUS_TOKEN or
+                           $u->{type} == MINUS_TOKEN) {
+                    my $bs = $u->{type} == PLUS_TOKEN ? +1 : -1;
                     $u = shift @$us;
                     $u = shift @$us while $u->{type} == S_TOKEN;
                     if ($u->{type} == NUMBER_TOKEN and
@@ -520,9 +648,9 @@ sub parse_char_string_as_selectors ($$;%) {
                       $u->{number} =~ /\A[+-][0-9]+\z/) { # <n-dimension> <signed-integer> = an+b
                     push @$sss, [PSEUDO_CLASS_SELECTOR, $class, $a, 0+$u->{number}];
                     $u = shift @$us;
-                  } elsif ($t->{type} == PLUS_TOKEN or
-                           $t->{type} == MINUS_TOKEN) {
-                    my $bs = $t->{type} == PLUS_TOKEN ? +1 : -1;
+                  } elsif ($u->{type} == PLUS_TOKEN or
+                           $u->{type} == MINUS_TOKEN) {
+                    my $bs = $u->{type} == PLUS_TOKEN ? +1 : -1;
                     $u = shift @$us;
                     $u = shift @$us while $u->{type} == S_TOKEN;
                     if ($u->{type} == NUMBER_TOKEN and
@@ -552,9 +680,9 @@ sub parse_char_string_as_selectors ($$;%) {
                         $u->{number} =~ /\A[+-][0-9]+\z/) { # '+' n <signed-integer> = 1n+b
                       push @$sss, [PSEUDO_CLASS_SELECTOR, $class, 1, 0+$u->{number}];
                       $u = shift @$us;
-                    } elsif ($t->{type} == PLUS_TOKEN or
-                             $t->{type} == MINUS_TOKEN) {
-                      my $bs = $t->{type} == PLUS_TOKEN ? +1 : -1;
+                    } elsif ($u->{type} == PLUS_TOKEN or
+                             $u->{type} == MINUS_TOKEN) {
+                      my $bs = $u->{type} == PLUS_TOKEN ? +1 : -1;
                       $u = shift @$us;
                       $u = shift @$us while $u->{type} == S_TOKEN;
                       if ($u->{type} == NUMBER_TOKEN and
@@ -599,7 +727,7 @@ sub parse_char_string_as_selectors ($$;%) {
             } else {
               $known = 1;
             }
-          } elsif ($class eq '-manakai-contains') {
+          } elsif ($class eq '-manakai-contains') { ## :class(<ident>|<string>)
             if ($self->media_resolver->{pseudo_class}->{$class}) {
               my $us = $t->{value};
               push @$us, {type => EOF_TOKEN}; # XXX
@@ -659,12 +787,12 @@ sub parse_char_string_as_selectors ($$;%) {
     ## Default namespace for implicit '*' selector
     if (defined $default_ns and
         @$sss and
-        $sss->[0]->[0] != NAMESPACE_SELECTOR) {
+        not $found_tu) {
       unshift @$sss,
           [NAMESPACE_SELECTOR, length $default_ns ? $default_ns : undef];
     }
 
-    unless ($found or @$sss) {
+    unless ($found_tu or @$sss) {
       $self->{onerror}->(type => 'no sss',
                          level => 'm',
                          uri => $self->context->urlref,

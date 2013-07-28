@@ -55,7 +55,7 @@ sub serialize_simple_selector ($) {
       my $value = $_->[1];
       for (@{$_}[2..$#{$_}]) {
         if (ref $_ eq 'ARRAY') {
-          if ($value eq 'cue') {
+          if ($value eq 'cue' or $value eq 'not') {
             my $v = serialize_selector_object $_;
             $v =~ s/\x0A/\x0A  /g;
             $result .= "  " . $v . "\n";
@@ -168,7 +168,7 @@ sub _parse_char_string : Tests {
       my $serialized_selectors = serialize_selector_object $selectors;
       eq_or_diff $serialized_selectors, $test->{parsed}->[0];
     } else {
-      is $selectors, undef;
+      is $selectors, undef, 'in error';
     }
 
     my $aerrors = join "\n", sort { $a cmp $b } @error;

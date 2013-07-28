@@ -13,6 +13,8 @@ XXX API of this module is not stable yet; You should not rely on it.
 Use $root_node->query_selector and $root_node->query_selector_all
 instead.
 
+This module supports a subset of Selectors level 3.
+
 =head1 SPECIFICATIONS
 
 Selectors Level 4 <http://dev.w3.org/csswg/selectors4/>.

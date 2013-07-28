@@ -17,7 +17,7 @@ test {
   done $c;
 } n => 2, name => 'lists';
 
-for my $test (
+for my $test (         # s  a  b  c
   ['*',                 [0, 0, 0, 0]],
   ['LI',                [0, 0, 0, 1]],
   ['UL LI',             [0, 0, 0, 2]],
@@ -34,6 +34,12 @@ for my $test (
   ['ns1|hoge',          [0, 0, 0, 1]],
   ['[ns1|foo]',         [0, 0, 1, 0]],
   ['[ns1~=hoge]',       [0, 0, 1, 0]],
+  [':not(em,strong)',   [0, 0, 0, 1]],
+  [':not(.a,b.c .d)',   [0, 0, 2, 1]],
+  [':not(b.c .d,.a)',   [0, 0, 2, 1]],
+  ['::cue',             [0, 0, 0, 1]],
+  ['::cue(a, b)',       [0, 0, 0, 3]],
+  ['::cue(a, .b)',      [0, 0, 1, 2]],
 ) {
   test {
     my $c = shift;
@@ -42,12 +48,13 @@ for my $test (
     $parser->media_resolver->{pseudo_class}->{lang} = 1;
     $parser->media_resolver->{pseudo_class}->{'first-child'} = 1;
     $parser->media_resolver->{pseudo_element}->{before} = 1;
+    $parser->media_resolver->{pseudo_element}->{cue} = 1;
     $parser->context (Web::CSS::Context->new_from_nscallback (sub {
       my $prefix = shift;
       return 'http://foo/' if $prefix;
       return undef;
     }));
-    my $selectors = $parser->parse_char_string ($test->[0]);
+    my $selectors = $parser->parse_char_string_as_selectors ($test->[0]);
     eq_or_diff $parser->get_selector_specificity ($selectors->[0]), $test->[1];
     done $c;
   } n => 1, name => ['get_selector_specificity', $test->[0]];

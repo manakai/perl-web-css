@@ -109,7 +109,7 @@ sub set_selectors ($$$;%) {
       after before first-letter first-line
     /;
 
-    $self->{selectors} = $p->parse_char_string ($selectors);
+    $self->{selectors} = $p->parse_char_string_as_selectors ($selectors);
     $self->{selectors_has_ns_error} = $ns_error;
   }
 } # set_selectors
@@ -298,10 +298,23 @@ sub _sss_match ($$$) {
     } elsif ($simple_selector->[0] == PSEUDO_CLASS_SELECTOR) {
       my $class_name = $simple_selector->[1];
       if ($class_name eq 'not') {
-        if ($self->_sss_match ([@$simple_selector[2..$#$simple_selector]],
-                               $node)) {
+        my $list = $simple_selector->[2];
+        if (@$list == 1) {
+          my $sel = $list->[0];
+          if (@$sel == 2) {
+            my $sss = $sel->[1];
+            if ($self->_sss_match ([@$sss], $node)) {
+              $sss_matched = 0;
+            }
+          } else {
+            $sss_matched = 0;
+          }
+        } else {
           $sss_matched = 0;
         }
+
+        ## XXX Only ':not({simple_selector}+)' (Selectors level 3) is
+        ## supported.
       } elsif ({
         'nth-child' => 1, 'nth-last-child' => 1,
         'nth-of-type' => 1, 'nth-last-of-type' => 1,

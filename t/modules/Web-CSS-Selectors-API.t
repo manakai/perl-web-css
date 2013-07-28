@@ -393,6 +393,7 @@ test {
 } n => 2, name => 'nsresolver prefix return empty';
 
 run_tests;
+undef $documents;
 
 1;
 

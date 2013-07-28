@@ -83,6 +83,8 @@ sub init_builder ($) {
 ##   type                        - Type of the construct, as one of constants.
 ##   line, column                - The position of the first character for
 ##                                 the construct.
+##   end_line, end_column        - The position of the first character for
+##                                 the token that closes the construct.
 ##   name
 ##     AT_RULE_CONSTRUCT         - The first <at-keyword> token.
 ##     DECLARATION_CONSTRUCT     - The name token.
@@ -155,6 +157,8 @@ sub _end_building_rules ($) {
 
   if ($self->{bt}->{type} == EOF_TOKEN) {
     die "Stack of constructs is empty" unless @{$self->{constructs}};
+    $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+    $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
     $self->end_construct;
     if ($self->{constructs}->[0]->{single}) {
       if (@{$self->{constructs}->[0]->{value}}) {
@@ -208,6 +212,8 @@ sub _end_building_decls ($) {
 
   if ($self->{bt}->{type} == EOF_TOKEN) {
     die "Stack of constructs is empty" unless @{$self->{constructs}};
+    $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+    $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
     $self->end_construct;
     $self->{parsed_construct} = shift @{$self->{constructs}}; # BLOCK_CONSTRUCT
     die "Stack of constructs is not empty" if @{$self->{constructs}};
@@ -249,6 +255,8 @@ sub _end_building_values ($) {
 
   if ($self->{bt}->{type} == EOF_TOKEN) {
     die "Stack of constructs is empty" unless @{$self->{constructs}};
+    $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+    $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
     $self->end_construct;
     $self->{parsed_construct} = shift @{$self->{constructs}}; # BLOCK_CONSTRUCT
     die "Stack of constructs is not empty" if @{$self->{constructs}};
@@ -305,6 +313,8 @@ sub _consume_tokens ($) {
                              token => $self->{bt})
               unless $self->{eof_error_reported};
           $self->{eof_error_reported} = 1;
+          $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+          $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
           $self->end_construct;
           pop @{$self->{constructs}};
           $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -316,6 +326,8 @@ sub _consume_tokens ($) {
         }
       } elsif (defined $self->{constructs}->[-1]->{end_type} and
                $self->{bt}->{type} == $self->{constructs}->[-1]->{end_type}) {
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -377,6 +389,8 @@ sub _consume_tokens ($) {
                            level => 'm',
                            uri => $self->context->urlref,
                            token => $self->{bt});
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct (error => 1);
         pop @{$self->{constructs}};
         pop @{$self->{constructs}->[-1]->{value}};
@@ -396,6 +410,8 @@ sub _consume_tokens ($) {
       ## <http://dev.w3.org/csswg/css-syntax/#consume-an-at-rule>
       if ($self->{bt}->{type} == SEMICOLON_TOKEN) {
         ## An at-rule without block.
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -405,6 +421,8 @@ sub _consume_tokens ($) {
                $self->{bt}->{type} == $self->{constructs}->[-1]->{delim_type}) {
         ## An at-rule without trailing semicolon or block at the end
         ## of the <declaration-list> block.
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -418,6 +436,8 @@ sub _consume_tokens ($) {
                            token => $self->{bt})
             unless $self->{eof_error_reported};
         $self->{eof_error_reported} = 1;
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -501,6 +521,8 @@ sub _consume_tokens ($) {
       } elsif (defined $self->{constructs}->[-1]->{end_type} and
                $self->{constructs}->[-1]->{end_type} == $self->{bt}->{type}) {
         ## LBRACE_TOKEN closing the <declaration-list>'s block
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -514,6 +536,8 @@ sub _consume_tokens ($) {
                              token => $self->{bt})
               unless $self->{eof_error_reported};
           $self->{eof_error_reported} = 1;
+          $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+          $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
           $self->end_construct;
           pop @{$self->{constructs}};
           $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -565,6 +589,8 @@ sub _consume_tokens ($) {
                            level => 'm',
                            uri => $self->context->urlref,
                            token => $self->{bt});
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct (error => 1);
         pop @{$self->{constructs}};
         pop @{$self->{constructs}->[-1]->{value}};
@@ -584,6 +610,8 @@ sub _consume_tokens ($) {
       if (defined $self->{constructs}->[-1]->{delim_type} and
           $self->{constructs}->[-1]->{delim_type} == $self->{bt}->{type}) {
         ## SEMICOLON_TOKEN at the end of the declaration
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -592,6 +620,8 @@ sub _consume_tokens ($) {
       } elsif (defined $self->{constructs}->[-1]->{end_type} and
                $self->{constructs}->[-1]->{end_type} == $self->{bt}->{type}) {
         ## RBRACE_TOKEN closing the <declaration-list>'s block
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -607,6 +637,8 @@ sub _consume_tokens ($) {
               unless $self->{eof_error_reported};
           $self->{eof_error_reported} = 1;
         }
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -622,6 +654,8 @@ sub _consume_tokens ($) {
       ## <http://dev.w3.org/csswg/css-syntax/#consume-a-list-of-declarations>
       if ($self->{bt}->{type} == SEMICOLON_TOKEN or
           $self->{bt}->{type} == EOF_TOKEN) {
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct (error => 1);
         pop @{$self->{constructs}};
         pop @{$self->{constructs}->[-1]->{value}};
@@ -631,6 +665,8 @@ sub _consume_tokens ($) {
       } elsif (defined $self->{constructs}->[-1]->{end_type} and
                $self->{constructs}->[-1]->{end_type} == $self->{bt}->{type}) {
         ## RBRACE_TOKEN at the end of the <declaration-list>'s block
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct (error => 1);
         pop @{$self->{constructs}};
         pop @{$self->{constructs}->[-1]->{value}};
@@ -651,6 +687,8 @@ sub _consume_tokens ($) {
       ## Consume a function
       ## <http://dev.w3.org/csswg/css-syntax/#consume-a-function>.
       if ($self->{bt}->{type} == $self->{constructs}->[-1]->{end_type}) {
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";
@@ -663,6 +701,8 @@ sub _consume_tokens ($) {
                            token => $self->{bt})
             unless $self->{eof_error_reported};
         $self->{eof_error_reported} = 1;
+        $self->{constructs}->[-1]->{end_line} = $self->{bt}->{line};
+        $self->{constructs}->[-1]->{end_column} = $self->{bt}->{column};
         $self->end_construct;
         pop @{$self->{constructs}};
         $self->{bs} = pop @{$self->{prev_bs}} or die "State stack is empty";

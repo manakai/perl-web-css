@@ -286,7 +286,9 @@ sub parse_char_string_as_selectors ($$;%) {
         }
 
         my $us = $t->{value};
-        push @$us, {type => EOF_TOKEN}; # XXX
+        push @$us, {type => EOF_TOKEN,
+                    line => $t->{end_line},
+                    column => $t->{end_column}};
         my $u = shift @$us;
         $u = shift @$us while $u->{type} == S_TOKEN;
 
@@ -553,7 +555,9 @@ sub parse_char_string_as_selectors ($$;%) {
           if ($class eq 'lang') { ## :class(<ident>)
             if ($self->media_resolver->{pseudo_class}->{$class}) {
               my $us = $t->{value};
-              push @$us, {type => EOF_TOKEN}; # XXX
+              push @$us, {type => EOF_TOKEN,
+                          line => $t->{end_line},
+                          column => $t->{end_column}};
               my $u = shift @$us;
               $u = shift @$us while $u->{type} == S_TOKEN;
               if ($u->{type} == IDENT_TOKEN) {
@@ -596,7 +600,9 @@ sub parse_char_string_as_selectors ($$;%) {
               ## an+n <http://dev.w3.org/csswg/css-syntax/#anb>.
               my $us = $t->{value};
               my $in_error;
-              push @$us, {type => EOF_TOKEN}; # XXX
+              push @$us, {type => EOF_TOKEN,
+                          line => $t->{end_line},
+                          column => $t->{end_column}};
               my $u = shift @$us;
               $u = shift @$us while $u->{type} == S_TOKEN;
               if ($u->{type} == IDENT_TOKEN) {
@@ -730,7 +736,9 @@ sub parse_char_string_as_selectors ($$;%) {
           } elsif ($class eq '-manakai-contains') { ## :class(<ident>|<string>)
             if ($self->media_resolver->{pseudo_class}->{$class}) {
               my $us = $t->{value};
-              push @$us, {type => EOF_TOKEN}; # XXX
+              push @$us, {type => EOF_TOKEN,
+                          line => $t->{end_line},
+                          column => $t->{end_column}};
               my $u = shift @$us;
               $u = shift @$us while $u->{type} == S_TOKEN;
               if ($u->{type} == IDENT_TOKEN or

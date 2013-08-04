@@ -63,11 +63,15 @@ sub RULE_LIST_CONSTRUCT () { 10000 + 1 }
 sub AT_RULE_CONSTRUCT () { 10000 + 2 }
 sub QUALIFIED_RULE_CONSTRUCT () { 10000 + 3 }
 sub BLOCK_CONSTRUCT () { 10000 + 4 }
-sub DECLARATION_CONSTRUCT () { 10000 + 5 }
+sub BRACKET_CONSTRUCT () { 10000 + 5 }
+sub PAREN_CONSTRUCT () { 10000 + 6 }
+sub FUNCTION_CONSTRUCT () { 10000 + 7 }
+sub DECLARATION_CONSTRUCT () { 10000 + 8 }
 
 our @EXPORT = (@Web::CSS::Tokenizer::EXPORT,
-               qw(RULE_LIST_CONSTRUCT AT_RULE_CONSTRUCT QUALIFIED_RULE_CONSTRUCT
-                  BLOCK_CONSTRUCT DECLARATION_CONSTRUCT));
+               qw(RULE_LIST_CONSTRUCT AT_RULE_CONSTRUCT
+                  QUALIFIED_RULE_CONSTRUCT BLOCK_CONSTRUCT BRACKET_CONSTRUCT
+                  PAREN_CONSTRUCT FUNCTION_CONSTRUCT DECLARATION_CONSTRUCT));
 
 ## ------ Builder implementation ------
 
@@ -88,10 +92,9 @@ sub init_builder ($) {
 ##   name
 ##     AT_RULE_CONSTRUCT         - The first <at-keyword> token.
 ##     DECLARATION_CONSTRUCT     - The name token.
-##     BLOCK_CONSTRUCT           - The opening token for the block or function.
+##     FUNCTION_CONSTRUCT        - The opening token for the function.
 ##   at
-##     BLOCK_CONSTRUCT & name.type == LBRACE_TOKEN - The lowercase-normalized
-##                                 name of the at-rule.
+##     BLOCK_CONSTRUCT           - The lowercase-normalized name of the at-rule
 ##   parent_at
 ##     QUALIFIED_RULE_CONSTRUCT  - The lowercase-normalized name of the at-rule
 ##                                 in which the qualified rule is directly
@@ -105,12 +108,17 @@ sub init_builder ($) {
 ##                                 i.e. prelude components followed by
 ##                                 a block.
 ##     BLOCK_CONSTRUCT           - Tokens and/or constructs in the block.
-##                                 Open and end tokens are not contained.
+##     BRACKET_CONSTRUCT           Open and end tokens are not contained.
+##     PAREN_CONSTRUCT
+##     FUNCTION_CONSTRUCT
 ##     DECLARATION_CONSTRUCT     - Tokens and/or constructs for the value
 ##                                 and the |important| flag.
 ##   end_type
 ##     BLOCK_CONSTRUCT           - The type of the end token for the block.
-##     DECLARATION_CONSTRUCT     - The type of the end token for the block.
+##     BRACKET_CONSTRUCT
+##     PAREN_CONSTRUCT
+##     FUNCTION_CONSTRUCT
+##     DECLARATION_CONSTRUCT
 ##   delim_type
 ##     DECLARATION_CONSTRUCT     - The type of the token closing the
 ##                                 declaration.
@@ -373,7 +381,6 @@ sub _consume_tokens ($) {
         my $construct = {type => BLOCK_CONSTRUCT,
                          line => $self->{bt}->{line},
                          column => $self->{bt}->{column},
-                         name => $self->{bt},
                          end_type => RBRACE_TOKEN,
                          value => []};
         push @{$self->{constructs}->[-1]->{value}}, $construct;
@@ -449,7 +456,6 @@ sub _consume_tokens ($) {
                          line => $self->{bt}->{line},
                          column => $self->{bt}->{column},
                          at => $self->{constructs}->[-1]->{name}->{value},
-                         name => $self->{bt},
                          end_type => RBRACE_TOKEN,
                          value => []};
         $construct->{at} =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
@@ -462,13 +468,16 @@ sub _consume_tokens ($) {
       } elsif ($self->{bt}->{type} == LBRACKET_TOKEN or
                $self->{bt}->{type} == LPAREN_TOKEN or
                $self->{bt}->{type} == FUNCTION_TOKEN) {
-        my $construct = {type => BLOCK_CONSTRUCT,
+        my $construct = {type => {LBRACKET_TOKEN, BRACKET_CONSTRUCT,
+                                  LPAREN_TOKEN, PAREN_CONSTRUCT,
+                                  FUNCTION_TOKEN, FUNCTION_CONSTRUCT}->{$self->{bt}->{type}},
                          line => $self->{bt}->{line},
                          column => $self->{bt}->{column},
-                         name => $self->{bt},
                          end_type => {LBRACKET_TOKEN, RBRACKET_TOKEN,
                                       LPAREN_TOKEN, RPAREN_TOKEN,
                                       FUNCTION_TOKEN, RPAREN_TOKEN}->{$self->{bt}->{type}}};
+        $construct->{name} = $self->{bt}
+            if $self->{bt}->{type} == FUNCTION_TOKEN;
         push @{$self->{constructs}->[-1]->{value}}, $construct;
         push @{$self->{constructs}}, $construct;
         $self->start_construct;
@@ -731,15 +740,19 @@ sub _consume_tokens ($) {
                $self->{bt}->{type} == LBRACKET_TOKEN or
                $self->{bt}->{type} == LPAREN_TOKEN or
                $self->{bt}->{type} == FUNCTION_TOKEN) {
-        my $construct = {type => BLOCK_CONSTRUCT,
+        my $construct = {type => {LBRACE_TOKEN, BLOCK_CONSTRUCT,
+                                  LBRACKET_TOKEN, BRACKET_CONSTRUCT,
+                                  LPAREN_TOKEN, PAREN_CONSTRUCT,
+                                  FUNCTION_TOKEN, FUNCTION_CONSTRUCT}->{$self->{bt}->{type}},
                          line => $self->{bt}->{line},
                          column => $self->{bt}->{column},
-                         name => $self->{bt},
                          end_type => {LBRACE_TOKEN, RBRACE_TOKEN,
                                       LBRACKET_TOKEN, RBRACKET_TOKEN,
                                       LPAREN_TOKEN, RPAREN_TOKEN,
                                       FUNCTION_TOKEN, RPAREN_TOKEN}->{$self->{bt}->{type}},
                          value => []};
+        $construct->{name} = $self->{bt}
+            if $self->{bt}->{type} == FUNCTION_TOKEN;
         push @{$self->{constructs}->[-1]->{value}}, $construct;
         push @{$self->{constructs}}, $construct;
         $self->start_construct;

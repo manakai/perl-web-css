@@ -43,26 +43,23 @@ sub Q ($$$$;@) { {line => shift, column => shift,
                   value => [@_],
                   parent_at => '',
                   delim_type => 27} }
-sub Block ($$$$;@) { {line => $_[0], column => $_[1],
+sub Block ($$$$;@) { {line => shift, column => shift,
                       type => 10000 + 4,
-                      name => {line => shift, column => shift, type => 27},
                       end_line => shift, end_column => shift,
                       value => [@_],
                       end_type => 28} }
-sub Box ($$$$;@) { {line => $_[0], column => $_[1],
-                    type => 10000 + 4,
-                    name => {line => shift, column => shift, type => 31},
+sub Box ($$$$;@) { {line => shift, column => shift,
+                    type => 10000 + 5,
                     end_line => shift, end_column => shift,
                     value => [@_],
                     end_type => 32} }
-sub Paren ($$$$;@) { {line => $_[0], column => $_[1],
-                      type => 10000 + 4,
-                      name => {line => shift, column => shift, type => 29},
+sub Paren ($$$$;@) { {line => shift, column => shift,
+                      type => 10000 + 6,
                       end_line => shift, end_column => shift,
                       value => [@_],
                       end_type => 30} }
 sub F ($$$$$;@) { {line => $_[0], column => $_[1],
-                   type => 10000 + 4,
+                   type => 10000 + 7,
                    name => {line => shift, column => shift, type => 4,
                             value => $_[2]},
                    end_line => shift, end_column => shift,
@@ -77,8 +74,7 @@ sub At ($$$$$;@) { my $t = {line => $_[0], column => $_[1], type => 10000 + 2,
                             delim_type => 28,
                             value => [@_]};
                    if (@{$t->{value}} and
-                       $t->{value}->[-1]->{type} == 10000 + 4 and
-                       $t->{value}->[-1]->{name}->{type} == 27) { # block
+                       $t->{value}->[-1]->{type} == 10000 + 4) { # block
                      $t->{value}->[-1]->{at} = lc $t->{name}->{value};
                      for (@{$t->{value}->[-1]->{value}}) {
                        next unless $_->{type} == 10000 + 3;
@@ -90,7 +86,7 @@ sub At ($$$$$;@) { my $t = {line => $_[0], column => $_[1], type => 10000 + 2,
                    $t }
 sub AtToken ($$$) { {line => $_[0], column => $_[1], type => 2,
                      value => $_[2]} }
-sub D ($$$$$;@) { {line => $_[0], column => $_[1], type => 10000 + 5,
+sub D ($$$$$;@) { {line => $_[0], column => $_[1], type => 10000 + 8,
                    name => {line => shift, column => shift, type => 1,
                             value => $_[2]},
                    end_line => shift, end_column => shift,

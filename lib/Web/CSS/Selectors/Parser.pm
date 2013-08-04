@@ -249,8 +249,7 @@ sub parse_char_string_as_selectors ($$) {
 
       my $has_pseudo_element;
       B: {
-        if ($t->{type} == BLOCK_CONSTRUCT and
-            $t->{name}->{type} == LBRACKET_TOKEN) { ## Attribute selector
+        if ($t->{type} == BRACKET_CONSTRUCT) { ## Attribute selector
           if ($has_pseudo_element) {
             $self->{onerror}->(type => 'ss after pseudo-element',
                                level => 'm',
@@ -458,8 +457,7 @@ sub parse_char_string_as_selectors ($$) {
                 }
                 next A;
               }
-            } elsif ($t->{type} == BLOCK_CONSTRUCT and
-                     $t->{name}->{type} == FUNCTION_TOKEN) {
+            } elsif ($t->{type} == FUNCTION_CONSTRUCT) {
               my $pe = $t->{name}->{value};
               $pe =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
               if ($self->media_resolver->{pseudo_element}->{$pe} and
@@ -548,8 +546,7 @@ sub parse_char_string_as_selectors ($$) {
             }
             
             $t = shift @$tokens;
-          } elsif ($t->{type} == BLOCK_CONSTRUCT and
-                   $t->{name}->{type} == FUNCTION_TOKEN) { ## Pseudo-class w/args
+          } elsif ($t->{type} == FUNCTION_CONSTRUCT) { ## Pseudo-class w/args
             my $class = $t->{name}->{value};
             $class =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
             

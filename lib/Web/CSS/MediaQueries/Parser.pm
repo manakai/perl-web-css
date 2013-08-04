@@ -150,8 +150,20 @@ sub parse_char_string_as_mqs ($$) {
           }
           my $def = $Web::CSS::MediaQueries::Features::Defs->{$fn};
           if ($def and $self->media_resolver->{feature}->{$fn}) {
-            my $parsed = $def->{parse}->($self, $fn, $us) or next A;
-            push @{$mq->{features} ||= []}, $parsed;
+            if (@$us) { # with value
+              my $parsed = $def->{parse}->($self, $us) or next A;
+              push @{$mq->{features} ||= []}, {name => $fn, value => $parsed};
+            } else { # valueless
+              if ($def->{requires_value}) {
+                $self->onerror->(type => 'mq:feature:no value', # XXX
+                                 level => 'm',
+                                 value => $fn,
+                                 token => $u);
+                next A;
+              } else {
+                push @{$mq->{features} ||= []}, {name => $fn};
+              }
+            }
             $t = shift @$tt;
             if ($t->{type} == IDENT_TOKEN) {
               $self->onerror->(type => 'css:no s', # XXX

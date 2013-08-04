@@ -1,7 +1,7 @@
 package Web::CSS::Serializer;
 use strict;
 use warnings;
-our $VERSION = '1.17';
+our $VERSION = '18.0';
 use Web::CSS::Props;
 
 # XXX API is not stable
@@ -141,6 +141,8 @@ return '' if not defined $value; # XXX
     } else {
       return $s1 . ' ' . $s2;
     }
+  } elsif ($value->[0] eq 'RATIO') { # <ratio>
+    return $value->[1] . '/' . $value->[2]; # XXX <number>
   } else {
     return '';
   }

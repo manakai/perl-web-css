@@ -1,0 +1,34 @@
+=head1 NAME
+
+Web::CSS::Values - CSS value definitions
+
+=head1 DESCRIPTION
+
+XXX
+
+=head1 SPECIFICATIONS
+
+[VALUES] CSS Values and Units <http://dev.w3.org/csswg/css-values/>.
+
+[SYNTAX] CSS Syntax <http://dev.w3.org/csswg/css-syntax/#integer>.
+
+[MQ] Media Queries <http://w3c-test.org/csswg/mediaqueries/#values>.
+
+The number of <resolution> must be positive.
+
+=head1 SEE ALSO
+
+L<Web::CSS::Props>, L<Web::CSS::MediaQueries::Features>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

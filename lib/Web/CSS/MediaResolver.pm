@@ -1,7 +1,7 @@
 package Web::CSS::MediaResolver;
 use strict;
 use warnings;
-our $VERSION = '3.0';
+our $VERSION = '4.0';
 
 sub new ($) {
   return bless {}, $_[0];
@@ -43,6 +43,12 @@ sub set_supported ($%) {
     $self->{pseudo_element}->{$_} = 1 for qw/
       after before first-letter first-line
     /;
+  }
+
+  if ($args{all} or $args{all_features}) {
+    require Web::CSS::MediaQueries::Features;
+    $self->{feature}->{$_} = 1
+        for keys %$Web::CSS::MediaQueries::Features::Defs;
   }
 } # set_supported
 

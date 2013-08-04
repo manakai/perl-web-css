@@ -22,6 +22,7 @@ my $chk = Web::CSS::MediaQueries::Checker->new;
 for my $file_name (qw(mq-1.dat mq-2.dat mq-3.dat)) {
   for_each_test $data_d->file ($file_name)->stringify, {
     data => {is_prefixed => 1},
+    supports => {is_list => 1},
     errors => {is_list => 1},
     mediatext => {is_prefixed => 1},
   }, sub {
@@ -40,6 +41,11 @@ for my $file_name (qw(mq-1.dat mq-2.dat mq-3.dat)) {
             $opt{type} . (defined $opt{value} ? ';'.$opt{value} : '');
       });
       $chk->onerror ($p->onerror);
+
+      $p->media_resolver (undef);
+      for (@{$test->{supports}->[0] or []}) {
+        $p->media_resolver->{feature}->{$_} = 1;
+      }
 
       my $mq = $p->parse_char_string_as_mqs ($test->{data}->[0]);
 

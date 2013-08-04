@@ -8,7 +8,45 @@ The C<Web::CSS::MediaResolver> class can be used as an implementation
 of the media-dependent CSS and/or Media Queries processing adaptor for
 the C<Web::CSS> modules.
 
-XXX
+=head1 METHODS
+
+=over 4
+
+=item $mr = Web::CSS::MediaResolver->new
+
+Create a new instance of the media resolver.
+
+=item $mr->set_supported (%args)
+
+Set the "supported" flag to true value.
+
+=over 4
+
+=item all => 1
+
+Set the "supported" flag of all known constructs.
+
+=item all_props => 1
+
+Set the "supported" flag of all known CSS properties.
+
+=item all_prop_values => 1
+
+Set the "supported" flag of all known CSS property values.
+
+=item all_pseudo_classes => 1
+
+Set the "supported" flag of all known pseudo-classes.
+
+=item all_pseudo_elements => 1
+
+Set the "supported" flag of all known pseudo-elements.
+
+=item all_media_features => 1
+
+Set the "supported" flag of all known media features.
+
+=back
 
 =head1 SEE ALSO
 

@@ -64,7 +64,7 @@ sub check_mq ($$) {
                        line => $mq->{type_line}, column => $mq->{type_column});
     } else {
       $self->onerror->(type => 'unknown media type',
-                       level => 'w',
+                       level => 'm',
                        line => $mq->{type_line}, column => $mq->{type_column});
     }
   }

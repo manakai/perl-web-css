@@ -1,0 +1,31 @@
+=head1 NAME
+
+Web::CSS::MediaQueries::Features - Media feature definitions
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::MediaQueries::Features> module contains definitions
+for the media features used in Media Queries.  It is used by
+L<Web::CSS::MediaQueries::Parser>.
+
+=head1 SPECIFICATIONS
+
+Media Queries <http://w3c-test.org/csswg/mediaqueries/#media1>.
+
+The 'view-mode' Media Feature
+<http://dev.w3.org/2006/waf/widgets-vmmf/#the--view-mode--media-feature>.
+
+=head1 SEE ALSO
+
+L<Web::CSS::MediaQueries::Parser>.
+
+L<Web::CSS::MediaResolver>.
+
+=head1 LICENSE
+
+Copyright 2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

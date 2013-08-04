@@ -252,6 +252,14 @@ test {
   done $c;
 } name => 'set_supported pseudo-elements';
 
+test {
+  my $c = shift;
+  my $mr = Web::CSS::MediaResolver->new;
+  $mr->set_supported (all_features => 1);
+  ok $mr->{feature}->{$_} for qw/color/;
+  done $c;
+} name => 'set_supported media features', n => 1;
+
 run_tests;
 
 =head1 LICENSE

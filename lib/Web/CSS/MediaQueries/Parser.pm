@@ -2,9 +2,19 @@ package Web::CSS::MediaQueries::Parser;
 use strict;
 use warnings;
 our $VERSION = '5.0';
-use Web::CSS::Tokenizer;
 use Web::CSS::Builder;
 push our @ISA, qw(Web::CSS::Builder);
+use Web::CSS::MediaQueries::Features;
+
+sub media_resolver ($;$) {
+  if (@_ > 1) {
+    $_[0]->{media_resolver} = $_[1];
+  }
+  return $_[0]->{media_resolver} ||= do {
+    require Web::CSS::MediaResolver;
+    Web::CSS::MediaResolver->new;
+  };
+} # media_resolver
 
 ## The "media query list" struct:  An array reference of "media query"s.
 ## The "media query" struct:  A hash reference of:
@@ -13,7 +23,9 @@ push our @ISA, qw(Web::CSS::Builder);
 ##   type     - string?  - The media type, normalized
 ##   type_line, type_column - Line and column numbers of the media type
 ##   features - arrayref - Media feature expressions:
-##     XXX
+##     name   - string   - Media feature name, normalized
+##     value  - value    - Value of the expression
+##     prefix - 'min'/'max'/undef
 
 my $ReservedMediaTypes = {
   and => 1, or => 1, not => 1, only => 1,
@@ -53,7 +65,6 @@ sub parse_char_string_as_mqs ($$) {
       my $mt = $t->{value};
       $mt =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
       if ($mt eq 'not' or $mt eq 'only') {
-        $mq->{start_token} = $t; # XXX
         $t = shift @$tt;
         if ($t->{type} != S_TOKEN) {
           $self->onerror->(type => 'css:no s', # XXX
@@ -66,7 +77,6 @@ sub parse_char_string_as_mqs ($$) {
       }
       
       if ($t->{type} == IDENT_TOKEN) {
-        $mq->{start_token} ||= $t; # XXX
         $mq->{type} = $t->{value};
         $mq->{type} =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
         if ($ReservedMediaTypes->{$mq->{type}}) {
@@ -110,10 +120,78 @@ sub parse_char_string_as_mqs ($$) {
       }
     }
 
-    if ($t->{type} == BLOCK_CONSTRUCT and
-        $t->{name}->{type} == LPAREN_TOKEN) {
-      # XXX
-    }
+    B: {
+      if ($t->{type} == PAREN_CONSTRUCT) {
+        my $us = $t->{value};
+        push @$us, {type => EOF_TOKEN,
+                    line => $t->{end_line}, column => $t->{end_column}};
+        my $u = shift @$us;
+        $u = shift @$us while $u->{type} == S_TOKEN;
+        if ($u->{type} == IDENT_TOKEN) {
+          my $u_name = $u;
+          my $fn = $u->{value};
+          $fn =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+          $u = shift @$us;
+          $u = shift @$us while $u->{type} == S_TOKEN;
+          if ($u->{type} == COLON_TOKEN) { # with value
+            $u = shift @$us;
+            $u = shift @$us while $u->{type} == S_TOKEN;
+            unshift @$us, $u;
+            $u = pop @$us;
+            pop @$us while @$us and $us->[-1]->{type} == S_TOKEN;
+            push @$us, $u;
+          } elsif ($u->{type} == EOF_TOKEN) { # without value
+            $us = [];
+          } else {
+            $self->onerror->(type => 'mq:feature:no colon', # XXX
+                             level => 'm',
+                             token => $u);
+            next A;
+          }
+          my $def = $Web::CSS::MediaQueries::Features::Defs->{$fn};
+          if ($def and $self->media_resolver->{feature}->{$fn}) {
+            my $parsed = $def->{parse}->($self, $fn, $us) or next A;
+            push @{$mq->{features} ||= []}, $parsed;
+            $t = shift @$tt;
+            if ($t->{type} == IDENT_TOKEN) {
+              $self->onerror->(type => 'css:no s', # XXX
+                               level => 'm',
+                               token => $t);
+              ## Non-conforming, but don't stop parsing.
+            }
+            $t = shift @$tt while $t->{type} == S_TOKEN;
+          } else {
+            $self->onerror->(type => 'mq:feature:unknown', # XXX
+                             level => 'm',
+                             token => $u_name);
+            next A;
+          }
+        } else {
+          $self->onerror->(type => 'mq:feature:broken', # XXX
+                           level => 'm',
+                           token => $u);
+          next A;
+        }
+      } elsif ($require_features) {
+        $self->onerror->(type => 'mq:no feature', # XXX
+                         level => 'm',
+                         token => $t);
+        next A;
+      }
+
+      if ($t->{type} == IDENT_TOKEN and $t->{value} =~ /\A[Aa][Nn][Dd]\z/) {
+        $t = shift @$tt;
+        if ($t->{type} != S_TOKEN) {
+          $self->onerror->(type => 'css:no s', # XXX
+                           level => 'm',
+                           token => $t);
+          ## Non-conforming, but don't stop parsing.
+        }
+        $t = shift @$tt while $t->{type} == S_TOKEN;
+        $require_features = 1;
+        redo B;
+      }
+    } # B
 
     if ($t->{type} == COMMA_TOKEN or $t->{type} == EOF_TOKEN) {
       if (not defined $mq->{type} and not @{$mq->{features} or []}) {

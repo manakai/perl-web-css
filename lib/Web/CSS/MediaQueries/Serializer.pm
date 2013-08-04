@@ -16,21 +16,23 @@ sub serialize_mq ($$) {
   my ($self, $mq) = @_;
   my @result;
 
-  push @result, 'not' if $mq->{not};
-  push @result, 'only' if $mq->{only};
-
   if (defined $mq->{type}) {
-    push @result, $mq->{type}; # XXX identifier
-  } elsif ($mq->{not}) {
-    push @result, 'all';
+    push @result, join ' ',
+        ($mq->{not} ? 'not' : ()),
+        ($mq->{only} ? 'only' : ()),
+        $mq->{type}; # XXX identifier
   }
 
   for (@{$mq->{features}}) {
-    push @result, 'and';
-    push @result, '(' . $_->{name} . ')'; # XXX
+    if (defined $_->{value}) {
+      use Web::CSS::Serializer; # XXX
+      push @result, '(' . $_->{name} . ': ' . Web::CSS::Serializer->new->serialize_value ('', $_->{value}) . ')'; # XXX
+    } else {
+      push @result, '(' . $_->{name} . ')'; # XXX
+    }
   }
 
-  return join ' ', @result;
+  return join ' and ', @result;
 } # serialize_mq
 
 # XXX

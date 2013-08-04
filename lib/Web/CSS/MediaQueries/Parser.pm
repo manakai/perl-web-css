@@ -1,130 +1,164 @@
 package Web::CSS::MediaQueries::Parser;
 use strict;
 use warnings;
-our $VERSION = '1.4';
+our $VERSION = '5.0';
 use Web::CSS::Tokenizer;
+use Web::CSS::Builder;
+push our @ISA, qw(Web::CSS::Builder);
 
-sub new ($) {
-  return bless {}, $_[0];
-} # new
+## The "media query list" struct:  An array reference of "media query"s.
+## The "media query" struct:  A hash reference of:
+##   only     - boolean  - Appearence of the 'only' keyword
+##   not      - boolean  - Appearence of the 'not' keyword
+##   type     - string?  - The media type, normalized
+##   type_line, type_column - Line and column numbers of the media type
+##   features - arrayref - Media feature expressions:
+##     XXX
 
-sub init ($) {
+my $ReservedMediaTypes = {
+  and => 1, or => 1, not => 1, only => 1,
+};
+
+sub parse_char_string_as_mqs ($$) {
   my $self = $_[0];
-  delete $self->{context};
-  delete $self->{onerror};
-} # init
 
-sub context ($;$) {
-  if (@_ > 1) {
-    $_[0]->{context} = $_[1];
-  }
-  return $_[0]->{context} ||= do {
-    require Web::CSS::Context;
-    Web::CSS::Context->new_empty;
+  $self->{line_prev} = $self->{line} = 1;
+  $self->{column_prev} = -1;
+  $self->{column} = 0;
+
+  $self->{chars} = [split //, $_[1]];
+  $self->{chars_pos} = 0;
+  delete $self->{chars_was_cr};
+  $self->{chars_pull_next} = sub { 0 };
+
+  $self->init_tokenizer;
+  $self->init_builder;
+
+  $self->start_building_values or do {
+    1 while not $self->continue_building_values;
   };
-} # context
 
-sub onerror ($;$) {
-  if (@_ > 1) {
-    $_[0]->{onerror} = $_[1];
-  }
-  return $_[0]->{onerror} ||= sub { };
-} # onerror
+  my $tt = (delete $self->{parsed_construct})->{value};
+  push @$tt, $self->get_next_token; # EOF_TOKEN
 
-sub parse_char_string ($$) {
-  my $self = $_[0];
+  my $t = shift @$tt;
 
-  my $s = $_[1];
-  pos ($s) = 0;
-
-  my $tt = Web::CSS::Tokenizer->new;
-  $tt->context ($self->context);
-  $tt->onerror ($self->onerror);
-
-  $tt->{line_prev} = $tt->{line} = 1;
-  $tt->{column_prev} = -1;
-  $tt->{column} = 0;
-
-  $tt->{chars} = [split //, $s];
-  $tt->{chars_pos} = 0;
-  delete $tt->{chars_was_cr};
-  $tt->{chars_pull_next} = sub { 0 };
-  $tt->init_tokenizer;
-
-  my $t = $tt->get_next_token;
-  $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-
-  my $r;
-  ($t, $r) = $self->_parse_mq_with_tokenizer ($t, $tt);
-  return undef unless defined $r;
-
-  if ($t->{type} != EOF_TOKEN) {
-    $self->onerror->(type => 'mq syntax error',
-                     level => 'm',
-                     uri => $self->context->urlref,
-                     token => $t);
-    return undef;
-  }
-
-  return $r;
-} # parse_char_string
-
-sub _parse_mq_with_tokenizer ($$$) {
-  my ($self, $t, $tt) = @_;
-
-  my $r = [];
-
+  my $mq_list = [];
+  my $mq;
   A: {
-    ## NOTE: Unknown media types are converted into 'unknown', since
-    ## Opera and WinIE do so and our implementation of the CSS
-    ## tokenizer currently normalizes numbers in NUMBER or DIMENSION tokens
-    ## so that the original representation cannot be preserved (e.g. '03d'
-    ## is covnerted to '3' with unit 'd').
-
+    $t = shift @$tt while $t->{type} == S_TOKEN;
+    $mq = {};
+    my $require_features;
     if ($t->{type} == IDENT_TOKEN) {
-      my $type = $t->{value};
-      $type =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-      if ({
-        all => 1, braille => 1, embossed => 1, handheld => 1, print => 1,
-        projection => 1, screen => 1, tty => 1, tv => 1,
-        speech => 1, aural => 1,
-        'atsc-tv' => 1, 'dde-tv' => 1, 'dvb-tv' => 1,
-        dark => 1, emacs => 1, light => 1, xemacs => 1,
-      }->{$type}) {
-        push @$r, [['#type', $type]];
-      } else {
-        push @$r, [['#type', 'unknown']];
-        $self->onerror->(type => 'unknown media type',
-                         level => 'u',
-                         uri => $self->context->urlref,
-                         token => $t);
+      my $mt = $t->{value};
+      $mt =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($mt eq 'not' or $mt eq 'only') {
+        $mq->{start_token} = $t; # XXX
+        $t = shift @$tt;
+        if ($t->{type} != S_TOKEN) {
+          $self->onerror->(type => 'css:no s', # XXX
+                           level => 'm',
+                           token => $t);
+          ## Non-conforming, but don't stop parsing.
+        }
+        $t = shift @$tt while $t->{type} == S_TOKEN;
+        $mq->{$mt} = 1;
       }
-      $t = $tt->get_next_token;
-    } elsif ($t->{type} == NUMBER_TOKEN or $t->{type} == DIMENSION_TOKEN) {
-      push @$r, [['#type', 'unknown']];
-      $self->onerror->(type => 'unknown media type',
-                       level => 'u',
-                       uri => $self->context->urlref,
-                       token => $t);
-      $t = $tt->get_next_token;
-    } else {
-      $self->onerror->(type => 'mq syntax error',
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);    
-      return ($t, undef);
+      
+      if ($t->{type} == IDENT_TOKEN) {
+        $mq->{start_token} ||= $t; # XXX
+        $mq->{type} = $t->{value};
+        $mq->{type} =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($ReservedMediaTypes->{$mq->{type}}) {
+          $self->onerror->(type => 'mq:not media type', # XXX
+                           level => 'm',
+                           token => $t);
+          next A;
+        }
+        $mq->{type_line} = $t->{line};
+        $mq->{type_column} = $t->{column};
+        $t = shift @$tt;
+
+        if ($t->{type} == IDENT_TOKEN and
+            $t->{value} =~ /\A[Aa][Nn][Dd]\z/) { ## ASCII case-insensitive.
+          $self->onerror->(type => 'css:no s', # XXX
+                           level => 'm',
+                           token => $t);
+          ## Non-conforming, but don't stop parsing.
+        }
+        $t = shift @$tt while $t->{type} == S_TOKEN;
+
+        if ($t->{type} == IDENT_TOKEN and
+            $t->{value} =~ /\A[Aa][Nn][Dd]\z/) { ## ASCII case-insensitive.
+          $t = shift @$tt;
+          if ($t->{type} != S_TOKEN) {
+            $self->onerror->(type => 'css:no s', # XXX
+                             level => 'm',
+                             token => $t);
+            ## Non-conforming, but don't stop parsing.
+          }
+          $t = shift @$tt while $t->{type} == S_TOKEN;
+          $require_features = 1;
+        }
+      } elsif ($mq->{not} or $mq->{only}) {
+        $self->onerror->(type => 'mq:no mt', # XXX
+                         level => 'm',
+                         token => $t);
+        next A;
+      } else {
+        $require_features = 1;
+      }
     }
 
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
+    if ($t->{type} == BLOCK_CONSTRUCT and
+        $t->{name}->{type} == LPAREN_TOKEN) {
+      # XXX
+    }
+
+    if ($t->{type} == COMMA_TOKEN or $t->{type} == EOF_TOKEN) {
+      if (not defined $mq->{type} and not @{$mq->{features} or []}) {
+        if ($t->{type} == EOF_TOKEN and not @$mq_list) {
+          last A;
+        } else {
+          $self->onerror->(type => 'mq:query:empty',
+                           level => 'm',
+                           token => $t);
+          next A;
+        }
+      }
+
+      push @$mq_list, $mq;
+      if ($t->{type} == COMMA_TOKEN) {
+        $t = shift @$tt;
+        redo A;
+      } else { # EOF_TOKEN
+        last A;
+      }
+    }
+
+    $self->onerror->(type => 'mq:broken', # XXX
+                     level => 'm',
+                     token => $t);
+    next A;
+  } continue {
+    $mq->{not} = 1;
+    $mq->{type} = 'all';
+    delete $mq->{only};
+    delete $mq->{features};
+    # type_line, type_column
+    push @$mq_list, $mq;
+
+    $t = shift @$tt
+        while not ($t->{type} == COMMA_TOKEN or $t->{type} == EOF_TOKEN);
+
     if ($t->{type} == COMMA_TOKEN) {
-      $t = $tt->get_next_token;
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
+      $t = shift @$tt;
       redo A;
     }
   } # A
 
-  return ($t, $r);
-} # _parse_mq_with_tokenizer
+  return $mq_list;
+} # parse_char_string_as_mqs
 
 1;
 

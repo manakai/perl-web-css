@@ -23,16 +23,31 @@ string representation of it.
 
 Return a new instance of the serializer.
 
+=item $string = $serializer->serialize_mq ($mq)
+
+Serialize the specified media query construct into the textual
+representation of the media query, as specified by the Media Queries
+and CSSOM specifications.
+
+=item $string = $serializer->serialize_mq_list ($mq_list)
+
+Serialize the specified media query list construct into the textual
+representation of the media query list, as specified by the Media
+Queries and CSSOM specifications.
+
 =item $string = $serializer->serialize_media_query ($mq)
+
+XXX will be removed
 
 Serialize a media query object into character string.
 
 =back
 
-=head1 BUGS
+=head1 SPECIFICATIONS
 
-The current implementation only supports serialization of a list of
-media types.
+Media Queries <http://w3c-test.org/csswg/mediaqueries/>.
+
+CSSOM <http://dev.w3.org/csswg/cssom/#serializing-media-queries>.
 
 =head1 SEE ALSO
 

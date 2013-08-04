@@ -1,0 +1,64 @@
+=head1 NAME
+
+Web::CSS::MediaQueries::Checker - A Media Queries conformance checker
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::MediaQueries::Checker> module, combined with the
+L<Web::CSS::MediaQueries::Parser>, forms a conformance checker for
+Media Queries' media query lists and media queries.
+
+=head1 METHODS
+
+=over 4
+
+=item $c = Web::CSS::MediaQueries::Checker->new
+
+Return a new instance of the conformance checker.
+
+=item $code = $c->onerror
+
+=item $c->onerror ($code)
+
+Return or specify the code reference to which any error or warning is
+reported by the checker.
+
+XXX
+
+=item $c->check_mq_list ($mq_list)
+
+Validate the specified media query list construct (a structure
+returned by the L<Web::CSS::MediaQueries::Parser>'s media query list
+parser).  Any error is reported to the C<onerror> handler.
+
+=item $c->check_mq ($mq_list)
+
+Validate the specified media query construct (a structure returned by
+the L<Web::CSS::MediaQueries::Parser>'s media query parser).  Any
+error is reported to the C<onerror> handler.
+
+=back
+
+=head1 SPECIFICATIONS
+
+CSS 2.1 - Media types <http://www.w3.org/TR/CSS21/media.html>.
+
+=head1 SEE ALSO
+
+L<Web::CSS::MediaQueries::Parser>.
+
+SuikaWiki:media types
+<http://suika.suikawiki.org/~wakaba/wiki/sw/n/media%20types>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

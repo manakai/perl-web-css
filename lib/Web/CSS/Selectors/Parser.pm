@@ -172,6 +172,13 @@ sub parse_char_string_as_selectors ($$) {
   my $tt = (delete $self->{parsed_construct})->{value};
   push @$tt, $self->get_next_token; # EOF_TOKEN
 
+  return $self->parse_constructs_as_selectors ($tt);
+} # parse_char_string_as_selectors
+
+sub parse_constructs_as_selectors ($$) {
+  my ($self, $tt) = @_;
+  $self->onerror; # setting $self->{onerror}
+
   my $default_ns = $self->context->get_url_by_prefix ('');
 
   my $process_tokens;
@@ -883,7 +890,7 @@ sub parse_char_string_as_selectors ($$) {
     }
   }; # $process_tokens
   return $process_tokens->($tt);
-} # parse_char_string_as_selectors
+} # parse_constructs_as_selectors
 
 sub get_selector_specificity ($$) {
   my ($self, $selector) = @_;

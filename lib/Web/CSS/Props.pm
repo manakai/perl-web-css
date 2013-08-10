@@ -630,7 +630,6 @@ $Prop->{display} = {
   css => 'display',
   dom => 'display',
   key => 'display',
-  parse => $one_keyword_parser,
   keyword => {
     ## CSS 2.1
     block => 1, inline => 1, 'inline-block' => 1, 'inline-table' => 1,
@@ -705,6 +704,8 @@ $Prop->{display} = {
 };
 $Attr->{display} = $Prop->{display};
 $Key->{display} = $Prop->{display};
+use Web::CSS::Values; # XXX
+$Prop->{display}->{parse} = $Web::CSS::Values::GetKeywordParser->($Prop->{display}->{keyword});
 
 $Prop->{position} = {
   css => 'position',

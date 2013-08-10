@@ -385,8 +385,9 @@ sub _consume_tokens ($) {
                          value => []};
         push @{$self->{constructs}->[-1]->{value}}, $construct;
         my $at = $self->{constructs}->[-1]->{parent_at} || '';
+        my $parent = $self->{constructs}->[-1];
         $self->{constructs}->[-1] = $construct;
-        $self->start_construct;
+        $self->start_construct (parent => $parent);
         $self->{bs} = QualifiedBlockState->{$at} || SIMPLE_BLOCK_STATE;
         $self->{bt} = $self->get_next_token;
         redo A;
@@ -461,8 +462,9 @@ sub _consume_tokens ($) {
         $construct->{at} =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
         push @{$self->{constructs}->[-1]->{value}}, $construct;
         $self->{bs} = AtBlockState->{$construct->{at}} || SIMPLE_BLOCK_STATE;
+        my $parent = $self->{constructs}->[-1];
         $self->{constructs}->[-1] = $construct;
-        $self->start_construct;
+        $self->start_construct (parent => $parent);
         $self->{bt} = $self->get_next_token;
         redo A;
       } elsif ($self->{bt}->{type} == LBRACKET_TOKEN or
@@ -801,6 +803,9 @@ sub _consume_tokens ($) {
 ## ------ Hooks ------
 
 ## Invoked when a construct is pushed to the stack of the constructs.
+##
+##  parent => construct - The parent construct for the block of a qualified
+##                        rule or at-rule.
 sub start_construct ($;%) {
   #
 } # start_construct
@@ -808,7 +813,7 @@ sub start_construct ($;%) {
 ## Invoked when a construct is to be popped from the stack of the
 ## constructs.
 ##
-##     error => boolean - The construct is in error and should be discarded.
+##   error => boolean - The construct is in error and should be discarded.
 sub end_construct ($;%) {
   #
 } # end_construct

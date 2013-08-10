@@ -248,7 +248,14 @@ sub onerror ($;$) {
   if (@_ > 1) {
     $_[0]->{onerror} = $_[1];
   }
-  return $_[0]->{onerror} ||= sub { };
+  return $_[0]->{onerror} ||= sub {
+    my %args = @_;
+    warn sprintf "Line %d column %d: %s (%s)\n",
+        $args{line} || $args{token}->{line},
+        $args{column} || $args{token}->{column},
+        $args{type} . (defined $args{value} ? ' ' . $args{value} : ''),
+        $args{level};
+  };
 } # onerror
 
 ## ------ Preprocessing of input stream ------

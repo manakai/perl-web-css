@@ -53,6 +53,11 @@ sub parse_char_string_as_mqs ($$) {
   my $tt = (delete $self->{parsed_construct})->{value};
   push @$tt, $self->get_next_token; # EOF_TOKEN
 
+  return $self->parse_constructs_as_mqs ($tt);
+} # parse_char_string_as_mqs
+
+sub parse_constructs_as_mqs ($$) {
+  my ($self, $tt) = @_;
   my $t = shift @$tt;
 
   my $mq_list = [];
@@ -248,7 +253,7 @@ sub parse_char_string_as_mqs ($$) {
   } # A
 
   return $mq_list;
-} # parse_char_string_as_mqs
+} # parse_constructs_as_mqs
 
 1;
 

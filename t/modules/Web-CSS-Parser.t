@@ -5,9 +5,114 @@ use Path::Class;
 use lib file (__FILE__)->dir->parent->parent->subdir ('lib')->stringify;
 use lib glob file (__FILE__)->dir->parent->parent->subdir ('t_deps', 'modules', '*', 'lib')->stringify;
 use Test::X1;
-use Web::CSS::Parser;
+use Web::CSS::PARSER;# XXX
 use Test::More;
 use Test::Differences;
+use Web::CSS::Selectors::Parser;
+use Web::CSS::MediaQueries::Parser;
+
+sub SS ($) { {id => 0, type => 'sheet', rule_ids => $_[0]} }
+sub S ($$$$$$) { {parent_id => $_[0], id => $_[1], type => 'style',
+                  selectors => Web::CSS::Selectors::Parser->new->parse_char_string_as_selectors($_[2]),
+                  prop_keys => $_[3], prop_values => $_[4],
+                  prop_importants => $_[5]} }
+sub MEDIA ($$$$) { {parent_id => $_[0], id => $_[1], type => 'media',
+                    rule_ids => $_[2],
+                    mqs => Web::CSS::MediaQueries::Parser->new->parse_char_string_as_mqs($_[3])} }
+sub K ($) { ['KEYWORD', $_[0]] }
+
+for my $test (
+  {in => '', out => [SS []]},
+  {in => ' /**/ /**/ ', out => [SS []]},
+  {in => 'hoge', out => [SS []],
+   errors => ['1;5;m;css:qrule:no block;;']},
+  {in => 'hoge{', out => [SS [1], S 0=>1, 'hoge', [], {}, {}],
+   errors => ['1;6;w;css:block:eof;;']},
+  {in => 'hoge{}', out => [SS [1], S(0=>1, 'hoge', [], {}, {})]},
+  {in => 'hoge>{}', out => [SS []], errors => ['1;6;m;no sss;;']},
+  {in => 'hoge>{}r{}', out => [SS [1], S(0=>1, 'r', [], {}, {})],
+   errors => ['1;6;m;no sss;;']},
+  {in => 'hoge>q{}', out => [SS [1], S(0=>1, 'hoge > q', [], {}, {})]},
+  {in => '<!--hoge>q{}-->r{}',
+   out => [SS [1, 2],
+           S(0=>1, 'hoge > q', [], {}, {}),
+           S(0=>2, 'r', [], {}, {})]},
+  {in => 'hoge{displAy:Block}',
+   out => [SS [1], S(0=>1, 'hoge', ['display'], {display => K 'block'}, {})]},
+  {in => 'hoge{displAy:Block ! Important}',
+   out => [SS [1], S(0=>1, 'hoge', ['display'], {display => K 'block'},
+                     {display => 1})]},
+  {in => ' /**/ hoge /**/ { /**/ displAy /**/ : /**/ Block /**/ ! /**/ /**/ Important /**/ /**/ } /**/ ',
+   out => [SS [1], S(0=>1, 'hoge', ['display'], {display => K 'block'},
+                     {display => 1})]},
+  {in => 'hoge{displAy:Block ! Import}',
+   out => [SS [1], S(0=>1, 'hoge', [], {}, {})],
+   errors => ['1;14;m;css:value:not keyword;;']},
+  {in => 'hoge{displAy: 12px}',
+   out => [SS [1], S(0=>1, 'hoge', [], {}, {})],
+   errors => ['1;15;m;css:value:not keyword;;']},
+  {in => 'hoge{display:none ;displAy: 12px}',
+   out => [SS [1], S(0=>1, 'hoge', ['display'], {display => K 'none'}, {})],
+   errors => ['1;29;m;css:value:not keyword;;']},
+  {in => 'hoge{displAy: inheRit }',
+   out => [SS [1], S(0=>1, 'hoge', ['display'], {display => K 'inherit'}, {})]},
+  {in => 'hoge{displAy: iniTial }',
+   out => [SS [1], S(0=>1, 'hoge', ['display'], {display => K 'initial'}, {})]},
+  {in => 'hoge{displAy: -moz-iniTial }',
+   out => [SS [1], S(0=>1, 'hoge', ['display'], {display => K 'initial'}, {})]},
+  {in => '@media{}',
+   out => [SS [1], MEDIA(0=>1=>[], '')]},
+  {in => '@media{',
+   out => [SS [1], MEDIA(0=>1=>[], '')],
+   errors => ['1;8;w;css:block:eof;;']},
+  {in => '@media all, screen, (hoge) {}',
+   out => [SS [1], MEDIA(0=>1=>[], '/*345*/all, screen, (error)')],
+   errors => ['1;22;m;mq:feature:unknown;;']},
+  {in => '@media{x y {}}',
+   out => [SS [1], MEDIA(0=>1=>[2], ''), S(1=>2, 'x y', [], {}, {})]},
+  {in => '@media{x y {displAy:none}}',
+   out => [SS [1], MEDIA(0=>1=>[2], ''), S(1=>2, 'x y', ['display'], {display => K 'none'}, {})]},
+  {in => '@media{x y {displAy:none;aa',
+   out => [SS [1], MEDIA(0=>1=>[2], ''), S(1=>2, 'x y', ['display'], {display => K 'none'}, {})],
+   errors => ['1;28;m;css:decl:no colon;;', '1;28;w;css:block:eof;;']},
+  {in => '@media{x y {displAy:none;aa}}',
+   out => [SS [1], MEDIA(0=>1=>[2], ''), S(1=>2, 'x y', ['display'], {display => K 'none'}, {})],
+   errors => ['1;28;m;css:decl:no colon;;']},
+  {in => '@media{x y {displAy:none;display',
+   out => [SS [1], MEDIA(0=>1=>[2], ''), S(1=>2, 'x y', ['display'], {display => K 'none'}, {})],
+   errors => ['1;33;m;css:decl:no colon;;', '1;33;w;css:block:eof;;']},
+  {in => '@media{@media PRINT{x y {displAy:none}}}',
+   out => [SS [1], MEDIA(0=>1=>[2], ''), MEDIA(1=>2=>[3], '/*3456789012*/print'), S(2=>3, 'x y', ['display'], {display => K 'none'}, {})]},
+) {
+  test {
+    my $c = shift;
+
+    my @error;
+
+    my $p = Web::CSS::Parser->new;
+    $p->onerror (sub {
+      my %args = @_;
+      push @error, join ';',
+          $args{line} // $args{token}->{line},
+          $args{column} // $args{token}->{column},
+          $args{level},
+          $args{type},
+          $args{text} // '',
+          $args{value} // '';
+    });
+
+    my $parsed = $p->parse_char_string_as_ss ($test->{in});
+    eq_or_diff $parsed, {rules => $test->{out}, base_urlref => \'about:blank'};
+    eq_or_diff \@error, $test->{errors} || [];
+    
+    done $c;
+  } n => 2, name => ['parse', $test->{in}];
+}
+
+run_tests;
+
+# XXX
+__END__
 
 test {
   my $c = shift;

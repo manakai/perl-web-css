@@ -1,10 +1,8 @@
 package Web::CSS::MediaQueries::Parser;
 use strict;
 use warnings;
-our $VERSION = '5.0';
-use Web::CSS::Builder;
-push our @ISA, qw(Web::CSS::Builder);
-use Web::CSS::MediaQueries::Features;
+our $VERSION = '6.0';
+push our @ISA, qw(Web::CSS::MediaQueries::Parser::_ Web::CSS::Builder);
 
 sub media_resolver ($;$) {
   if (@_ > 1) {
@@ -15,6 +13,10 @@ sub media_resolver ($;$) {
     Web::CSS::MediaResolver->new;
   };
 } # media_resolver
+
+package Web::CSS::MediaQueries::Parser::_;
+use Web::CSS::Builder;
+use Web::CSS::MediaQueries::Features;
 
 ## The "media query list" struct:  An array reference of "media query"s.
 ## The "media query" struct:  A hash reference of:

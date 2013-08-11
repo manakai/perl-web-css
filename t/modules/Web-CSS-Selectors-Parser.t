@@ -10,13 +10,6 @@ use Test::Differences;
 use Web::CSS::Context;
 use Web::CSS::Selectors::Parser;
 
-test {
-  my $c = shift;
-  is ref $Web::CSS::Selectors::Parser::IdentOnlyPseudoClasses, 'HASH';
-  is ref $Web::CSS::Selectors::Parser::IdentOnlyPseudoElements, 'HASH';
-  done $c;
-} n => 2, name => 'lists';
-
 for my $test (         # s  a  b  c
   ['*',                 [0, 0, 0, 0]],
   ['LI',                [0, 0, 0, 1]],

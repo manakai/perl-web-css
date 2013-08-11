@@ -1,8 +1,14 @@
 package Web::CSS::Parser;
 use strict;
 use warnings;
+our $VERSION = '6.0';
 use Web::CSS::Builder;
-push our @ISA, qw(Web::CSS::Builder);
+use Web::CSS::Selectors::Parser;
+use Web::CSS::MediaQueries::Parser;
+push our @ISA, qw(Web::CSS::Selectors::Parser::_
+                  Web::CSS::MediaQueries::Parser::_
+                  Web::CSS::Builder);
+use Web::CSS::Props;
 
 sub init_parser ($) {
   my $self = $_[0];
@@ -100,14 +106,7 @@ sub start_construct ($;%) {
                          line => $tokens->[-1]->{line},
                          column => $tokens->[-1]->{column}};
 
-        # XXX
-        use Web::CSS::Selectors::Parser;
-        my $p = Web::CSS::Selectors::Parser->new;
-        $p->context ($self->context);
-        #$p->media_resolver ($self->media_resolver);
-        $p->onerror ($self->onerror);
-
-        my $sels = $p->parse_constructs_as_selectors ($tokens);
+        my $sels = $self->parse_constructs_as_selectors ($tokens);
         if (defined $sels) {
           my $rule_id = @{$self->{parsed}->{rules}};
           $self->{parsed}->{rules}->[$rule_id] = $self->{current}->[-1];
@@ -137,15 +136,8 @@ sub start_construct ($;%) {
                              line => $tokens->[-1]->{line},
                              column => $tokens->[-1]->{column}};
 
-            # XXX
-            use Web::CSS::MediaQueries::Parser;
-            my $p = Web::CSS::MediaQueries::Parser->new;
-            $p->context ($self->context);
-            #$p->media_resolver ($self->media_resolver);
-            $p->onerror ($self->onerror);
-
             my $construct = $self->{current}->[-1];
-            $construct->{mqs} = $p->parse_constructs_as_mqs ($tokens);
+            $construct->{mqs} = $self->parse_constructs_as_mqs ($tokens);
             $construct->{type} = 'media';
             $construct->{rule_ids} = [];
             delete $construct->{name};
@@ -187,7 +179,6 @@ sub end_construct ($;%) {
     my $prop_name = $construct->{name}->{value};
     $prop_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
     # XXX custom properties
-    use Web::CSS::Props; # XXX
     my $def = $Web::CSS::Props::Prop->{$prop_name};
     if ($def) {
       my $tokens = $construct->{value};
@@ -234,7 +225,7 @@ sub end_construct ($;%) {
       }
     } else {
       $self->onerror->(type => 'css:prop:unknown', # XXX
-                       level => 'm', # XXX
+                       level => 'm',
                        value => $prop_name,
                        uri => $self->context->urlref,
                        line => $construct->{name}->{line},
@@ -273,15 +264,8 @@ sub end_construct ($;%) {
           $t = shift @$tokens;
           $t = shift @$tokens while $t->{type} == S_TOKEN;
           unless ($t->{type} == EOF_TOKEN) {
-            # XXX
-            use Web::CSS::MediaQueries::Parser;
-            my $p = Web::CSS::MediaQueries::Parser->new;
-            $p->context ($self->context);
-            #$p->media_resolver ($self->media_resolver);
-            $p->onerror ($self->onerror);
-
             unshift @$tokens, $t;
-            $rule->{mqs} = $p->parse_constructs_as_mqs ($tokens);
+            $rule->{mqs} = $self->parse_constructs_as_mqs ($tokens);
           } else {
             $rule->{mqs} = [];
           }

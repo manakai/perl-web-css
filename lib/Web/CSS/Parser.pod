@@ -8,7 +8,22 @@ TBD
 
 =head1 METHODS
 
-TBD
+The following method can be used to construct the parser:
+
+=over 4
+
+=item $p = Web::CSS::Parser->new
+
+Return a new instance of CSS parser.
+
+=back
+
+Note that the L<Web::CSS::Selectors::Parser> and
+L<Web::CSS::MediaQueries::Parser> modules also have the C<new> method,
+which can be used to create a Selectors or Media Queries parser,
+respectively, which provide subsets of methods of this module.
+
+Following methods can be used to set parameters of the parser:
 
 =over 4
 
@@ -35,6 +50,27 @@ XXX
 
 =back
 
+Following methods can be used to parse fragments of CSS style sheets:
+
+=over 4
+
+=item $mqs = $p->parse_char_string_as_mqs ($string)
+
+Parse the input string as a list of media queries and return the
+parsed structure.  See also L<Web::CSS::MediaQueries::Parser>.
+
+=item $selectors = $p->parse_char_string_as_selectors ($string)
+
+Parse the input string as a list of selectors and return the parsed
+structure.  See also L<Web::CSS::Selectors::Parser>.
+
+=item $ss = $p->parse_char_string_as_ss ($string)
+
+Parse the input string as a style sheet and return the parsed
+structure.
+
+=back
+
 =head1 SPECIFICATIONS
 
 CSS Syntax <http://dev.w3.org/csswg/css-syntax/>.
@@ -47,9 +83,9 @@ An invalid declaration MUST NOT be included in the style rule.
 
 =head1 SEE ALSO
 
-L<Web::CSS::Selectors::Parser>, L<Web::CSS::MediaQueries::Parser>.
-
 L<Web::CSS::Props>.
+
+L<Web::CSS::Selectors::Parser>, L<Web::CSS::MediaQueries::Parser>.
 
 L<Web::CSS::Serializer>.
 

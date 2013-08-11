@@ -1,11 +1,8 @@
 package Web::CSS::Selectors::Parser;
 use strict;
 use warnings;
-our $VERSION = '14.0';
-use Web::CSS::Tokenizer;
-use Web::CSS::Builder;
-push our @ISA, qw(Web::CSS::Builder);
-use Carp;
+our $VERSION = '15.0';
+push our @ISA, qw(Web::CSS::Selectors::Parser::_ Web::CSS::Builder);
 
 ## XXX API of this module is not stable yet; You should not rely on
 ## it.  Use $root_node->query_selector and
@@ -51,6 +48,10 @@ sub onerror ($;$) {
   }
   return $_[0]->{onerror} ||= sub { };
 } # onerror
+
+package Web::CSS::Selectors::Parser::_;
+use Carp;
+use Web::CSS::Builder;
 
 sub BEFORE_TYPE_SELECTOR_STATE () { 1 }
 sub AFTER_NAME_STATE () { 2 }
@@ -117,7 +118,7 @@ sub import ($;@) {
   }
 } # import
 
-our $IdentOnlyPseudoClasses = {
+my $IdentOnlyPseudoClasses = {
   active => 1,
   checked => 1,
   '-manakai-current' => 1,
@@ -141,7 +142,7 @@ our $IdentOnlyPseudoClasses = {
   visited => 1,
 }; # $IdentOnlyPseudoClasses
 
-our $IdentOnlyPseudoElements = {
+my $IdentOnlyPseudoElements = {
   'first-letter' => 1,
   'first-line' => 1,
   after => 1,
@@ -892,6 +893,7 @@ sub parse_constructs_as_selectors ($$) {
   return $process_tokens->($tt);
 } # parse_constructs_as_selectors
 
+# XXX move to some other module?
 sub get_selector_specificity ($$) {
   my ($self, $selector) = @_;
   ## $selector is a selector (not a group of selectors)

@@ -4,6 +4,11 @@ use warnings;
 use Web::CSS::Builder;
 push our @ISA, qw(Web::CSS::Builder);
 
+sub init_parser ($) {
+  my $self = $_[0];
+  delete $self->{start_construct_count};
+} # init_parser
+
 sub parse_char_string_as_ss ($$) {
   my $self = $_[0];
 
@@ -52,6 +57,13 @@ sub parse_char_string_as_ss ($$) {
 ##   prop_values - The hashref of the property key / value struct pairs
 ##   prop_importants - The hashref of the property key / 'important' pairs
 
+## @charset struct
+##
+##   id          - Internal ID of the at-rule
+##   type        - "charset"
+##   parent_id   - The internal ID of the parent rule
+##   encoding    - The encoding of the at-rule
+
 ## @media struct
 ##
 ##   id          - Internal ID of the at-rule
@@ -60,8 +72,11 @@ sub parse_char_string_as_ss ($$) {
 ##   mqs         - List of media queries construct
 ##   rule_ids    - The arrayref of the IDs of the rules in the @media at-rule
 
+my $KnownAtRules = {charset => 1, media => 1};
+
 sub start_construct ($;%) {
   my ($self, %args) = @_;
+  $self->{start_construct_count}++;
 
   ## <http://dev.w3.org/csswg/css-syntax/#css-stylesheets>
   my $construct = $self->{constructs}->[-1];
@@ -111,6 +126,7 @@ sub start_construct ($;%) {
           $self->onerror->(type => 'css:style:at-rule', # XXX
                            level => 'm',
                            value => $at_name,
+                           uri => $self->context->urlref,
                            line => $args{parent}->{line},
                            column => $args{parent}->{column});
         } else {
@@ -137,10 +153,18 @@ sub start_construct ($;%) {
             $construct->{id} = $rule_id;
             $construct->{parent_id} = $self->{current}->[-2]->{id};
             push @{$self->{current}->[-2]->{rule_ids}}, $rule_id;
-          } else {
-            $self->onerror->(type => 'css:at-rule:unknown',
+          } elsif ($KnownAtRules->{$at_name}) {
+            $self->onerror->(type => 'css:at-rule:block not allowed', # XXX
                              level => 'm',
                              value => $at_name,
+                             uri => $self->context->urlref,
+                             line => $construct->{line},
+                             column => $construct->{column});
+          } else {
+            $self->onerror->(type => 'unknown at-rule',
+                             level => 'm',
+                             value => $at_name,
+                             uri => $self->context->urlref,
                              line => $args{parent}->{line},
                              column => $args{parent}->{column});
           }
@@ -196,6 +220,7 @@ sub end_construct ($;%) {
                         column => $tokens->[-1]->{column}};
         $value = $def->{parse}->($self, $tokens);
       }
+      # XXX duplicate
       if (defined $value) {
         my $decl = $self->{current}->[-1];
         push @{$decl->{prop_keys}}, $def->{key};
@@ -210,6 +235,7 @@ sub end_construct ($;%) {
       $self->onerror->(type => 'css:prop:unknown', # XXX
                        level => 'm', # XXX
                        value => $prop_name,
+                       uri => $self->context->urlref,
                        line => $construct->{name}->{line},
                        column => $construct->{name}->{column});
     }
@@ -221,11 +247,55 @@ sub end_construct ($;%) {
     ## At-rule without block
     my $at_name = $construct->{name}->{value};
     $at_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-    $self->onerror->(type => 'css:at-rule:unknown',
-                     level => 'm',
-                     value => $at_name,
-                     line => $construct->{name}->{line},
-                     column => $construct->{name}->{column});
+    if ($at_name eq 'charset') {
+      ## <http://dev.w3.org/csswg/css-syntax/#the-charset-rule>.
+      if ($self->{start_construct_count} != 2) {
+        $self->{onerror}->(type => 'at-rule not allowed',
+                           text => 'charset',
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           line => $construct->{line},
+                           column => $construct->{column});
+      } else {
+        my $tokens = $construct->{value};
+        shift @$tokens while @$tokens and $tokens->[0]->{type} == S_TOKEN;
+        pop @$tokens while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
+        if (@$tokens == 1 and $tokens->[0]->{type} == STRING_TOKEN) {
+          my $rule = {type => 'charset', encoding => $tokens->[0]->{value}};
+          my $rule_id = @{$self->{parsed}->{rules}};
+          $self->{parsed}->{rules}->[$rule_id] = $rule;
+          $rule->{id} = $rule_id;
+          $rule->{parent_id} = $self->{current}->[-2]->{id};
+          push @{$self->{current}->[-2]->{rule_ids}}, $rule_id;
+        } elsif (@$tokens) {
+          $self->onerror->(type => 'css:value:not string', # XXX
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           line => $tokens->[0]->{line},
+                           column => $tokens->[0]->{column});
+        } else {
+          $self->onerror->(type => 'css:value:not string', # XXX
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           line => $construct->{end_line},
+                           column => $construct->{end_column});
+        }
+      }
+    } elsif ($KnownAtRules->{$at_name}) {
+      $self->onerror->(type => 'css:at-rule:block missing', # XXX
+                       value => $at_name,
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       line => $construct->{end_line},
+                       column => $construct->{end_column});
+    } else {
+      $self->onerror->(type => 'unknown at-rule',
+                       value => $at_name,
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       line => $construct->{name}->{line},
+                       column => $construct->{name}->{column});
+    }
     pop @{$self->{current}};
   } elsif ($construct->{type} == QUALIFIED_RULE_CONSTRUCT) {
     ## Selectors without following block

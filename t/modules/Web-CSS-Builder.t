@@ -205,6 +205,8 @@ for my $test (
   ['stylesheet', ['a{@media{p{}}x:y}'], Rules(1,0=>1,18,Q(1,1=>1,17,ID(1,1,'a'),Block(1,2=>1,17,At(1,3=>1,13,'media',Block(1,9=>1,13,Q(1,10=>1,12,ID(1,10,'p'),Block(1,11=>1,12)))),D(1,14=>1,17,'x',ID(1,16,'y')))))],
   ['stylesheet', ['@color-profile{a:b}'], Rules(1,0=>1,20,At(1,1=>1,19,'color-profile',Block(1,15=>1,19,D(1,16=>1,19,'a',ID(1,18,'b')))))],
   ['stylesheet', ['a { @media { display: block }}'], Rules(1,0=>1,31,Q(1,1=>1,30,ID(1,1,'a'),S(1,2),Block(1,3=>1,30,At(1,5=>1,29,'media',S(1,11),Block(1,12=>1,29))))), ['1;29;css:qrule:no block']],
+  ['stylesheet', ['a { @media { display: []ock }}'], Rules(1,0=>1,31,Q(1,1=>1,30,ID(1,1,'a'),S(1,2),Block(1,3=>1,30,At(1,5=>1,29,'media',S(1,11),Block(1,12=>1,29))))), ['1;29;css:qrule:no block']],
+  ['stylesheet', ['a { @media { display: [{c}] }}'], Rules(1,0=>1,31,Q(1,1=>1,30,ID(1,1,'a'),S(1,2),Block(1,3=>1,30,At(1,5=>1,29,'media',S(1,11),Block(1,12=>1,29))))), ['1;29;css:qrule:no block']],
   ['stylesheet', ['a { @media { d{display:block} }}'], Rules(1,0=>1,33,Q(1,1=>1,32,ID(1,1,'a'),S(1,2),Block(1,3=>1,32,At(1,5=>1,31,'media',S(1,11),Block(1,12=>1,31,Q(1,14=>1,30,ID(1,14,'d'),Block(1,15=>1,29,D(1,16=>1,29,'display',ID(1,24,'block')))))))))],
   ['stylesheet', ['a { @media { @media{} }}'], Rules(1,0=>1,25,Q(1,1=>1,24,ID(1,1,'a'),S(1,2),Block(1,3=>1,24,At(1,5=>1,23,'media',S(1,11),Block(1,12=>1,23,At(1,14=>1,22,'media',Block(1,20=>1,21)))))))],
   ['stylesheet', ['a { @media { @media   }}'], Rules(1,0=>1,25,Q(1,1=>1,24,ID(1,1,'a'),S(1,2),Block(1,3=>1,24,At(1,5=>1,23,'media',S(1,11),Block(1,12=>1,23,At(1,14=>1,23,'media',S(1,20)))))))],

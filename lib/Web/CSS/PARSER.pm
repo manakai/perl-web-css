@@ -72,7 +72,7 @@ sub parse_char_string_as_ss ($$) {
 ##   mqs         - List of media queries construct
 ##   rule_ids    - The arrayref of the IDs of the rules in the @media at-rule
 
-my $KnownAtRules = {charset => 1, media => 1};
+my $KnownAtRules = {charset => 1, import => 1, media => 1};
 
 sub start_construct ($;%) {
   my ($self, %args) = @_;
@@ -131,6 +131,7 @@ sub start_construct ($;%) {
                            column => $args{parent}->{column});
         } else {
           if ($at_name eq 'media') {
+            ## <http://dev.w3.org/csswg/css-conditional/#at-media>.
             my $tokens = $args{parent}->{value};
             $tokens->[-1] = {type => EOF_TOKEN,
                              line => $tokens->[-1]->{line},
@@ -247,15 +248,65 @@ sub end_construct ($;%) {
     ## At-rule without block
     my $at_name = $construct->{name}->{value};
     $at_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-    if ($at_name eq 'charset') {
-      ## <http://dev.w3.org/csswg/css-syntax/#the-charset-rule>.
-      if ($self->{start_construct_count} != 2) {
-        $self->{onerror}->(type => 'at-rule not allowed',
-                           text => 'charset',
+    if ($at_name eq 'import') {
+      ## <http://dev.w3.org/csswg/css-cascade/#at-import>.
+      if (not @{$self->{current}} == 2 or
+          grep {
+            my $t = $self->{parsed}->{rules}->[$_]->{type};
+            $t ne 'import' and $t ne 'charset';
+          } @{$self->{current}->[-2]->{rule_ids}}) {
+        $self->onerror->(type => 'at-rule not allowed',
+                         text => 'import',
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         line => $construct->{line},
+                         column => $construct->{column});
+      } else {
+        my $tokens = $construct->{value};
+        push @$tokens, {type => EOF_TOKEN,
+                        line => $construct->{end_line},
+                        column => $construct->{end_column}};
+        my $t = shift @$tokens;
+        $t = shift @$tokens while $t->{type} == S_TOKEN;
+        if ($t->{type} == URI_TOKEN or $t->{type} == STRING_TOKEN) {
+          my $rule = {type => 'import', href => $t->{value}};
+          $t = shift @$tokens;
+          $t = shift @$tokens while $t->{type} == S_TOKEN;
+          unless ($t->{type} == EOF_TOKEN) {
+            # XXX
+            use Web::CSS::MediaQueries::Parser;
+            my $p = Web::CSS::MediaQueries::Parser->new;
+            $p->context ($self->context);
+            #$p->media_resolver ($self->media_resolver);
+            $p->onerror ($self->onerror);
+
+            unshift @$tokens, $t;
+            $rule->{mqs} = $p->parse_constructs_as_mqs ($tokens);
+          } else {
+            $rule->{mqs} = [];
+          }
+          
+          my $rule_id = @{$self->{parsed}->{rules}};
+          $self->{parsed}->{rules}->[$rule_id] = $rule;
+          $rule->{id} = $rule_id;
+          $rule->{parent_id} = $self->{current}->[-2]->{id};
+          push @{$self->{current}->[-2]->{rule_ids}}, $rule_id;
+        } else {
+          $self->onerror->(type => 'css:import:url missing', # XXX
                            level => 'm',
                            uri => $self->context->urlref,
-                           line => $construct->{line},
-                           column => $construct->{column});
+                           token => $t);
+        }
+      }
+    } elsif ($at_name eq 'charset') {
+      ## <http://dev.w3.org/csswg/css-syntax/#the-charset-rule>.
+      if ($self->{start_construct_count} != 2) {
+        $self->onerror->(type => 'at-rule not allowed',
+                         text => 'charset',
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         line => $construct->{line},
+                         column => $construct->{column});
       } else {
         my $tokens = $construct->{value};
         shift @$tokens while @$tokens and $tokens->[0]->{type} == S_TOKEN;

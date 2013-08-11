@@ -30,9 +30,9 @@ sub FUNCTION_STATE () { 10 }
 sub AtBlockState () {
   {
     # <stylesheet>
-    media => LIST_OF_RULES_STATE,
-    '-moz-document' => LIST_OF_RULES_STATE,
-    supports => LIST_OF_RULES_STATE,
+    media => LIST_OF_RULES_STATE, # <http://dev.w3.org/csswg/css-conditional/#contents-of>
+    '-moz-document' => LIST_OF_RULES_STATE, # <http://dev.w3.org/csswg/css-conditional/#contents-of>
+    supports => LIST_OF_RULES_STATE, # <http://dev.w3.org/csswg/css-conditional/#contents-of>
 
     # <rule-list>
     keyframes => LIST_OF_RULES_STATE,
@@ -48,9 +48,9 @@ sub QualifiedBlockState () {
   {
     # <stylesheet> > <declaration-list>
     '' => LIST_OF_DECLARATIONS_STATE, # <http://dev.w3.org/csswg/css-syntax/#style-rules>
-    media => LIST_OF_DECLARATIONS_STATE,
-    '-moz-document' => LIST_OF_DECLARATIONS_STATE,
-    supports => LIST_OF_DECLARATIONS_STATE,
+    media => LIST_OF_DECLARATIONS_STATE, # <http://dev.w3.org/csswg/css-conditional/#contents-of>
+    '-moz-document' => LIST_OF_DECLARATIONS_STATE, # <http://dev.w3.org/csswg/css-conditional/#contents-of>
+    supports => LIST_OF_DECLARATIONS_STATE, # <http://dev.w3.org/csswg/css-conditional/#contents-of>
 
     # <declaration-list>
     keyframes => LIST_OF_DECLARATIONS_STATE,

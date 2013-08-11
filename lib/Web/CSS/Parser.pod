@@ -39,11 +39,17 @@ XXX
 
 CSS Syntax <http://dev.w3.org/csswg/css-syntax/>.
 
+CSS Conditional Rules <http://dev.w3.org/csswg/css-conditional/>.
+
+CSS Cascading and Inheritance <http://dev.w3.org/csswg/css-cascade/>.
+
 An invalid declaration MUST NOT be included in the style rule.
 
 =head1 SEE ALSO
 
 L<Web::CSS::Selectors::Parser>, L<Web::CSS::MediaQueries::Parser>.
+
+L<Web::CSS::Props>.
 
 L<Web::CSS::Serializer>.
 

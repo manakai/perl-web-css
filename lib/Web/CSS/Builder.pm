@@ -47,7 +47,7 @@ sub AtBlockState () {
 sub QualifiedBlockState () {
   {
     # <stylesheet> > <declaration-list>
-    '' => LIST_OF_DECLARATIONS_STATE,
+    '' => LIST_OF_DECLARATIONS_STATE, # <http://dev.w3.org/csswg/css-syntax/#style-rules>
     media => LIST_OF_DECLARATIONS_STATE,
     '-moz-document' => LIST_OF_DECLARATIONS_STATE,
     supports => LIST_OF_DECLARATIONS_STATE,
@@ -361,6 +361,8 @@ sub _consume_tokens ($) {
                          parent_at => '',
                          value => [],
                          delim_type => LBRACE_TOKEN};
+        $construct->{end_type} = $self->{constructs}->[-1]->{end_type}
+            if defined $self->{constructs}->[-1]->{end_type};
         if ($self->{constructs}->[-1]->{type} == BLOCK_CONSTRUCT and
             defined $self->{constructs}->[-1]->{at}) {
           $construct->{parent_at} = $self->{constructs}->[-1]->{at};
@@ -391,7 +393,9 @@ sub _consume_tokens ($) {
         $self->{bs} = QualifiedBlockState->{$at} || SIMPLE_BLOCK_STATE;
         $self->{bt} = $self->get_next_token;
         redo A;
-      } elsif ($self->{bt}->{type} == EOF_TOKEN) {
+      } elsif ($self->{bt}->{type} == EOF_TOKEN or
+               (defined $self->{constructs}->[-1]->{end_type} and
+                $self->{bt}->{type} == $self->{constructs}->[-1]->{end_type})) {
         ## Prelude not followed by a block
         $self->{onerror}->(type => 'css:qrule:no block', # XXX
                            level => 'm',

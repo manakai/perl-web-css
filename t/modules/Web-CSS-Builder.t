@@ -33,21 +33,25 @@ sub Rules ($$$$;@) { my $t = {line => shift, column => shift,
                               end_line => shift, end_column => shift,
                               single => '',
                               type => 10000 + 1, value => [@_]};
-                   for (@{$t->{value}}) {
-                     delete $_->{delim_type} if $_->{type} == 10000 + 2;
-                   }
-                   $t }
+                     for (@{$t->{value}}) {
+                       delete $_->{delim_type} if $_->{type} == 10000 + 2;
+                     }
+                     $t }
 sub Q ($$$$;@) { {line => shift, column => shift,
                   do { end_line => shift, end_column => shift; () },
                   type => 10000 + 3,
                   value => [@_],
                   parent_at => '',
                   delim_type => 27} }
-sub Block ($$$$;@) { {line => shift, column => shift,
-                      type => 10000 + 4,
-                      end_line => shift, end_column => shift,
-                      value => [@_],
-                      end_type => 28} }
+sub Block ($$$$;@) { my $t = {line => shift, column => shift,
+                              type => 10000 + 4,
+                              end_line => shift, end_column => shift,
+                              value => [@_],
+                              end_type => 28};
+                     for (@{$t->{value}}) {
+                       $_->{end_type} = 28 if $_->{type} == 10000 + 3;
+                     }
+                     $t }
 sub Box ($$$$;@) { {line => shift, column => shift,
                     type => 10000 + 5,
                     end_line => shift, end_column => shift,
@@ -200,6 +204,10 @@ for my $test (
   ['stylesheet', ['a{:[fo:bar]a;b:c;@x  ;x:y}'], Rules(1,0=>1,27,Q(1,1=>1,26,ID(1,1,'a'),Block(1,2=>1,26,D(1,14=>1,17,'b',ID(1,16,'c')),At(1,18=>1,22,'x',S(1,20)),D(1,23=>1,26,'x',ID(1,25,'y'))))), ['1;3;css:decl:bad name']],
   ['stylesheet', ['a{@media{p{}}x:y}'], Rules(1,0=>1,18,Q(1,1=>1,17,ID(1,1,'a'),Block(1,2=>1,17,At(1,3=>1,13,'media',Block(1,9=>1,13,Q(1,10=>1,12,ID(1,10,'p'),Block(1,11=>1,12)))),D(1,14=>1,17,'x',ID(1,16,'y')))))],
   ['stylesheet', ['@color-profile{a:b}'], Rules(1,0=>1,20,At(1,1=>1,19,'color-profile',Block(1,15=>1,19,D(1,16=>1,19,'a',ID(1,18,'b')))))],
+  ['stylesheet', ['a { @media { display: block }}'], Rules(1,0=>1,31,Q(1,1=>1,30,ID(1,1,'a'),S(1,2),Block(1,3=>1,30,At(1,5=>1,29,'media',S(1,11),Block(1,12=>1,29))))), ['1;29;css:qrule:no block']],
+  ['stylesheet', ['a { @media { d{display:block} }}'], Rules(1,0=>1,33,Q(1,1=>1,32,ID(1,1,'a'),S(1,2),Block(1,3=>1,32,At(1,5=>1,31,'media',S(1,11),Block(1,12=>1,31,Q(1,14=>1,30,ID(1,14,'d'),Block(1,15=>1,29,D(1,16=>1,29,'display',ID(1,24,'block')))))))))],
+  ['stylesheet', ['a { @media { @media{} }}'], Rules(1,0=>1,25,Q(1,1=>1,24,ID(1,1,'a'),S(1,2),Block(1,3=>1,24,At(1,5=>1,23,'media',S(1,11),Block(1,12=>1,23,At(1,14=>1,22,'media',Block(1,20=>1,21)))))))],
+  ['stylesheet', ['a { @media { @media   }}'], Rules(1,0=>1,25,Q(1,1=>1,24,ID(1,1,'a'),S(1,2),Block(1,3=>1,24,At(1,5=>1,23,'media',S(1,11),Block(1,12=>1,23,At(1,14=>1,23,'media',S(1,20)))))))],
 
 #  ['rule-list', ['hoge{}'], Rules(1,0=>1,7,Q(1,1=>1,6,ID(1,1,'hoge'),Block(1,5=>1,6)))],
 #  ['rule-list', ['-->hoge{}'], Rules(1,0=>1,10,Q(1,1=>1,9,CDC(1,1),ID(1,4,'hoge'),Block(1,8=>1,9)))],

@@ -63,6 +63,7 @@ sub parse_char_string_as_ss ($$) {
 sub start_construct ($;%) {
   my ($self, %args) = @_;
 
+  ## <http://dev.w3.org/csswg/css-syntax/#css-stylesheets>
   my $construct = $self->{constructs}->[-1];
   if ($construct->{type} == QUALIFIED_RULE_CONSTRUCT) {
     push @{$self->{current} ||= []},
@@ -78,6 +79,7 @@ sub start_construct ($;%) {
     if ($args{parent}) {
       $construct->{_has_entry} = 1;
       if ($self->{current}->[-1]->{type} eq 'style') {
+        ## <http://dev.w3.org/csswg/css-syntax/#style-rules>
         my $tokens = $args{parent}->{value};
         $tokens->[-1] = {type => EOF_TOKEN,
                          line => $tokens->[-1]->{line},
@@ -99,36 +101,49 @@ sub start_construct ($;%) {
           push @{$self->{current}->[-2]->{rule_ids}}, $rule_id;
           $self->{current}->[-1]->{selectors} = $sels;
         }
+        ## Otherwise, an error has been reported within the Selectors
+        ## parser and the style rule should be ignored.
       } else { # at
         my $at_name = $self->{current}->[-1]->{name};
-        if ($at_name eq 'media') {
-          my $tokens = $args{parent}->{value};
-          $tokens->[-1] = {type => EOF_TOKEN,
-                           line => $tokens->[-1]->{line},
-                           column => $tokens->[-1]->{column}};
-
-          # XXX
-          use Web::CSS::MediaQueries::Parser;
-          my $p = Web::CSS::MediaQueries::Parser->new;
-          $p->context ($self->context);
-          #$p->media_resolver ($self->media_resolver);
-          $p->onerror ($self->onerror);
-
-          my $construct = $self->{current}->[-1];
-          $construct->{mqs} = $p->parse_constructs_as_mqs ($tokens);
-          $construct->{type} = 'media';
-          $construct->{rule_ids} = [];
-          delete $construct->{name};
-          my $rule_id = @{$self->{parsed}->{rules}};
-          $self->{parsed}->{rules}->[$rule_id] = $construct;
-          $construct->{id} = $rule_id;
-          $construct->{parent_id} = $self->{current}->[-2]->{id};
-          push @{$self->{current}->[-2]->{rule_ids}}, $rule_id;
+        $at_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if (@{$self->{current}} > 1 and
+            $self->{current}->[-2]->{type} eq 'style') {
+          $self->onerror->(type => 'css:style:at-rule', # XXX
+                           level => 'm',
+                           value => $at_name,
+                           line => $args{parent}->{line},
+                           column => $args{parent}->{column});
         } else {
-          $self->onerror->(type => 'css:at-rule:unknown',
-                           level => 'm', # XXX
-                           line => $construct->{line},
-                           column => $construct->{column});
+          if ($at_name eq 'media') {
+            my $tokens = $args{parent}->{value};
+            $tokens->[-1] = {type => EOF_TOKEN,
+                             line => $tokens->[-1]->{line},
+                             column => $tokens->[-1]->{column}};
+
+            # XXX
+            use Web::CSS::MediaQueries::Parser;
+            my $p = Web::CSS::MediaQueries::Parser->new;
+            $p->context ($self->context);
+            #$p->media_resolver ($self->media_resolver);
+            $p->onerror ($self->onerror);
+
+            my $construct = $self->{current}->[-1];
+            $construct->{mqs} = $p->parse_constructs_as_mqs ($tokens);
+            $construct->{type} = 'media';
+            $construct->{rule_ids} = [];
+            delete $construct->{name};
+            my $rule_id = @{$self->{parsed}->{rules}};
+            $self->{parsed}->{rules}->[$rule_id] = $construct;
+            $construct->{id} = $rule_id;
+            $construct->{parent_id} = $self->{current}->[-2]->{id};
+            push @{$self->{current}->[-2]->{rule_ids}}, $rule_id;
+          } else {
+            $self->onerror->(type => 'css:at-rule:unknown',
+                             level => 'm',
+                             value => $at_name,
+                             line => $args{parent}->{line},
+                             column => $args{parent}->{column});
+          }
         }
       }
     }
@@ -146,6 +161,7 @@ sub end_construct ($;%) {
   if ($construct->{type} == DECLARATION_CONSTRUCT and not $args{error}) {
     my $prop_name = $construct->{name}->{value};
     $prop_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+    # XXX custom properties
     use Web::CSS::Props; # XXX
     my $def = $Web::CSS::Props::Prop->{$prop_name};
     if ($def) {
@@ -155,6 +171,8 @@ sub end_construct ($;%) {
       pop @$tokens while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
       if (@$tokens and $tokens->[-1]->{type} == IDENT_TOKEN and
           $tokens->[-1]->{value} =~ /\A[Ii][Mm][Pp][Oo][Rr][Tt][Aa][Nn][Tt]\z/) { ## 'important', ASCII case-insensitive.
+        ## <http://dev.w3.org/csswg/css-syntax/#consume-a-declaration>
+        ## <http://dev.w3.org/csswg/css-syntax/#declaration-rule-list>
         my @t = pop @$tokens; # 'important'
         unshift @t, pop @$tokens
             while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
@@ -199,6 +217,16 @@ sub end_construct ($;%) {
     if ($construct->{_has_entry}) {
       pop @{$self->{current}};
     }
+  } elsif ($construct->{type} == AT_RULE_CONSTRUCT) {
+    ## At-rule without block
+    my $at_name = $construct->{name}->{value};
+    $at_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+    $self->onerror->(type => 'css:at-rule:unknown',
+                     level => 'm',
+                     value => $at_name,
+                     line => $construct->{name}->{line},
+                     column => $construct->{name}->{column});
+    pop @{$self->{current}};
   } elsif ($construct->{type} == QUALIFIED_RULE_CONSTRUCT) {
     ## Selectors without following block
     pop @{$self->{current}};

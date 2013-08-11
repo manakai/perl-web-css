@@ -35,13 +35,11 @@ XXX
 
 =back
 
-=head1 SUPPORTED STANDARDS
+=head1 SPECIFICATIONS
 
-This module implements CSS, Selectors, Media Querties, and CSSOM.  See
-<http://suika.suikawiki.org/gate/2007/html/standards#css> for more
-information.
+CSS Syntax <http://dev.w3.org/csswg/css-syntax/>.
 
-CSS Namespace <http://www.w3.org/TR/css3-namespace/>.
+An invalid declaration MUST NOT be included in the style rule.
 
 =head1 SEE ALSO
 

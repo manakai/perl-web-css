@@ -79,6 +79,8 @@ CSS Conditional Rules <http://dev.w3.org/csswg/css-conditional/>.
 
 CSS Cascading and Inheritance <http://dev.w3.org/csswg/css-cascade/>.
 
+CSS Namespaces <http://dev.w3.org/csswg/css-namespaces/>.
+
 An invalid declaration MUST NOT be included in the style rule.
 
 =head1 SEE ALSO

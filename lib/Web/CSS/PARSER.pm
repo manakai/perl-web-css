@@ -1,7 +1,7 @@
 package Web::CSS::Parser;
 use strict;
 use warnings;
-our $VERSION = '6.0';
+our $VERSION = '7.0';
 use Web::CSS::Builder;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
@@ -70,6 +70,22 @@ sub parse_char_string_as_ss ($$) {
 ##   parent_id   - The internal ID of the parent rule
 ##   encoding    - The encoding of the at-rule
 
+## @import struct
+##
+##   id          - Internal ID of the at-rule
+##   type        - "import"
+##   parent_id   - The internal ID of the parent rule
+##   href        - The URL of the imported style sheet
+##   mqs         - List of media queries construct
+
+## @namespace struct
+##
+##   id          - Internal ID of the at-rule
+##   type        - "namespace"
+##   parent_id   - The internal ID of the parent rule
+##   prefix      - The namespace prefix, if any, or |undef|
+##   nsurl       - The namespace URL, possibly empty.
+
 ## @media struct
 ##
 ##   id          - Internal ID of the at-rule
@@ -78,7 +94,7 @@ sub parse_char_string_as_ss ($$) {
 ##   mqs         - List of media queries construct
 ##   rule_ids    - The arrayref of the IDs of the rules in the @media at-rule
 
-my $KnownAtRules = {charset => 1, import => 1, media => 1};
+my $KnownAtRules = {charset => 1, import => 1, media => 1, namespace => 1};
 
 sub start_construct ($;%) {
   my ($self, %args) = @_;
@@ -239,7 +255,72 @@ sub end_construct ($;%) {
     ## At-rule without block
     my $at_name = $construct->{name}->{value};
     $at_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-    if ($at_name eq 'import') {
+    if ($at_name eq 'namespace') {
+      ## <http://dev.w3.org/csswg/css-namespaces/#declaration>.
+      if (not @{$self->{current}} == 2 or
+          grep {
+            my $t = $self->{parsed}->{rules}->[$_]->{type};
+            $t ne 'namespace' and $t ne 'import' and $t ne 'charset';
+          } @{$self->{current}->[-2]->{rule_ids}}) {
+        $self->onerror->(type => 'at-rule not allowed',
+                         text => 'namespace',
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         line => $construct->{line},
+                         column => $construct->{column});
+      } else {
+        my $tokens = $construct->{value};
+        push @$tokens, {type => EOF_TOKEN,
+                        line => $construct->{end_line},
+                        column => $construct->{end_column}};
+        my $t = shift @$tokens;
+        $t = shift @$tokens while $t->{type} == S_TOKEN;
+        my $rule = {type => 'namespace'};
+        my $context = $self->context;
+        if ($t->{type} == IDENT_TOKEN) {
+          $rule->{prefix} = $t->{value};
+          if (defined $context->{prefix_to_url}->{$rule->{prefix}}) {
+            $self->onerror->(type => 'duplicate @namespace',
+                             value => $rule->{prefix},
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+          }
+          $t = shift @$tokens;
+          $t = shift @$tokens while $t->{type} == S_TOKEN;
+        } else {
+          if (defined $context->{prefix_to_url}->{''}) {
+            $self->onerror->(type => 'duplicate @namespace',
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+          }
+        }
+        if ($t->{type} == STRING_TOKEN or $t->{type} == URI_TOKEN) {
+          $rule->{nsurl} = $t->{value};
+          $t = shift @$tokens;
+          $t = shift @$tokens while $t->{type} == S_TOKEN;
+          if ($t->{type} == EOF_TOKEN) {
+            $context->{prefix_to_url}->{defined $rule->{prefix} ? $rule->{prefix} : ''} = $rule->{nsurl};
+            my $rule_id = @{$self->{parsed}->{rules}};
+            $self->{parsed}->{rules}->[$rule_id] = $rule;
+            $rule->{id} = $rule_id;
+            $rule->{parent_id} = $self->{current}->[-2]->{id};
+            push @{$self->{current}->[-2]->{rule_ids}}, $rule_id;
+          } else {
+            $self->onerror->(type => 'css:namespace:broken', # XXX
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+          }
+        } else {
+          $self->onerror->(type => 'css:namespace:url missing', # XXX
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $t);
+        }
+      }
+    } elsif ($at_name eq 'import') {
       ## <http://dev.w3.org/csswg/css-cascade/#at-import>.
       if (not @{$self->{current}} == 2 or
           grep {

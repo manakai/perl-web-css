@@ -15,8 +15,6 @@ sub init_parser ($) {
   delete $self->{start_construct_count};
 } # init_parser
 
-# XXX stream mode
-
 # XXX parse_byte_string
 
 sub parse_char_string_as_ss ($$) {
@@ -35,12 +33,14 @@ sub parse_char_string_as_ss ($$) {
     $self->init_builder;
   }
 
+  ## Parsed style sheet data structure
+  ##
+  ##   rules
+  ##     0         - The "style sheet" struct
+  ##     n > 0     - Rules in the style sheet
+  ##   base_urlref - The scalarref to the base URL of the style sheet
   $self->{parsed} = {rules => [],
                      base_urlref => $self->context->base_urlref};
-  ## rules
-  ##   0         - The "style sheet" struct
-  ##   n > 0     - Rules in the style sheet
-  ## base_urlref - The scalarref to the base URL of the style sheet
 
   $self->start_building_rules or do {
     1 while not $self->continue_building_rules;
@@ -53,14 +53,14 @@ sub parse_char_string_as_ss ($$) {
 
 ## Style sheet struct
 ##
-##   id          - 0
-##   type        - "sheet"
+##   id          - Internal ID of the style sheet
+##   rule_type   - "sheet"
 ##   rule_ids    - The arrayref of the IDs of the rules in the style sheet
 
 ## Style rule struct
 ##
 ##   id          - Internal ID of the rule
-##   type        - "style"
+##   rule_type   - "style"
 ##   parent_id   - The internal ID of the parent rule
 ##   selectors   - Selectors struct
 ##   prop_keys   - The arrayref of the property keys
@@ -70,14 +70,14 @@ sub parse_char_string_as_ss ($$) {
 ## @charset struct
 ##
 ##   id          - Internal ID of the at-rule
-##   type        - "charset"
+##   rule_type   - "charset"
 ##   parent_id   - The internal ID of the parent rule
 ##   encoding    - The encoding of the at-rule
 
 ## @import struct
 ##
 ##   id          - Internal ID of the at-rule
-##   type        - "import"
+##   rule_type   - "import"
 ##   parent_id   - The internal ID of the parent rule
 ##   href        - The URL of the imported style sheet
 ##   mqs         - List of media queries construct
@@ -85,7 +85,7 @@ sub parse_char_string_as_ss ($$) {
 ## @namespace struct
 ##
 ##   id          - Internal ID of the at-rule
-##   type        - "namespace"
+##   rule_type   - "namespace"
 ##   parent_id   - The internal ID of the parent rule
 ##   prefix      - The namespace prefix, if any, or |undef|
 ##   nsurl       - The namespace URL, possibly empty.
@@ -93,7 +93,7 @@ sub parse_char_string_as_ss ($$) {
 ## @media struct
 ##
 ##   id          - Internal ID of the at-rule
-##   type        - "media"
+##   rule_type   - "media"
 ##   parent_id   - The internal ID of the parent rule
 ##   mqs         - List of media queries construct
 ##   rule_ids    - The arrayref of the IDs of the rules in the @media at-rule
@@ -108,18 +108,18 @@ sub start_construct ($;%) {
   my $construct = $self->{constructs}->[-1];
   if ($construct->{type} == QUALIFIED_RULE_CONSTRUCT) {
     push @{$self->{current} ||= []},
-        {type => 'style',
+        {rule_type => 'style',
          prop_keys => [],
          prop_values => {},
          prop_importants => {}};
   } elsif ($construct->{type} == AT_RULE_CONSTRUCT) {
     push @{$self->{current} ||= []},
-        {type => 'at',
+        {rule_type => 'at',
          name => $construct->{name}->{value}};
   } elsif ($construct->{type} == BLOCK_CONSTRUCT) {
     if ($args{parent}) {
       $construct->{_has_entry} = 1;
-      if ($self->{current}->[-1]->{type} eq 'style') {
+      if ($self->{current}->[-1]->{rule_type} eq 'style') {
         ## <http://dev.w3.org/csswg/css-syntax/#style-rules>
         my $tokens = $args{parent}->{value};
         $tokens->[-1] = {type => EOF_TOKEN,
@@ -141,7 +141,7 @@ sub start_construct ($;%) {
         my $at_name = $self->{current}->[-1]->{name};
         $at_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
         if (@{$self->{current}} > 1 and
-            $self->{current}->[-2]->{type} eq 'style') {
+            $self->{current}->[-2]->{rule_type} eq 'style') {
           $self->onerror->(type => 'css:style:at-rule', # XXX
                            level => 'm',
                            value => $at_name,
@@ -158,7 +158,7 @@ sub start_construct ($;%) {
 
             my $construct = $self->{current}->[-1];
             $construct->{mqs} = $self->parse_constructs_as_mqs ($tokens);
-            $construct->{type} = 'media';
+            $construct->{rule_type} = 'media';
             $construct->{rule_ids} = [];
             delete $construct->{name};
             my $rule_id = @{$self->{parsed}->{rules}};
@@ -185,7 +185,7 @@ sub start_construct ($;%) {
       }
     }
   } elsif ($construct->{type} == RULE_LIST_CONSTRUCT) {
-    my $rule = {type => 'sheet', rule_ids => [], id => 0};
+    my $rule = {rule_type => 'sheet', rule_ids => [], id => 0};
     $self->{parsed}->{rules}->[0] = $rule;
     push @{$self->{current} ||= []}, $rule;
   }
@@ -263,7 +263,7 @@ sub end_construct ($;%) {
       ## <http://dev.w3.org/csswg/css-namespaces/#declaration>.
       if (not @{$self->{current}} == 2 or
           grep {
-            my $t = $self->{parsed}->{rules}->[$_]->{type};
+            my $t = $self->{parsed}->{rules}->[$_]->{rule_type};
             $t ne 'namespace' and $t ne 'import' and $t ne 'charset';
           } @{$self->{current}->[-2]->{rule_ids}}) {
         $self->onerror->(type => 'at-rule not allowed',
@@ -279,7 +279,7 @@ sub end_construct ($;%) {
                         column => $construct->{end_column}};
         my $t = shift @$tokens;
         $t = shift @$tokens while $t->{type} == S_TOKEN;
-        my $rule = {type => 'namespace'};
+        my $rule = {rule_type => 'namespace'};
         my $context = $self->context;
         if ($t->{type} == IDENT_TOKEN) {
           $rule->{prefix} = $t->{value};
@@ -328,7 +328,7 @@ sub end_construct ($;%) {
       ## <http://dev.w3.org/csswg/css-cascade/#at-import>.
       if (not @{$self->{current}} == 2 or
           grep {
-            my $t = $self->{parsed}->{rules}->[$_]->{type};
+            my $t = $self->{parsed}->{rules}->[$_]->{rule_type};
             $t ne 'import' and $t ne 'charset';
           } @{$self->{current}->[-2]->{rule_ids}}) {
         $self->onerror->(type => 'at-rule not allowed',
@@ -345,7 +345,7 @@ sub end_construct ($;%) {
         my $t = shift @$tokens;
         $t = shift @$tokens while $t->{type} == S_TOKEN;
         if ($t->{type} == URI_TOKEN or $t->{type} == STRING_TOKEN) {
-          my $rule = {type => 'import', href => $t->{value}};
+          my $rule = {rule_type => 'import', href => $t->{value}};
           $t = shift @$tokens;
           $t = shift @$tokens while $t->{type} == S_TOKEN;
           unless ($t->{type} == EOF_TOKEN) {
@@ -381,7 +381,8 @@ sub end_construct ($;%) {
         shift @$tokens while @$tokens and $tokens->[0]->{type} == S_TOKEN;
         pop @$tokens while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
         if (@$tokens == 1 and $tokens->[0]->{type} == STRING_TOKEN) {
-          my $rule = {type => 'charset', encoding => $tokens->[0]->{value}};
+          my $rule = {rule_type => 'charset',
+                      encoding => $tokens->[0]->{value}};
           my $rule_id = @{$self->{parsed}->{rules}};
           $self->{parsed}->{rules}->[$rule_id] = $rule;
           $rule->{id} = $rule_id;
@@ -426,6 +427,34 @@ sub end_construct ($;%) {
 } # end_construct
 
 # XXX style="" parsing
+
+sub parse_style_element ($$) {
+  my ($self, $style) = @_;
+
+  ## $style MUST be the |Web::DOM::Element| object representing an
+  ## HTML |style| element.
+
+  # XXX SVG |style| element
+
+  ## This method does not check for the |type| attribute, nor does
+  ## examine the current |sheet| attrbute value.  Additionally, the
+  ## |media| attribute and the |title| attribute do not affect this
+  ## method's processing.
+
+  my $parsed = $self->parse_char_string_as_ss
+      (join '', map { $_->data } grep { $_->node_type == $_->TEXT_NODE } @{$style->child_nodes});
+  
+  my $old_id = $$style->[2]->{sheet};
+  if (defined $old_id) {
+    $$style->[0]->disconnect ($old_id);
+    delete $$style->[0]->{data}->[$old_id]->{owner};
+  }
+
+  my $new_id = $$style->[0]->import_parsed_ss ($parsed);
+  $$style->[2]->{sheet} = $new_id;
+  $$style->[0]->{data}->[$new_id]->{owner} = $$style->[1];
+  $$style->[0]->connect ($new_id => $$style->[1]);
+} # process_style_element
 
 1;
 

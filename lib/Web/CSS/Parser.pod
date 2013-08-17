@@ -75,6 +75,19 @@ structure.
 
 =back
 
+Following method is intended to be used with appropriate
+L<Web::DOM::Node> object:
+
+=over 4
+
+=item $p->parse_style_element ($el)
+
+Parse the content of the HTML C<style> element and set the C<sheet>
+IDL attribute.  The argument MUST be a L<Web::DOM::Element> object
+representing the C<style> element.
+
+=back
+
 =head1 SPECIFICATIONS
 
 CSS Syntax <http://dev.w3.org/csswg/css-syntax/>.
@@ -84,6 +97,11 @@ CSS Conditional Rules <http://dev.w3.org/csswg/css-conditional/>.
 CSS Cascading and Inheritance <http://dev.w3.org/csswg/css-cascade/>.
 
 CSS Namespaces <http://dev.w3.org/csswg/css-namespaces/>.
+
+CSSOM <http://dev.w3.org/csswg/cssom/>.
+
+HTML Living Standard
+<http://www.whatwg.org/specs/web-apps/current-work/#styling>.
 
 An invalid declaration MUST NOT be included in the style rule.
 

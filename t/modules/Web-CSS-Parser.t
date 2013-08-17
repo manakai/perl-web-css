@@ -10,9 +10,10 @@ use Test::More;
 use Test::Differences;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
+use Web::DOM::Document;
 
-sub SS ($) { {id => 0, type => 'sheet', rule_ids => $_[0]} }
-sub S ($$$$$$) { {parent_id => $_[0], id => $_[1], type => 'style',
+sub SS ($) { {id => 0, rule_type => 'sheet', rule_ids => $_[0]} }
+sub S ($$$$$$) { {parent_id => $_[0], id => $_[1], rule_type => 'style',
                   selectors => do {
                     if (ref $_[2]) {
                       my $s = shift @{$_[2]};
@@ -27,15 +28,15 @@ sub S ($$$$$$) { {parent_id => $_[0], id => $_[1], type => 'style',
                   },
                   prop_keys => $_[3], prop_values => $_[4],
                   prop_importants => $_[5]} }
-sub MEDIA ($$$$) { {parent_id => $_[0], id => $_[1], type => 'media',
+sub MEDIA ($$$$) { {parent_id => $_[0], id => $_[1], rule_type => 'media',
                     rule_ids => $_[2],
                     mqs => Web::CSS::MediaQueries::Parser->new->parse_char_string_as_mqs($_[3])} }
-sub CHARSET ($$$) { {parent_id => $_[0], id => $_[1], type => 'charset',
+sub CHARSET ($$$) { {parent_id => $_[0], id => $_[1], rule_type => 'charset',
                      encoding => $_[2]} }
-sub IMPORT ($$$$) { {parent_id => $_[0], id => $_[1], type => 'import',
+sub IMPORT ($$$$) { {parent_id => $_[0], id => $_[1], rule_type => 'import',
                      href => $_[2],
                      mqs => Web::CSS::MediaQueries::Parser->new->parse_char_string_as_mqs($_[3])} }
-sub NS ($$$$) { {parent_id => $_[0], id => $_[1], type => 'namespace',
+sub NS ($$$$) { {parent_id => $_[0], id => $_[1], rule_type => 'namespace',
                  (defined $_[2] ? (prefix => $_[2]) : ()), nsurl => $_[3]} }
 sub K ($) { ['KEYWORD', $_[0]] }
 
@@ -380,6 +381,28 @@ for my $test (
     done $c;
   } n => 2, name => ['parse', $test->{in}];
 }
+
+test {
+  my $c = shift;
+  my $doc = new Web::DOM::Document;
+  my $el = $doc->create_element ('style');
+
+  my $parser = Web::CSS::Parser->new;
+  $parser->parse_style_element ($el);
+
+  my $sheet = $el->sheet;
+  isa_ok $sheet, 'Web::DOM::CSSStyleSheet';
+  
+  my $owner = $sheet->owner_node;
+  is $owner, $el;
+
+  is $el->sheet, $sheet;
+
+  isa_ok $sheet->owner_node, 'Web::DOM::Element';
+  is $sheet->owner_node->sheet, $sheet;
+
+  done $c;
+} n => 5, name => 'parse_style_element - empty';
 
 run_tests;
 

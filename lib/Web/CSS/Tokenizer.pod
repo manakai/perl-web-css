@@ -8,14 +8,48 @@ The C<Web::CSS::Tokenizer> module provides a CSS syntax tokenizer.  It
 can be used to tokenize strings written in languages using the CSS
 syntax, including CSS, Selectors, and Media Queries.
 
+This module is intended to be used by a CSS-based language parser as
+its base class.  It does not intended for applications directly
+invoking methods or accessing data structure of the module.
+
+=head1 CONSTANTS
+
+By C<use>ing the module, a number of token type constants are exported
+to your package.
+
+=head1 DATA STRUCTURES
+
+See the comment in the module for the data structure of tokens emitted
+by the module's methods.
+
+Applications should not try to directly access to the data contained
+in the token, except for two fields below:
+
+The field C<< $token->{line} >> contains the line number of the first
+character of the token.
+
+The field C<< $token->{column} >> contains the column number of the
+first character of the token.  It can be zero if the first character
+is the newline character between the current line and the previous
+line.  The column number of the "end-of-file" pseudo-character is
+greater than the column number of the last character in the last line.
+
+=head1 METHOD
+
+The C<< Web::CSS::Tokenizer->serialize_token >> method is the only
+public method directly exposed by the module.  The method can be used
+to serialize the token as a character string for the purpose of
+debugging or error reporting.  It must not be used to generate
+original or canonical representation of the token.  The string
+returned by the method might or might not be reparsable.
+
+=head1 SPECIFICATION
+
+CSS Syntax <http://dev.w3.org/csswg/css-syntax/>.
+
 =head1 SEE ALSO
 
-CSS 2.1 <http://www.w3.org/TR/CSS2/>.
-
-Selectors <http://www.w3.org/TR/selectors>.
-
-L<Web::CSS::Parser>, L<Web::CSS::Selectors::Parser>,
-L<Web::CSS::MQ::Parser>.
+L<Web::CSS::Builder>.
 
 =head1 AUTHOR
 

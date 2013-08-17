@@ -1,0 +1,55 @@
+=head1 NAME
+
+Web::CSS::Builder - A CSS tree structure builder
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::Builder> class, which is a subclass of the
+L<Web::CSS::Tokenizer>, parses text in the CSS-based syntax and
+construct tree data structure, which then can be used as input to the
+rule grammer aware parsing stage (e.g. L<Web::CSS::Parser>).
+
+This module is intended to be used by a CSS-based language parser as
+its base class.  It does not intended for applications directly
+invoking methods or accessing data structure of the module.
+
+=head1 CONSTANTS
+
+By C<use>ing the module, a number of construct type constants, as well
+as token type constants of L<Web::CSS::Tokenizer>, are exported to
+your package.
+
+=head1 DATA STRUCTURES
+
+See the comment in the module for the data structure of constructs
+emitted by the module's methods, and the comment in
+L<Web::CSS::Tokenizer> module for the data structure of tokens.
+
+Constructs emitted by the module also have C<line> and C<column>
+fields.  Any other field should not be directly accessed by the
+application.  See L<Web::CSS::Tokenizer> documentation for more
+information.
+
+=head1 SPECIFICATION
+
+CSS Syntax <http://dev.w3.org/csswg/css-syntax/>.
+
+=head1 SEE ALSO
+
+L<Web::CSS::Tokenizer>.
+
+L<Web::CSS::Parser>, L<Web::CSS::Selectors::Parser>,
+L<Web::CSS::MediaQueries::Parser>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

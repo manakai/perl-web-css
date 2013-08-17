@@ -5,7 +5,7 @@ use Path::Class;
 use lib file (__FILE__)->dir->parent->parent->subdir ('lib')->stringify;
 use lib glob file (__FILE__)->dir->parent->parent->subdir ('t_deps', 'modules', '*', 'lib')->stringify;
 use Test::X1;
-use Web::CSS::PARSER;# XXX
+use Web::CSS::Parser;
 use Test::More;
 use Test::Differences;
 use Web::CSS::Selectors::Parser;
@@ -477,6 +477,8 @@ for my $test (
     done $c;
   } n => 2, name => 'parse_char_string_as_style_decls';
 }
+
+## TODO: Test <style>'s base URI change and url()
 
 run_tests;
 

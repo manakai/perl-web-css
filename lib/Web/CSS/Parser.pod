@@ -4,7 +4,11 @@ Web::CSS::Parser - A CSS parser
 
 =head1 SYNOPSIS
 
-TBD
+XXX
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::Parser> module provides a CSS parser.
 
 =head1 METHODS
 
@@ -85,7 +89,7 @@ An invalid declaration MUST NOT be included in the style rule.
 
 =head1 SEE ALSO
 
-L<Web::CSS::Props>.
+L<Web::CSS::Props> contains the list of supported CSS properties.
 
 L<Web::CSS::Selectors::Parser>, L<Web::CSS::MediaQueries::Parser>.
 

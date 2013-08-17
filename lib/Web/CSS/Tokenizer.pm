@@ -2,7 +2,7 @@ package Web::CSS::Tokenizer;
 use strict;
 use warnings;
 no warnings 'utf8';
-our $VERSION = '22.0';
+our $VERSION = '23.0';
 use Carp;
 
 ## ------ Character classes ------
@@ -248,14 +248,19 @@ sub onerror ($;$) {
   if (@_ > 1) {
     $_[0]->{onerror} = $_[1];
   }
+
   return $_[0]->{onerror} ||= sub {
-    my %args = @_;
-    warn sprintf "Line %d column %d: %s (%s)\n",
-        $args{line} || $args{token}->{line},
-        $args{column} || $args{token}->{column},
-        $args{type} . (defined $args{value} ? ' ' . $args{value} : ''),
-        $args{level};
-  };
+    my %opt = @_;
+    require Carp;
+    Carp::carp
+        (sprintf 'Document <%s>: Line %d column %d (token %s): %s%s',
+             ${$opt{uri} or \''}, # XXX rename key?
+             defined $opt{line} ? $opt{line} : $opt{token}->{line},
+             defined $opt{column} ? $opt{column} : $opt{token}->{column},
+             Web::CSS::Tokenizer->serialize_token ($opt{token}),
+             $opt{type},
+             defined $opt{value} ? " (value $opt{value})" : '');
+  }; # onerror
 } # onerror
 
 ## ------ Preprocessing of input stream ------

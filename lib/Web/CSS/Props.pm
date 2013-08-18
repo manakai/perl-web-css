@@ -1,9 +1,10 @@
 package Web::CSS::Props;
 use strict;
 use warnings;
-our $VERSION = '1.0';
+our $VERSION = '2.0';
 use Web::CSS::Tokenizer;
 use Web::CSS::Colors;
+use Web::CSS::Values;
 
 our $Prop; ## By CSS property name
 our $Attr; ## By CSSOM attribute name
@@ -704,14 +705,11 @@ $Prop->{display} = {
 };
 $Attr->{display} = $Prop->{display};
 $Key->{display} = $Prop->{display};
-use Web::CSS::Values; # XXX
-$Prop->{display}->{parse} = $Web::CSS::Values::GetKeywordParser->($Prop->{display}->{keyword});
 
 $Prop->{position} = {
   css => 'position',
   dom => 'position',
   key => 'position',
-  parse => $one_keyword_parser,
   keyword => {
     static => 1, relative => 1, absolute => 1, fixed => 1,
   },
@@ -726,7 +724,6 @@ $Prop->{float} = {
   css => 'float',
   dom => 'css_float',
   key => 'float',
-  parse => $one_keyword_parser,
   keyword => {
     left => 1, right => 1, none => 1,
   },
@@ -769,7 +766,6 @@ $Prop->{clear} = {
   css => 'clear',
   dom => 'clear',
   key => 'clear',
-  parse => $one_keyword_parser,
   keyword => {
     left => 1, right => 1, none => 1, both => 1,
   },
@@ -784,7 +780,6 @@ $Prop->{direction} = {
   css => 'direction',
   dom => 'direction',
   key => 'direction',
-  parse => $one_keyword_parser,
   keyword => {
     ltr => 1, rtl => 1,
   },
@@ -799,7 +794,6 @@ $Prop->{'unicode-bidi'} = {
   css => 'unicode-bidi',
   dom => 'unicode_bidi',
   key => 'unicode_bidi',
-  parse => $one_keyword_parser,
   keyword => {
     normal => 1, embed => 1, 'bidi-override' => 1,
   },
@@ -814,7 +808,6 @@ $Prop->{'overflow-x'} = {
   css => 'overflow-x',
   dom => 'overflow_x',
   key => 'overflow_x',
-  parse => $one_keyword_parser,
   serialize_multiple => sub {
     my ($se, $st) = @_;
     my $self = shift;
@@ -857,7 +850,6 @@ $Prop->{'overflow-y'} = {
   css => 'overflow-y',
   dom => 'overflow_y',
   key => 'overflow_y',
-  parse => $one_keyword_parser,
   serialize_multiple => $Prop->{'overflow-x'}->{serialize_multiple},
   keyword => $Prop->{'overflow-x'}->{keyword},
   initial => ["KEYWORD", "visible"],
@@ -889,7 +881,6 @@ $Prop->{visibility} = {
   css => 'visibility',
   dom => 'visibility',
   key => 'visibility',
-  parse => $one_keyword_parser,
   keyword => {
     visible => 1, hidden => 1, collapse => 1,
   },
@@ -904,7 +895,6 @@ $Prop->{'list-style-type'} = {
   css => 'list-style-type',
   dom => 'list_style_type',
   key => 'list_style_type',
-  parse => $one_keyword_parser,
   keyword => {
     ## CSS 2.1
     qw/
@@ -928,7 +918,6 @@ $Prop->{'list-style-position'} = {
   css => 'list-style-position',
   dom => 'list_style_position',
   key => 'list_style_position',
-  parse => $one_keyword_parser,
   keyword => {
     inside => 1, outside => 1,
   },
@@ -943,7 +932,6 @@ $Prop->{'page-break-before'} = {
   css => 'page-break-before',
   dom => 'page_break_before',
   key => 'page_break_before',
-  parse => $one_keyword_parser,
   keyword => {
     auto => 1, always => 1, avoid => 1, left => 1, right => 1,
   },
@@ -958,7 +946,6 @@ $Prop->{'page-break-after'} = {
   css => 'page-break-after',
   dom => 'page_break_after',
   key => 'page_break_after',
-  parse => $one_keyword_parser,
   keyword => {
     auto => 1, always => 1, avoid => 1, left => 1, right => 1,
   },
@@ -973,7 +960,6 @@ $Prop->{'page-break-inside'} = {
   css => 'page-break-inside',
   dom => 'page_break_inside',
   key => 'page_break_inside',
-  parse => $one_keyword_parser,
   keyword => {
     auto => 1, avoid => 1,
   },
@@ -988,7 +974,6 @@ $Prop->{'background-repeat'} = {
   css => 'background-repeat',
   dom => 'background_repeat',
   key => 'background_repeat',
-  parse => $one_keyword_parser,
   serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
   keyword => {
     repeat => 1, 'repeat-x' => 1, 'repeat-y' => 1, 'no-repeat' => 1,
@@ -1004,7 +989,6 @@ $Prop->{'background-attachment'} = {
   css => 'background-attachment',
   dom => 'background_attachment',
   key => 'background_attachment',
-  parse => $one_keyword_parser,
   serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
   keyword => {
     scroll => 1, fixed => 1,
@@ -1020,7 +1004,6 @@ $Prop->{'font-style'} = {
   css => 'font-style',
   dom => 'font_style',
   key => 'font_style',
-  parse => $one_keyword_parser,
   keyword => {
     normal => 1, italic => 1, oblique => 1,
   },
@@ -1035,7 +1018,6 @@ $Prop->{'font-variant'} = {
   css => 'font-variant',
   dom => 'font_variant',
   key => 'font_variant',
-  parse => $one_keyword_parser,
   keyword => {
     normal => 1, 'small-caps' => 1,
   },
@@ -1050,7 +1032,6 @@ $Prop->{'text-align'} = {
   css => 'text-align',
   dom => 'text_align',
   key => 'text_align',
-  parse => $one_keyword_parser,
   keyword => {
     left => 1, right => 1, center => 1, justify => 1, ## CSS 2
     begin => 1, end => 1, ## CSS 3
@@ -1066,7 +1047,6 @@ $Prop->{'text-transform'} = {
   css => 'text-transform',
   dom => 'text_transform',
   key => 'text_transform',
-  parse => $one_keyword_parser,
   keyword => {
     capitalize => 1, uppercase => 1, lowercase => 1, none => 1,
   },
@@ -1081,7 +1061,6 @@ $Prop->{'white-space'} = {
   css => 'white-space',
   dom => 'white_space',
   key => 'white_space',
-  parse => $one_keyword_parser,
   keyword => {
     normal => 1, pre => 1, nowrap => 1, 'pre-wrap' => 1, 'pre-line' => 1,
   },
@@ -1099,7 +1078,6 @@ $Prop->{'caption-side'} = {
   css => 'caption-side',
   dom => 'caption_side',
   key => 'caption_side',
-  parse => $one_keyword_parser,
   keyword => {
     ## CSS 2.1
     top => 1, bottom => 1,
@@ -1117,7 +1095,6 @@ $Prop->{'table-layout'} = {
   css => 'table-layout',
   dom => 'table_layout',
   key => 'table_layout',
-  parse => $one_keyword_parser,
   keyword => {
     auto => 1, fixed => 1,
   },
@@ -1132,7 +1109,6 @@ $Prop->{'border-collapse'} = {
   css => 'border-collapse',
   dom => 'border_collapse',
   key => 'border_collapse',
-  parse => $one_keyword_parser,
   keyword => {
     collapse => 1, separate => 1,
   },
@@ -1147,7 +1123,6 @@ $Prop->{'empty-cells'} = {
   css => 'empty-cells',
   dom => 'empty_cells',
   key => 'empty_cells',
-  parse => $one_keyword_parser,
   keyword => {
     show => 1, hide => 1,
   },
@@ -2647,7 +2622,6 @@ $Prop->{'font-stretch'} = {
   css => 'font-stretch',
   dom => 'font_stretch',
   key => 'font_stretch',
-  parse => $one_keyword_parser,
   keyword => {
     qw/normal 1 wider 1 narrower 1 ultra-condensed 1 extra-condensed 1
        condensed 1 semi-condensed 1 semi-expanded 1 expanded 1 
@@ -2716,7 +2690,6 @@ $Prop->{'writing-mode'} = {
   css => 'writing-mode',
   dom => 'writing_mode',
   key => 'writing_mode',
-  parse => $one_keyword_parser,
   keyword => {
     'lr' => 1, 'lr-tb' => 1,
     'rl' => 1, 'rl-tb' => 1,
@@ -2749,7 +2722,6 @@ $Prop->{'text-anchor'} = {
   css => 'text-anchor',
   dom => 'text_anchor', ## TODO: manakai extension.  Documentation.
   key => 'text_anchor',
-  parse => $one_keyword_parser,
   keyword => {
     start => 1, middle => 1, end => 1,
   },
@@ -2764,7 +2736,6 @@ $Prop->{'dominant-baseline'} = {
   css => 'dominant-baseline',
   dom => 'dominant_baseline', ## TODO: manakai extension.  Documentation.
   key => 'dominant_baseline',
-  parse => $one_keyword_parser,
   keyword => {
     qw/auto 1 use-script 1 no-change 1 reset-size 1 ideographic 1 alphabetic 1
        hanging 1 mathematical 1 central 1 middle 1 text-after-edge 1
@@ -2781,7 +2752,6 @@ $Prop->{'alignment-baseline'} = {
   css => 'alignment-baseline',
   dom => 'alignment_baseline', ## TODO: manakai extension.  Documentation.
   key => 'alignment_baseline',
-  parse => $one_keyword_parser,
   keyword => {
     qw/auto 1 baseline 1 before-edge 1 text-before-edge 1 middle 1 central 1
        after-edge 1 text-after-edge 1 ideographic 1 alphabetic 1 hanging 1
@@ -2801,7 +2771,6 @@ $Prop->{'border-top-style'} = {
   css => 'border-top-style',
   dom => 'border_top_style',
   key => 'border_top_style',
-  parse => $one_keyword_parser,
   serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
@@ -2815,7 +2784,6 @@ $Prop->{'border-right-style'} = {
   css => 'border-right-style',
   dom => 'border_right_style',
   key => 'border_right_style',
-  parse => $one_keyword_parser,
   serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
@@ -2829,7 +2797,6 @@ $Prop->{'border-bottom-style'} = {
   css => 'border-bottom-style',
   dom => 'border_bottom_style',
   key => 'border_bottom_style',
-  parse => $one_keyword_parser,
   serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
@@ -2843,7 +2810,6 @@ $Prop->{'border-left-style'} = {
   css => 'border-left-style',
   dom => 'border_left_style',
   key => 'border_left_style',
-  parse => $one_keyword_parser,
   serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
@@ -2857,7 +2823,6 @@ $Prop->{'outline-style'} = {
   css => 'outline-style',
   dom => 'outline_style',
   key => 'outline_style',
-  parse => $one_keyword_parser,
   serialize_multiple => $Prop->{'outline-color'}->{serialize_multiple},
   keyword => {%$border_style_keyword},
   initial => ['KEYWORD', 'none'],
@@ -6013,6 +5978,13 @@ $Prop->{page} = {
   inherited => 1,
   compute => $compute_as_specified,
 };
+
+for my $key (keys %$Key) {
+  my $def = $Key->{$key};
+  if ($def->{keyword} and not $def->{parse}) {
+    $def->{parse} = $Web::CSS::Values::GetKeywordParser->($def->{keyword});
+  }
+}
 
 1;
 

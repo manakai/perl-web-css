@@ -356,6 +356,24 @@ for my $test (
    out => [SS [1], S(0=>1, 'p', [], {}, {})],
    errors => ['1;19;m;css:at-rule:block not allowed;;namespace',
               '1;26;m;css:qrule:no block;;']},
+  {in => 'p{displaY2:}',
+   out => [SS [1], S(0=>1, 'p', [], {}, {})],
+   errors => ['1;3;m;css:prop:unknown;;displaY2']},
+  {in => 'p{displaY2:!important}',
+   out => [SS [1], S(0=>1, 'p', [], {}, {})],
+   errors => ['1;3;m;css:prop:unknown;;displaY2']},
+  {in => 'p{displaY2: /**/ !hoge}',
+   out => [SS [1], S(0=>1, 'p', [], {}, {})],
+   errors => ['1;3;m;css:prop:unknown;;displaY2']},
+  {in => 'p{displaY2: /**/ ! important /**/ }',
+   out => [SS [1], S(0=>1, 'p', [], {}, {})],
+   errors => ['1;3;m;css:prop:unknown;;displaY2']},
+  {in => 'p{displaY2:!hoge}',
+   out => [SS [1], S(0=>1, 'p', [], {}, {})],
+   errors => ['1;3;m;css:prop:unknown;;displaY2']},
+  {in => 'p{displaY2:bloCk}',
+   out => [SS [1], S(0=>1, 'p', [], {}, {})],
+   errors => ['1;3;m;css:prop:unknown;;displaY2']},
 ) {
   test {
     my $c = shift;
@@ -379,7 +397,45 @@ for my $test (
     eq_or_diff \@error, $test->{errors} || [];
     
     done $c;
-  } n => 2, name => ['parse', $test->{in}];
+  } n => 2, name => ['parse_char_string_as_ss', $test->{in}];
+}
+
+for my $test (
+  {prop => 'Display', in => 'BlocK',
+   out => {prop_keys => ['display'], prop_values => {display => K 'block'}}},
+  {prop => 'Display', in => ' /**/ BlocK /**/ ',
+   out => {prop_keys => ['display'], prop_values => {display => K 'block'}}},
+  {prop => 'Display', in => 'BlocK?',
+   out => {prop_keys => [], prop_values => {}},
+   errors => ['1;1;m;css:value:not keyword;;']},
+  {prop => 'Display', in => 'BlocK !important',
+   out => {prop_keys => [], prop_values => {}},
+   errors => ['1;1;m;css:value:not keyword;;']},
+  {prop => 'xDisplay', in => 'Block',
+   out => undef, errors => []},
+) {
+  test {
+    my $c = shift;
+    my $parser = Web::CSS::Parser->new;
+    my @error;
+    $parser->onerror (sub {
+      my %args = @_;
+      push @error, join ';',
+          $args{line} // $args{token}->{line},
+          $args{column} // $args{token}->{column},
+          $args{level},
+          $args{type},
+          $args{text} // '',
+          $args{value} // '';
+    });
+    
+    my $parsed = $parser->parse_char_string_as_prop_value
+        ($test->{prop}, $test->{in});
+    eq_or_diff $parsed, $test->{out};
+    eq_or_diff \@error, $test->{errors} || [];
+
+    done $c;
+  } n => 2, name => ['parse_char_string_as_prop_value', $test->{prop}, $test->{in}];
 }
 
 test {

@@ -1,7 +1,7 @@
 package Web::CSS::Parser;
 use strict;
 use warnings;
-our $VERSION = '7.0';
+our $VERSION = '8.0';
 use Web::CSS::Builder;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
@@ -38,7 +38,7 @@ sub parse_char_string_as_ss ($$) {
   ##   rules
   ##     0         - The "style sheet" struct
   ##     n > 0     - Rules in the style sheet
-  ##   base_urlref - The scalarref to the base URL of the style sheet
+  ##   base_urlref - The scalarref to the base URL of the style sheet XXX is this really necessary???
   $self->{parsed} = {rules => [],
                      base_urlref => $self->context->base_urlref};
 
@@ -196,60 +196,50 @@ sub end_construct ($;%) {
 
   my $construct = $self->{constructs}->[-1];
   if ($construct->{type} == DECLARATION_CONSTRUCT and not $args{error}) {
-    my $prop_name = $construct->{name}->{value};
-    $prop_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-    # XXX custom properties
-    my $def = $Web::CSS::Props::Prop->{$prop_name};
-    if ($def) {
-      my $tokens = $construct->{value};
-      my $important;
-      shift @$tokens while @$tokens and $tokens->[0]->{type} == S_TOKEN;
-      pop @$tokens while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
-      if (@$tokens and $tokens->[-1]->{type} == IDENT_TOKEN and
-          $tokens->[-1]->{value} =~ /\A[Ii][Mm][Pp][Oo][Rr][Tt][Aa][Nn][Tt]\z/) { ## 'important', ASCII case-insensitive.
-        ## <http://dev.w3.org/csswg/css-syntax/#consume-a-declaration>
-        ## <http://dev.w3.org/csswg/css-syntax/#declaration-rule-list>
-        my @t = pop @$tokens; # 'important'
-        unshift @t, pop @$tokens
-            while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
-        if (@$tokens and $tokens->[-1]->{type} == EXCLAMATION_TOKEN) {
-          pop @$tokens; # '!'
-          pop @$tokens while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
-          $important = 1;
-        } else {
-          push @$tokens, @t;
-        }
-      }
-      my $value;
-      if (@$tokens == 1 and $tokens->[0]->{type} == IDENT_TOKEN and
-          $tokens->[0]->{value} =~ /\A([Ii][Nn][Hh][Ee][Rr][Ii][Tt]|(?:-[Mm][Oo][Zz]-)?[Ii][Nn][Ii][Tt][Ii][Aa][Ll])\z/) {
-        $value = ['KEYWORD', {inherit => 'inherit',
-                              initial => 'initial',
-                              '-moz-initial' => 'initial'}->{lc $1}];
+    my $tokens = $construct->{value};
+    my $important;
+    my $l_t;
+    $l_t = pop @$tokens while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
+    if (@$tokens and $tokens->[-1]->{type} == IDENT_TOKEN and
+        $tokens->[-1]->{value} =~ /\A[Ii][Mm][Pp][Oo][Rr][Tt][Aa][Nn][Tt]\z/) { ## 'important', ASCII case-insensitive.
+      ## <http://dev.w3.org/csswg/css-syntax/#consume-a-declaration>
+      ## <http://dev.w3.org/csswg/css-syntax/#declaration-rule-list>
+      my @t = pop @$tokens; # 'important'
+      unshift @t, pop @$tokens
+          while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
+      if (@$tokens and $tokens->[-1]->{type} == EXCLAMATION_TOKEN) {
+        $l_t = pop @$tokens; # '!'
+        $l_t = pop @$tokens while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
+        $important = 1;
       } else {
-        push @$tokens, {type => EOF_TOKEN,
-                        line => $tokens->[-1]->{line},
-                        column => $tokens->[-1]->{column}};
-        $value = $def->{parse}->($self, $tokens);
+        push @$tokens, @t;
       }
+    }
+    push @$tokens,
+        {type => EOF_TOKEN,
+         line => defined $l_t ? $l_t->{line} : $construct->{end_line},
+         column => defined $l_t ? $l_t->{column} : $construct->{end_column}};
+    my $parsed = $self->parse_constructs_as_prop_value
+        ($construct->{name}->{value}, $tokens);
+    if (defined $parsed) {
       # XXX duplicate
-      if (defined $value) {
-        my $decl = $self->{current}->[-1];
-        push @{$decl->{prop_keys}}, $def->{key};
-        $decl->{prop_values}->{$def->{key}} = $value;
+      my $decl = $self->{current}->[-1];
+      for my $key (@{$parsed->{prop_keys}}) {
+        push @{$decl->{prop_keys}}, $key;
+        $decl->{prop_values}->{$key} = $parsed->{prop_values}->{$key};
         if ($important) {
-          $decl->{prop_importants}->{$def->{key}} = 1;
+          $decl->{prop_importants}->{$key} = 1;
         } else {
-          delete $decl->{prop_importants}->{$def->{key}};
+          delete $decl->{prop_importants}->{$key};
         }
       }
     } else {
       $self->onerror->(type => 'css:prop:unknown', # XXX
                        level => 'm',
-                       value => $prop_name,
+                       value => $construct->{name}->{value},
                        uri => $self->context->urlref,
-                       line => $construct->{name}->{line},
-                       column => $construct->{name}->{column});
+                       line => $construct->{line},
+                       column => $construct->{column});
     }
   } elsif ($construct->{type} == BLOCK_CONSTRUCT) {
     if ($construct->{_has_entry}) {
@@ -427,6 +417,64 @@ sub end_construct ($;%) {
 } # end_construct
 
 # XXX style="" parsing
+
+sub parse_char_string_as_prop_value ($$$) {
+  my $self = $_[0];
+
+  {
+    $self->{line_prev} = $self->{line} = 1;
+    $self->{column_prev} = -1;
+    $self->{column} = 0;
+
+    $self->{chars} = [split //, $_[2]];
+    $self->{chars_pos} = 0;
+    delete $self->{chars_was_cr};
+    $self->{chars_pull_next} = sub { 0 };
+    $self->init_tokenizer;
+    $self->init_builder;
+  }
+
+  $self->start_building_values or do {
+    1 while not $self->continue_building_values;
+  };
+
+  my $tokens = $self->{parsed_construct}->{value};
+  push @$tokens, $self->get_next_token; # EOF_TOKEN
+
+  return $self->parse_constructs_as_prop_value ($_[1], $tokens); # or undef
+} # parse_char_string_as_prop_value
+
+sub parse_constructs_as_prop_value ($$$) {
+  my ($self, $prop_name, $tokens) = @_;
+  $prop_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+
+  # XXX custom properties
+  # XXX shorthand
+
+  # XXX supportedness
+  my $def = $Web::CSS::Props::Prop->{$prop_name} or return undef;
+
+  my $value;
+  shift @$tokens while $tokens->[0]->{type} == S_TOKEN;
+  splice @$tokens, -2, 1, ()
+      while @$tokens > 1 and $tokens->[-2]->{type} == S_TOKEN;
+  if (@$tokens == 2 and
+      $tokens->[0]->{type} == IDENT_TOKEN and
+      $tokens->[0]->{value} =~ /\A([Ii][Nn][Hh][Ee][Rr][Ii][Tt]|(?:-[Mm][Oo][Zz]-)?[Ii][Nn][Ii][Tt][Ii][Aa][Ll])\z/ and
+      $tokens->[1]->{type} == EOF_TOKEN) {
+    $value = ['KEYWORD', {inherit => 'inherit',
+                          initial => 'initial',
+                          '-moz-initial' => 'initial'}->{lc $1}];
+  } else {
+    $value = $def->{parse}->($self, $tokens);
+  }
+  if (defined $value) {
+    return {prop_keys => [$def->{key}],
+            prop_values => {$def->{key} => $value}};
+  } else {
+    return {prop_keys => [], prop_values => {}};
+  }
+} # parse_constructs_as_prop_value
 
 sub parse_style_element ($$) {
   my ($self, $style) = @_;

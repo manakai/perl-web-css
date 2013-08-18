@@ -63,6 +63,13 @@ Following methods can be used to parse fragments of CSS style sheets:
 Parse the input string as a list of media queries and return the
 parsed structure.  See also L<Web::CSS::MediaQueries::Parser>.
 
+=item $props = $p->parse_char_string_as_prop_value ($prop_name, $string)
+
+Parse the input string as a property value of the specified property
+and return the parsed structure.  If the specified property is not
+supported, it returns C<undef>.  If the property value is not valid,
+an empty property list is returned.
+
 =item $selectors = $p->parse_char_string_as_selectors ($string)
 
 Parse the input string as a list of selectors and return the parsed

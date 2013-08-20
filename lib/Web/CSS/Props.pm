@@ -1,7 +1,7 @@
 package Web::CSS::Props;
 use strict;
 use warnings;
-our $VERSION = '2.0';
+our $VERSION = '3.0';
 use Web::CSS::Tokenizer;
 use Web::CSS::Colors;
 use Web::CSS::Values;
@@ -722,7 +722,7 @@ $Key->{position} = $Prop->{position};
 
 $Prop->{float} = {
   css => 'float',
-  dom => 'css_float',
+  dom => 'float',
   key => 'float',
   keyword => {
     left => 1, right => 1, none => 1,
@@ -758,8 +758,8 @@ $Prop->{float} = {
     return $specified_value;
   },
 };
+$Attr->{float} = $Prop->{float};
 $Attr->{css_float} = $Prop->{float};
-$Attr->{style_float} = $Prop->{float}; ## NOTE: IEism
 $Key->{float} = $Prop->{float};
 
 $Prop->{clear} = {

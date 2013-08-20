@@ -1,19 +1,22 @@
 =head1 NAME
 
-Web::CSS::MediaQueries::Parser - Parse media queries
+Web::CSS::MediaQueries::Parser - Parsing Media Queries
 
 =head1 SYNOPSIS
 
   use Web::CSS::MediaQueries::Parser;
   my $s = Web::CSS::MediaQueries::Parser->new;
-  $parsed = $s->parse_char_string ($string)
+  $parsed = $s->parse_char_string_as_mq_list ($string)
 
 =head1 DESCRIPTION
 
-The C<Web::CSS::MediaQueries::Parser> object can be used to parse
-media queries.
+The C<Web::CSS::MediaQueries::Parser> object can be used to parse a
+list of media queries or a media query, used in CSS, HTML, and other
+languages.
 
 =head1 METHODS
+
+Following methods are available:
 
 =over 4
 
@@ -30,26 +33,46 @@ during the parsing is reported.
 
 XXX
 
-=item $parsed = $parser->parse_char_string ($string)
+=item $mr = $parser->media_resolver
+
+=item $parser->media_resolver ($mr)
+
+Return or specify the L<Web::CSS::MediaResolver> object for parsing.
+
+=item $parsed = $parser->parse_char_string_as_mq ($string)
 
 Parse the specified character string as a media query.  If the string
-represents a valid media query, the parsed representation of the query
-is returned.  Otherwise, C<undef> is returned.
+represents a media query, the parsed representation of the query is
+returned.  Otherwise, C<undef> is returned.
+
+In most cases, you don't want to call this method.  Instead, use the
+C<parse_char_string_as_mq_list> method.
+
+=item $parsed = $parser->parse_char_string_as_mq_list ($string)
+
+Parse the specified character string as a list of media queries.  The
+parsed representation of the queries is returned.  (Any strung can be
+interpreted as a list of media queries, whether valid or not.)
 
 =back
-
-=head1 PARAMETERS
-
-XXX
 
 =head1 DATA STRUCTURES
 
 XXX
 
-=head1 BUGS
+=head1 SPECIFICATIONS
 
-The current implementation only supports parsing of a list of media
-types.
+=over 4
+
+=item MQ
+
+Media Queries <http://dev.w3.org/csswg/mediaqueries/>.
+
+=item CSSOM
+
+CSSOM <http://dev.w3.org/csswg/cssom/#media-queries>.
+
+=back
 
 =head1 SEE ALSO
 

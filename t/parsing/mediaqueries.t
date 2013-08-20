@@ -47,7 +47,7 @@ for my $file_name (qw(mq-1.dat mq-2.dat mq-3.dat)) {
         $p->media_resolver->{feature}->{$_} = 1;
       }
 
-      my $mq = $p->parse_char_string_as_mqs ($test->{data}->[0]);
+      my $mq = $p->parse_char_string_as_mq_list ($test->{data}->[0]);
 
       $chk->check_mq_list ($mq) if $mq;
 

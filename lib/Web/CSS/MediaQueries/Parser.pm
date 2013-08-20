@@ -1,7 +1,7 @@
 package Web::CSS::MediaQueries::Parser;
 use strict;
 use warnings;
-our $VERSION = '6.0';
+our $VERSION = '7.0';
 push our @ISA, qw(Web::CSS::MediaQueries::Parser::_ Web::CSS::Builder);
 
 sub media_resolver ($;$) {
@@ -33,7 +33,7 @@ my $ReservedMediaTypes = {
   and => 1, or => 1, not => 1, only => 1,
 };
 
-sub parse_char_string_as_mqs ($$) {
+sub parse_char_string_as_mq_list ($$) {
   my $self = $_[0];
 
   $self->{line_prev} = $self->{line} = 1;
@@ -55,10 +55,10 @@ sub parse_char_string_as_mqs ($$) {
   my $tt = (delete $self->{parsed_construct})->{value};
   push @$tt, $self->get_next_token; # EOF_TOKEN
 
-  return $self->parse_constructs_as_mqs ($tt);
-} # parse_char_string_as_mqs
+  return $self->parse_constructs_as_mq_list ($tt);
+} # parse_char_string_as_mq_list
 
-sub parse_constructs_as_mqs ($$) {
+sub parse_constructs_as_mq_list ($$) {
   my ($self, $tt) = @_;
   my $t = shift @$tt;
 
@@ -255,7 +255,24 @@ sub parse_constructs_as_mqs ($$) {
   } # A
 
   return $mq_list;
-} # parse_constructs_as_mqs
+} # parse_constructs_as_mq_list
+
+sub parse_char_string_as_mq ($$) {
+  my $mq_list = $_[0]->parse_char_string_as_mq_list ($_[1]);
+  if (@$mq_list == 1) {
+    return $mq_list->[0];
+  } elsif (@$mq_list == 0) {
+    $_[0]->onerror->(type => 'mq:empty', # XXX
+                     level => 'm',
+                     line => 1, column => 1);
+    return {not => 1, type => 'all'};
+  } else {
+    $_[0]->onerror->(type => 'mq:multiple', # XXX
+                     level => 'm',
+                     line => 1, column => 1);
+    return undef;
+  }
+} # parse_char_string_as_mq
 
 1;
 

@@ -30,12 +30,12 @@ sub S ($$$$$$) { {parent_id => $_[0], id => $_[1], rule_type => 'style',
                   prop_importants => $_[5]} }
 sub MEDIA ($$$$) { {parent_id => $_[0], id => $_[1], rule_type => 'media',
                     rule_ids => $_[2],
-                    mqs => Web::CSS::MediaQueries::Parser->new->parse_char_string_as_mqs($_[3])} }
+                    mqs => Web::CSS::MediaQueries::Parser->new->parse_char_string_as_mq_list ($_[3])} }
 sub CHARSET ($$$) { {parent_id => $_[0], id => $_[1], rule_type => 'charset',
                      encoding => $_[2]} }
 sub IMPORT ($$$$) { {parent_id => $_[0], id => $_[1], rule_type => 'import',
                      href => $_[2],
-                     mqs => Web::CSS::MediaQueries::Parser->new->parse_char_string_as_mqs($_[3])} }
+                     mqs => Web::CSS::MediaQueries::Parser->new->parse_char_string_as_mq_list ($_[3])} }
 sub NS ($$$$) { {parent_id => $_[0], id => $_[1], rule_type => 'namespace',
                  (defined $_[2] ? (prefix => $_[2]) : ()), nsurl => $_[3]} }
 sub K ($) { ['KEYWORD', $_[0]] }

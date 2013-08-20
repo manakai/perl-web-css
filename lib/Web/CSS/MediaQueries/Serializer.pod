@@ -1,12 +1,12 @@
 =head1 NAME
 
-Web::CSS::MediaQueries::Serializer - Serialize parsed representation of media queries
+Web::CSS::MediaQueries::Serializer - Serialization of Media Queries
 
 =head1 SYNOPSIS
 
   use Web::CSS::MediaQueries::Serializer;
   my $s = Web::CSS::MediaQueries::Serializer->new;
-  warn $s->serialize_media_query ($mq)
+  warn $s->serialize_mq_list ($mq_list)
 
 =head1 DESCRIPTION
 
@@ -35,19 +35,21 @@ Serialize the specified media query list construct into the textual
 representation of the media query list, as specified by the Media
 Queries and CSSOM specifications.
 
-=item $string = $serializer->serialize_media_query ($mq)
-
-XXX will be removed
-
-Serialize a media query object into character string.
-
 =back
 
 =head1 SPECIFICATIONS
 
-Media Queries <http://w3c-test.org/csswg/mediaqueries/>.
+=over 4
 
-CSSOM <http://dev.w3.org/csswg/cssom/#serializing-media-queries>.
+=item MQ
+
+Media Queries <http://dev.w3.org/csswg/mediaqueries/>.
+
+=item CSSOM
+
+CSSOM <http://dev.w3.org/csswg/cssom/#media-queries>.
+
+=back
 
 =head1 SEE ALSO
 

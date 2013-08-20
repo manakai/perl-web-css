@@ -58,7 +58,12 @@ Following methods can be used to parse fragments of CSS style sheets:
 
 =over 4
 
-=item $mqs = $p->parse_char_string_as_mqs ($string)
+=item $mq = $p->parse_char_string_as_mq ($string)
+
+Parse the input string as a media query and return the parsed
+structure.  See also L<Web::CSS::MediaQueries::Parser>.
+
+=item $mq_list = $p->parse_char_string_as_mq_list ($string)
 
 Parse the input string as a list of media queries and return the
 parsed structure.  See also L<Web::CSS::MediaQueries::Parser>.

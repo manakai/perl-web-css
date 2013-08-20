@@ -157,7 +157,7 @@ sub start_construct ($;%) {
                              column => $tokens->[-1]->{column}};
 
             my $construct = $self->{current}->[-1];
-            $construct->{mqs} = $self->parse_constructs_as_mqs ($tokens);
+            $construct->{mqs} = $self->parse_constructs_as_mq_list ($tokens);
             $construct->{rule_type} = 'media';
             $construct->{rule_ids} = [];
             delete $construct->{name};
@@ -340,7 +340,7 @@ sub end_construct ($;%) {
           $t = shift @$tokens while $t->{type} == S_TOKEN;
           unless ($t->{type} == EOF_TOKEN) {
             unshift @$tokens, $t;
-            $rule->{mqs} = $self->parse_constructs_as_mqs ($tokens);
+            $rule->{mqs} = $self->parse_constructs_as_mq_list ($tokens);
           } else {
             $rule->{mqs} = [];
           }

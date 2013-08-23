@@ -11,9 +11,16 @@ use Web::CSS::MediaQueries::Serializer;
 test {
   my $c = shift;
   my $s = Web::CSS::MediaQueries::Serializer->new;
-  is $s->serialize_media_query (undef), undef;
+  is $s->serialize_mq ({type => 'hoge'}), 'hoge';
   done $c;
-} n => 1, name => 'serialize_media_query undef';
+} n => 1, name => 'serialize_mq';
+
+test {
+  my $c = shift;
+  my $s = Web::CSS::MediaQueries::Serializer->new;
+  is $s->serialize_mq_list ([{type => 'hoge'}, {not => 1, type => 'a'}]), 'hoge, not a';
+  done $c;
+} n => 1, name => 'serialize_mq_list';
 
 run_tests;
 

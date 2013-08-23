@@ -76,6 +76,7 @@ sub parse_constructs_as_mq_list ($$) {
         if ($t->{type} != S_TOKEN) {
           $self->onerror->(type => 'css:no s', # XXX
                            level => 'm',
+                           uri => $self->context->urlref,
                            token => $t);
           ## Non-conforming, but don't stop parsing.
         }
@@ -89,6 +90,7 @@ sub parse_constructs_as_mq_list ($$) {
         if ($ReservedMediaTypes->{$mq->{type}}) {
           $self->onerror->(type => 'mq:not media type', # XXX
                            level => 'm',
+                           uri => $self->context->urlref,
                            token => $t);
           next A;
         }
@@ -100,6 +102,7 @@ sub parse_constructs_as_mq_list ($$) {
             $t->{value} =~ /\A[Aa][Nn][Dd]\z/) { ## ASCII case-insensitive.
           $self->onerror->(type => 'css:no s', # XXX
                            level => 'm',
+                           uri => $self->context->urlref,
                            token => $t);
           ## Non-conforming, but don't stop parsing.
         }
@@ -111,6 +114,7 @@ sub parse_constructs_as_mq_list ($$) {
           if ($t->{type} != S_TOKEN) {
             $self->onerror->(type => 'css:no s', # XXX
                              level => 'm',
+                             uri => $self->context->urlref,
                              token => $t);
             ## Non-conforming, but don't stop parsing.
           }
@@ -120,6 +124,7 @@ sub parse_constructs_as_mq_list ($$) {
       } elsif ($mq->{not} or $mq->{only}) {
         $self->onerror->(type => 'mq:no mt', # XXX
                          level => 'm',
+                         uri => $self->context->urlref,
                          token => $t);
         next A;
       } else {
@@ -152,6 +157,7 @@ sub parse_constructs_as_mq_list ($$) {
           } else {
             $self->onerror->(type => 'mq:feature:no colon', # XXX
                              level => 'm',
+                             uri => $self->context->urlref,
                              token => $u);
             next A;
           }
@@ -165,6 +171,7 @@ sub parse_constructs_as_mq_list ($$) {
                 $self->onerror->(type => 'mq:feature:no value', # XXX
                                  level => 'm',
                                  value => $fn,
+                                 uri => $self->context->urlref,
                                  token => $u);
                 next A;
               } else {
@@ -175,6 +182,7 @@ sub parse_constructs_as_mq_list ($$) {
             if ($t->{type} == IDENT_TOKEN) {
               $self->onerror->(type => 'css:no s', # XXX
                                level => 'm',
+                               uri => $self->context->urlref,
                                token => $t);
               ## Non-conforming, but don't stop parsing.
             }
@@ -182,18 +190,21 @@ sub parse_constructs_as_mq_list ($$) {
           } else {
             $self->onerror->(type => 'mq:feature:unknown', # XXX
                              level => 'm',
+                             uri => $self->context->urlref,
                              token => $u_name);
             next A;
           }
         } else {
           $self->onerror->(type => 'mq:feature:broken', # XXX
                            level => 'm',
+                           uri => $self->context->urlref,
                            token => $u);
           next A;
         }
       } elsif ($require_features) {
         $self->onerror->(type => 'mq:no feature', # XXX
                          level => 'm',
+                         uri => $self->context->urlref,
                          token => $t);
         next A;
       }
@@ -203,6 +214,7 @@ sub parse_constructs_as_mq_list ($$) {
         if ($t->{type} != S_TOKEN) {
           $self->onerror->(type => 'css:no s', # XXX
                            level => 'm',
+                           uri => $self->context->urlref,
                            token => $t);
           ## Non-conforming, but don't stop parsing.
         }
@@ -219,6 +231,7 @@ sub parse_constructs_as_mq_list ($$) {
         } else {
           $self->onerror->(type => 'mq:query:empty',
                            level => 'm',
+                           uri => $self->context->urlref,
                            token => $t);
           next A;
         }
@@ -235,6 +248,7 @@ sub parse_constructs_as_mq_list ($$) {
 
     $self->onerror->(type => 'mq:broken', # XXX
                      level => 'm',
+                     uri => $self->context->urlref,
                      token => $t);
     next A;
   } continue {
@@ -264,11 +278,13 @@ sub parse_char_string_as_mq ($$) {
   } elsif (@$mq_list == 0) {
     $_[0]->onerror->(type => 'mq:empty', # XXX
                      level => 'm',
+                     uri => $_[0]->context->urlref,
                      line => 1, column => 1);
     return {not => 1, type => 'all'};
   } else {
     $_[0]->onerror->(type => 'mq:multiple', # XXX
                      level => 'm',
+                     uri => $_[0]->context->urlref,
                      line => 1, column => 1);
     return undef;
   }

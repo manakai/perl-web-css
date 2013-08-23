@@ -253,11 +253,11 @@ sub onerror ($;$) {
     my %opt = @_;
     require Carp;
     Carp::carp
-        (sprintf 'Document <%s>: Line %d column %d (token %s): %s%s',
+        (sprintf 'Document <%s>: Line %d column %d%s: %s%s',
              ${$opt{uri} or \''}, # XXX rename key?
              defined $opt{line} ? $opt{line} : $opt{token}->{line},
              defined $opt{column} ? $opt{column} : $opt{token}->{column},
-             Web::CSS::Tokenizer->serialize_token ($opt{token}),
+             defined $opt{token} ? ' (token ' . Web::CSS::Tokenizer->serialize_token ($opt{token}) . ')' : '',
              $opt{type},
              defined $opt{value} ? " (value $opt{value})" : '');
   }; # onerror
@@ -467,6 +467,7 @@ sub init_tokenizer ($) {
   #              hyphen => bool,
   #              not_ident => bool};
   delete $self->{eof_error_reported};
+  $self->onerror; ## Setting $self->{onerror}
 } # init_tokenizer
 
 sub get_next_token ($) {

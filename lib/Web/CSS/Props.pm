@@ -6,6 +6,18 @@ use Web::CSS::Tokenizer;
 use Web::CSS::Colors;
 use Web::CSS::Values;
 
+## Property definition
+##
+##     css                 CSS property name (lowercase, canonical)
+##     dom                 DOM Perl binding method name (canonical)
+##     key                 Internal property key
+##     is_shorthand        Whether it is a shorthand property
+##     longhand_subprops   List of keys of longhand sub-properties,
+##                         in canonical order
+##     parse_longhand      Longhand property value parser
+##     parse_shorthand     Shorthand property parser
+##     keyword             Available keywords (key = lowercased, value = 1)
+
 our $Prop; ## By CSS property name
 our $Attr; ## By CSSOM attribute name
 our $Key; ## By internal key
@@ -2203,7 +2215,38 @@ $Prop->{'background-position-x'} = {
   css => 'background-position-x',
   dom => 'background_position_x',
   key => 'background_position_x',
-  parse => $Prop->{'margin-top'}->{parse},
+  parse_longhand => sub {
+    my ($self, $tokens) = @_;
+
+    # XXX
+
+    if (@$tokens == 2) {
+      if ($tokens->[0]->{type} == DIMENSION_TOKEN) {
+        my $unit = $tokens->[0]->{value};
+        $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($length_unit->{$unit}) {
+          return ['DIMENSION', $tokens->[0]->{number}, $unit];
+        }
+      } elsif ($tokens->[0]->{type} == PERCENTAGE_TOKEN) {
+        return ['PERCENTAGE', $tokens->[0]->{number}];
+      } elsif ($tokens->[0]->{type} == NUMBER_TOKEN and
+               $tokens->[0]->{number} == 0) {
+        return ['NUMBER', $tokens->[0]->{value}];
+      } elsif ($tokens->[0]->{type} == IDENT_TOKEN) {
+        my $value = $tokens->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insenstiive.
+        if ($Key->{background_position_x}->{keyword}->{$value} and
+            $self->context->{prop_value}->{'background-position-x'}->{$value}) {
+          return ['KEYWORD', $value];
+        }
+      }
+    }
+
+    $self->onerror->(type => "css:value:'background-position-x':syntax error", # XXX
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $tokens->[0]);
+  },
   allow_negative => 1,
   keyword => {left => 1, center => 1, right => 1},
   initial => ['PERCENTAGE', 0],
@@ -4165,158 +4208,160 @@ $Attr->{border_spacing} = $Prop->{'border-spacing'};
 $Prop->{'background-position'} = {
   css => 'background-position',
   dom => 'background_position',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
+  is_shorthand => 1,
+  longhand_subprops => [qw(background_position_x background_position_y)],
+  parse_shorthand => sub {
+    my ($self, $def, $tokens) = @_;
+    
+    my $prop_name = $def->{css};
     my %prop_value;
 
-    my $sign = 1;
-    my $has_sign;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
+    my $t = shift @$tokens;
     if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
+      my $unit = $t->{value};
+      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
       if ($length_unit->{$unit}) {
-        $t = $tt->get_next_token;
-        $prop_value{'background-position-x'} = ['DIMENSION', $value, $unit];
-        $prop_value{'background-position-y'} = ['PERCENTAGE', 50];
+        $prop_value{background_position_x} = ['DIMENSION', $t->{number}, $unit];
+        $prop_value{background_position_y} = ['PERCENTAGE', 50];
+        $t = shift @$tokens;
       } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
+        $self->onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         token => $t);
+        return undef;
       }
     } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'background-position-x'} = ['PERCENTAGE', $value];
-      $prop_value{'background-position-y'} = ['PERCENTAGE', 50];
+      $prop_value{background_position_x} = ['PERCENTAGE', $t->{number}];
+      $prop_value{background_position_y} = ['PERCENTAGE', 50];
+      $t = shift @$tokens;
     } elsif ($t->{type} == NUMBER_TOKEN and
              ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'background-position-x'} = ['DIMENSION', $value, 'px'];
-      $prop_value{'background-position-y'} = ['PERCENTAGE', 50];
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
+      $prop_value{background_position_x} = ['DIMENSION', $t->{number}, 'px'];
+      $prop_value{background_position_y} = ['PERCENTAGE', 50];
+      $t = shift @$tokens;
+    } elsif ($t->{type} == IDENT_TOKEN) {
+      my $prop_value = $t->{value};
+      $prop_value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
       if ($prop_value eq 'left' or $prop_value eq 'right') {
-        $t = $tt->get_next_token;
-        $prop_value{'background-position-x'} = ['KEYWORD', $prop_value];
-        $prop_value{'background-position-y'} = ['KEYWORD', 'center'];
+        $prop_value{background_position_x} = ['KEYWORD', $prop_value];
+        $prop_value{background_position_y} = ['KEYWORD', 'center'];
+        $t = shift @$tokens;
       } elsif ($prop_value eq 'center') {
-        $t = $tt->get_next_token;
-        $prop_value{'background-position-x'} = ['KEYWORD', $prop_value];
+        $prop_value{background_position_x} = ['KEYWORD', $prop_value];
+        $t = shift @$tokens;
+        $t = shift @$tokens while $t->{type} = S_TOKEN;
 
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
         if ($t->{type} == IDENT_TOKEN) {
-          my $prop_value = lc $t->{value}; ## TODO: case folding
+          my $prop_value = $t->{value};
+          $prop_value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
           if ($prop_value eq 'left' or $prop_value eq 'right') {
-            $prop_value{'background-position-y'}
-                = $prop_value{'background-position-x'};
-            $prop_value{'background-position-x'} = ['KEYWORD', $prop_value];
-            $t = $tt->get_next_token;
-            return ($t, \%prop_value);
+            $prop_value{background_position_y}
+                = $prop_value{background_position_x};
+            $prop_value{background_position_x} = ['KEYWORD', $prop_value];
+            $t = shift @$tokens;
+            unless ($t->{type} == EOF_TOKEN) {
+              $self->onerror->(type => 'CSS syntax error',
+                               text => qq['$prop_name'],
+                               level => 'm',
+                               uri => $self->context->urlref,
+                               token => $t);
+              return undef;
+            }
+            return \%prop_value;
           }
         } else {
-          $prop_value{'background-position-y'} = ['KEYWORD', 'center'];
+          $prop_value{background_position_y} = ['KEYWORD', 'center'];
         }
       } elsif ($prop_value eq 'top' or $prop_value eq 'bottom') {
-        $t = $tt->get_next_token;
-        $prop_value{'background-position-y'} = ['KEYWORD', $prop_value];
+        $prop_value{background_position_y} = ['KEYWORD', $prop_value];
+        $t = shift @$tokens;
+        $t = shift @$tokens while $t->{type} == S_TOKEN;
 
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
         if ($t->{type} == IDENT_TOKEN) {
-          my $prop_value = lc $t->{value}; ## TODO: case folding
+          my $prop_value = $t->{value};
+          $prop_value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
           if ({left => 1, center => 1, right => 1}->{$prop_value}) {
-            $prop_value{'background-position-x'} = ['KEYWORD', $prop_value];
-            $t = $tt->get_next_token;
-            return ($t, \%prop_value);
+            $prop_value{background_position_x} = ['KEYWORD', $prop_value];
+            $t = shift @$tokens;
+            unless ($t->{type} == EOF_TOKEN) {
+              $self->onerror->(type => 'CSS syntax error',
+                               text => qq['$prop_name'],
+                               level => 'm',
+                               uri => $self->context->urlref,
+                               token => $t);
+              return undef;
+            }
+            return \%prop_value;
           }
         }
-        $prop_value{'background-position-x'} = ['KEYWORD', 'center'];
-        return ($t, \%prop_value);
-      } elsif ($prop_value eq 'inherit') {
-        $t = $tt->get_next_token;
-        $prop_value{'background-position-x'} = ['INHERIT'];
-        $prop_value{'background-position-y'} = ['INHERIT'];
-        return ($t, \%prop_value);
+        $prop_value{background_position_x} = ['KEYWORD', 'center'];
+        unless ($t->{type} == EOF_TOKEN) {
+          $self->onerror->(type => 'CSS syntax error',
+                           text => qq['$prop_name'],
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $t);
+          return undef;
+        }
+        return \%prop_value;
       } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
+        $self->onerror->(type => 'CSS syntax error',
+                         text => qq['$prop_name'],
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         token => $t);
+        return undef;
       }
     } else {
-      $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => 'm',
-                 uri => $self->context->urlref,
-                 token => $t);
-      return ($t, undef);
+      $self->onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       token => $t);
+      return undef;
     }
 
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    undef $has_sign;
-    $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
+    $t = shift @$tokens while $t->{type} == S_TOKEN;
 
     if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
+      my $unit = $t->{value};
+      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
       if ($length_unit->{$unit}) {
-        $t = $tt->get_next_token;
-        $prop_value{'background-position-y'} = ['DIMENSION', $value, $unit];
+        $prop_value{background_position_y} = ['DIMENSION', $t->{number}, $unit];
+        $t = shift @$tokens;
       } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
+        $self->onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         token => $t);
+        return undef;
       }
     } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'background-position-y'} = ['PERCENTAGE', $value];
+      $prop_value{background_position_y} = ['PERCENTAGE', $t->{number}];
+      $t = shift @$tokens;
     } elsif ($t->{type} == NUMBER_TOKEN and
              ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'background-position-y'} = ['DIMENSION', $value, 'px'];
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
+      $prop_value{background_position_y} = ['DIMENSION', $t->{number}, 'px'];
+      $t = shift @$tokens;
+    } elsif ($t->{type} == IDENT_TOKEN) {
+      my $value = $t->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
       if ({top => 1, center => 1, bottom => 1}->{$value}) {
         $prop_value{'background-position-y'} = ['KEYWORD', $value];
-        $t = $tt->get_next_token;
+        $t = shift @$tokens;
       }
-    } else {
-      if ($has_sign) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
     }
 
-    return ($t, \%prop_value);
-  },
+    unless ($t->{type} == EOF_TOKEN) {
+      $self->onerror->(type => 'CSS syntax error',
+                       text => qq['$prop_name'],
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       token => $t);
+      return undef;
+    }
+    return \%prop_value;
+  }, # parse_shorthand
   serialize_shorthand => sub {
     my ($se, $st) = @_;
 
@@ -5981,8 +6026,8 @@ $Prop->{page} = {
 
 for my $key (keys %$Key) {
   my $def = $Key->{$key};
-  if ($def->{keyword} and not $def->{parse}) {
-    $def->{parse} = $Web::CSS::Values::GetKeywordParser->($def->{keyword});
+  if ($def->{keyword} and not $def->{parse_longhand}) {
+    $def->{parse_longhand} = $Web::CSS::Values::GetKeywordParser->($def->{keyword});
   }
 }
 

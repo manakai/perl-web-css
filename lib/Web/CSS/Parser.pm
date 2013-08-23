@@ -204,6 +204,7 @@ sub end_construct ($;%) {
         $tokens->[-1]->{value} =~ /\A[Ii][Mm][Pp][Oo][Rr][Tt][Aa][Nn][Tt]\z/) { ## 'important', ASCII case-insensitive.
       ## <http://dev.w3.org/csswg/css-syntax/#consume-a-declaration>
       ## <http://dev.w3.org/csswg/css-syntax/#declaration-rule-list>
+      ## <http://dev.w3.org/csswg/css-cascade/#importance>
       my @t = pop @$tokens; # 'important'
       unshift @t, pop @$tokens
           while @$tokens and $tokens->[-1]->{type} == S_TOKEN;
@@ -222,15 +223,26 @@ sub end_construct ($;%) {
     my $parsed = $self->parse_constructs_as_prop_value
         ($construct->{name}->{value}, $tokens);
     if (defined $parsed) {
-      # XXX duplicate
       my $decl = $self->{current}->[-1];
       for my $key (@{$parsed->{prop_keys}}) {
-        push @{$decl->{prop_keys}}, $key;
-        $decl->{prop_values}->{$key} = $parsed->{prop_values}->{$key};
-        if ($important) {
-          $decl->{prop_importants}->{$key} = 1;
+        if ($important or not $decl->{prop_importants}->{$key}) {
+          if ($decl->{prop_values}->{$key}) {
+            # XXX duplicate warning
+            @{$decl->{prop_keys}} = grep { $_ ne $key } @{$decl->{prop_keys}};
+          }
+          push @{$decl->{prop_keys}}, $key;
+          $decl->{prop_values}->{$key} = $parsed->{prop_values}->{$key};
+          if ($important) {
+            $decl->{prop_importants}->{$key} = 1;
+          } else {
+            delete $decl->{prop_importants}->{$key};
+          }
         } else {
-          delete $decl->{prop_importants}->{$key};
+          $self->onerror->(type => 'css:prop:ignored', # XXX
+                           level => 'w',
+                           value => $Web::CSS::Props::Key->{$key}->{css},
+                           uri => $self->context->urlref,
+                           token => $construct);
         }
       }
     } else {
@@ -449,7 +461,6 @@ sub parse_constructs_as_prop_value ($$$) {
   $prop_name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
 
   # XXX custom properties
-  # XXX shorthand
 
   # XXX supportedness
   my $def = $Web::CSS::Props::Prop->{$prop_name} or return undef;
@@ -465,14 +476,34 @@ sub parse_constructs_as_prop_value ($$$) {
     $value = ['KEYWORD', {inherit => 'inherit',
                           initial => 'initial',
                           '-moz-initial' => 'initial'}->{lc $1}];
+    if ($def->{is_shorthand}) {
+      my $result = {prop_keys => $def->{longhand_subprops}};
+      for (@{$def->{longhand_subprops}}) {
+        $result->{prop_values}->{$_} = $value;
+      }
+      return $result;
+    } else {
+      return {prop_keys => [$def->{key}],
+              prop_values => {$def->{key} => $value}};
+    }
   } else {
-    $value = $def->{parse}->($self, $tokens);
-  }
-  if (defined $value) {
-    return {prop_keys => [$def->{key}],
-            prop_values => {$def->{key} => $value}};
-  } else {
-    return {prop_keys => [], prop_values => {}};
+    if ($def->{is_shorthand}) {
+      my $values = $def->{parse_shorthand}->($self, $def, $tokens);
+      if (defined $values) {
+        return {prop_keys => $def->{longhand_subprops},
+                prop_values => $values};
+      } else {
+        return {prop_keys => [], prop_values => {}};
+      }
+    } else {
+      $value = $def->{parse_longhand}->($self, $tokens);
+      if (defined $value) {
+        return {prop_keys => [$def->{key}],
+                prop_values => {$def->{key} => $value}};
+      } else {
+        return {prop_keys => [], prop_values => {}};
+      }
+    }
   }
 } # parse_constructs_as_prop_value
 

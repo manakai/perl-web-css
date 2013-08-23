@@ -32,16 +32,6 @@ sub context ($;$) {
   };
 } # context
 
-sub media_resolver ($;$) {
-  if (@_ > 1) {
-    $_[0]->{media_resolver} = $_[1];
-  }
-  return $_[0]->{media_resolver} ||= do {
-    require Web::CSS::MediaResolver;
-    Web::CSS::MediaResolver->new;
-  };
-} # media_resolver
-
 sub onerror ($;$) {
   if (@_ > 1) {
     $_[0]->{onerror} = $_[1];

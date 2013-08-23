@@ -2,7 +2,7 @@ package Web::CSS::Tokenizer;
 use strict;
 use warnings;
 no warnings 'utf8';
-our $VERSION = '23.0';
+our $VERSION = '24.0';
 use Carp;
 
 ## ------ Character classes ------
@@ -243,6 +243,16 @@ sub context ($;$) {
     Web::CSS::Context->new_empty;
   };
 } # context
+
+sub media_resolver ($;$) {
+  if (@_ > 1) {
+    $_[0]->{media_resolver} = $_[1];
+  }
+  return $_[0]->{media_resolver} ||= do {
+    require Web::CSS::MediaResolver;
+    Web::CSS::MediaResolver->new;
+  };
+} # media_resolver
 
 sub onerror ($;$) {
   if (@_ > 1) {

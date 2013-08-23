@@ -4,16 +4,6 @@ use warnings;
 our $VERSION = '7.0';
 push our @ISA, qw(Web::CSS::MediaQueries::Parser::_ Web::CSS::Builder);
 
-sub media_resolver ($;$) {
-  if (@_ > 1) {
-    $_[0]->{media_resolver} = $_[1];
-  }
-  return $_[0]->{media_resolver} ||= do {
-    require Web::CSS::MediaResolver;
-    Web::CSS::MediaResolver->new;
-  };
-} # media_resolver
-
 package Web::CSS::MediaQueries::Parser::_;
 use Web::CSS::Builder;
 use Web::CSS::MediaQueries::Features;

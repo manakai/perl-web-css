@@ -14,43 +14,15 @@ sub init_parser ($) {
   my $self = $_[0];
   delete $self->{start_construct_count};
   delete $self->{current};
+  delete $self->{in_multiple_error};
 } # init_parser
 
-# XXX parse_byte_string
-
-sub parse_char_string_as_ss ($$) {
-  my $self = $_[0];
-
-  {
-    $self->{line_prev} = $self->{line} = 1;
-    $self->{column_prev} = -1;
-    $self->{column} = 0;
-
-    $self->{chars} = [split //, $_[1]];
-    $self->{chars_pos} = 0;
-    delete $self->{chars_was_cr};
-    $self->{chars_pull_next} = sub { 0 };
-    $self->init_tokenizer;
-    $self->init_builder;
-  }
-
-  ## Parsed style sheet data structure
-  ##
-  ##   rules
-  ##     0         - The "style sheet" struct
-  ##     n > 0     - Rules in the style sheet
-  ##   base_urlref - The scalarref to the base URL of the style sheet XXX is this really necessary???
-  $self->{parsed} = {rules => [],
-                     base_urlref => $self->context->base_urlref};
-
-  $self->start_building_rules or do {
-    1 while not $self->continue_building_rules;
-  };
-
-  @{$self->{current}} == 0 or die "|current| stack is not empty";
-
-  return delete $self->{parsed};
-} # parse_char_string_as_ss
+## Parsed style sheet data structure
+##
+##   rules
+##     0         - The "style sheet" struct
+##     n > 0     - Rules in the style sheet
+##   base_urlref - The scalarref to the base URL of the style sheet XXX is this really necessary???
 
 ## Style sheet struct
 ##
@@ -429,9 +401,73 @@ sub end_construct ($;%) {
     ## Selectors without following block
     pop @{$self->{current}};
   } elsif ($construct->{type} == RULE_LIST_CONSTRUCT) {
+    $self->{in_multiple_error} = $construct->{in_multiple_error};
     pop @{$self->{current}};
   }
 } # end_construct
+
+# XXX parse_byte_string
+
+sub parse_char_string_as_ss ($$) {
+  my $self = $_[0];
+
+  {
+    $self->{line_prev} = $self->{line} = 1;
+    $self->{column_prev} = -1;
+    $self->{column} = 0;
+
+    $self->{chars} = [split //, $_[1]];
+    $self->{chars_pos} = 0;
+    delete $self->{chars_was_cr};
+    $self->{chars_pull_next} = sub { 0 };
+    $self->init_tokenizer;
+    $self->init_builder;
+  }
+
+  $self->{parsed} = {rules => [],
+                     base_urlref => $self->context->base_urlref};
+
+  $self->start_building_rules or do {
+    1 while not $self->continue_building_rules;
+  };
+
+  @{$self->{current}} == 0 or die "|current| stack is not empty";
+
+  return delete $self->{parsed};
+} # parse_char_string_as_ss
+
+sub parse_char_string_as_rule ($$) {
+  my $self = $_[0];
+
+  {
+    $self->{line_prev} = $self->{line} = 1;
+    $self->{column_prev} = -1;
+    $self->{column} = 0;
+
+    $self->{chars} = [split //, $_[1]];
+    $self->{chars_pos} = 0;
+    delete $self->{chars_was_cr};
+    $self->{chars_pull_next} = sub { 0 };
+    $self->init_tokenizer;
+    $self->init_builder;
+  }
+
+  $self->{parsed} = {rules => []};
+
+  $self->start_building_rules (1) or do {
+    1 while not $self->continue_building_rules;
+  };
+
+  @{$self->{current}} == 0 or die "|current| stack is not empty";
+
+  if (delete $self->{in_multiple_error}) {
+    $#{$self->{parsed}->{rules}} = 0;
+    $self->{parsed}->{rules}->[0]->{rule_ids} = [];
+  }
+
+  ## $returned->{rules}->[1] is the parsed rule.
+  return delete $self->{parsed};
+} # parse_char_string_as_rule
 
 sub parse_char_string_as_prop_decls ($$) {
   my $self = $_[0];

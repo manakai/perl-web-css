@@ -81,6 +81,13 @@ and return the parsed structure.  If the specified property is not
 supported, it returns C<undef>.  If the property value is not valid,
 an empty property list is returned.
 
+=item $ss = $p->parse_char_string_as_rule ($string)
+
+Parse the input string as a rule.  The result is returned as the
+parsed style sheet struct, where at most one rule is contained
+directly by the style sheet.  If there is not exactly one rule, or the
+only rule is invalid, an empty style sheet struct is returned.
+
 =item $selectors = $p->parse_char_string_as_selectors ($string)
 
 Parse the input string as a list of selectors and return the parsed

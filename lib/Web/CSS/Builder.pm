@@ -126,6 +126,9 @@ sub init_builder ($) {
 ##     RULE_LIST_CONSTRUCT       - The top-level flag.
 ##   single
 ##     RULE_LIST_CONSTRUCT       - Whether only a rule is allowed or not.
+##   in_multiple_error
+##     RULE_LIST_CONSTRUCT       - The |single| flag is set but there
+##                                 are multiple rules found.
 
 sub start_building_rules ($$) {
   my $self = $_[0];
@@ -296,7 +299,8 @@ sub _consume_tokens ($) {
           $self->{onerror}->(type => 'css:rule:multiple', # XXX
                              level => 'm',
                              uri => $self->context->urlref,
-                             token => $self->{bt})
+                             token => $self->{bt});
+          $self->{constructs}->[-1]->{in_multiple_error} = 1;
         }
         my $construct = {type => AT_RULE_CONSTRUCT,
                          line => $self->{bt}->{line},
@@ -353,7 +357,8 @@ sub _consume_tokens ($) {
           $self->{onerror}->(type => 'css:rule:multiple', # XXX
                              level => 'm',
                              uri => $self->context->urlref,
-                             token => $self->{bt})
+                             token => $self->{bt});
+          $self->{constructs}->[-1]->{in_multiple_error} = 1;
         }
         my $construct = {type => QUALIFIED_RULE_CONSTRUCT,
                          line => $self->{bt}->{line},

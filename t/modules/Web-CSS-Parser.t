@@ -482,6 +482,59 @@ for my $test (
 }
 
 for my $test (
+  {in => '', out => [SS []],
+   errors => ['1;1;m;css:rule:not found;;']},
+  {in => 'p{}', out => [SS [1], S(0=>1, 'p', [], {}, {})]},
+  {in => 'p{display:block}',
+   out => [SS [1], S(0=>1, 'p', ['display'], {display => K 'block'}, {})]},
+  {in => 'p{}q', out => [SS []],
+   errors => ['1;4;m;css:rule:multiple;;',
+              '1;5;m;css:qrule:no block;;']},
+  {in => 'q', out => [SS []],
+   errors => ['1;2;m;css:qrule:no block;;',
+              '1;2;m;css:rule:not found;;']},
+  {in => 'p{}q{}', out => [SS []],
+   errors => ['1;4;m;css:rule:multiple;;']},
+  {in => '@media{p{display:block}q{}}',
+   out => [SS [1], MEDIA(0=>1=>[2,3], ''),
+           S(1=>2, 'p', ['display'], {display => K 'block'}, {}),
+           S(1=>3, 'q', [], {}, {})]},
+  {in => '@media{p{display:block}q{}}@media{}',
+   out => [SS []], errors => ['1;28;m;css:rule:multiple;;']},
+  {in => '@media2{p{display:block}q{}}',
+   out => [SS []], errors => ['1;1;m;unknown at-rule;;media2']},
+  {in => '<!--p{display:block}',
+   out => [SS []], errors => ['1;1;m;no sss;;']},
+  {in => 'p{display:block}-->',
+   out => [SS []], errors => ['1;17;m;css:rule:multiple;;',
+                              '1;20;m;css:qrule:no block;;']},
+) {
+  test {
+    my $c = shift;
+
+    my @error;
+
+    my $p = Web::CSS::Parser->new;
+    $p->onerror (sub {
+      my %args = @_;
+      push @error, join ';',
+          $args{line} // $args{token}->{line},
+          $args{column} // $args{token}->{column},
+          $args{level},
+          $args{type},
+          $args{text} // '',
+          $args{value} // '';
+    });
+
+    my $parsed = $p->parse_char_string_as_rule ($test->{in});
+    eq_or_diff $parsed, {rules => $test->{out}};
+    eq_or_diff \@error, $test->{errors} || [];
+    
+    done $c;
+  } n => 2, name => ['parse_char_string_as_rule', $test->{in}];
+}
+
+for my $test (
   {in => '', out => {}},
   {in => ';', out => {}},
   {in => 'display:block',

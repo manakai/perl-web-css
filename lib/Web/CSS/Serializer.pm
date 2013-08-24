@@ -144,7 +144,7 @@ return '' if not defined $value; # XXX
   } else {
     return undef;
   }
-} # $serialize_value
+} # serialize_value
 
 sub serialize_prop_value ($$$) {
   my ($self, $style, $css_name) = @_;
@@ -185,6 +185,22 @@ sub serialize_prop_priority ($$$) {
     return undef;
   }
 } # serialize_prop_priority
+
+sub serialize_prop_decls ($$) {
+  my ($self, $style) = @_;
+
+  # XXX
+
+  my @decl;
+  for my $key (@{$style->{prop_keys}}) {
+    my $css_name = $Web::CSS::Props::Key->{$key}->{css};
+    my $value = $self->serialize_prop_value ($style, $css_name);
+    my $priority = $self->serialize_prop_priority ($style, $css_name);
+    push @decl, "$css_name: $value" . ($priority ? " !$priority" : '') . ';';
+  }
+
+  return join ' ', @decl;
+} # serialize_prop_decls
 
 1;
 

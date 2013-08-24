@@ -117,6 +117,9 @@ HTML Living Standard
 
 An invalid declaration MUST NOT be included in the style rule.
 
+When a property value is '-moz-initial', the parser MUST replace it by
+'initial'.
+
 =head1 SEE ALSO
 
 L<Web::CSS::Props> contains the list of supported CSS properties.

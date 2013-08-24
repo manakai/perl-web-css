@@ -502,6 +502,9 @@ for my $test (
    out => {prop_keys => ['background_position_x', 'background_position_y'],
            prop_values => {background_position_x => K 'inherit',
                            background_position_y => K 'inherit'}}},
+  {prop => 'display', in => ' unSet ',
+   out => {prop_keys => ['display'],
+           prop_values => {display => K 'unset'}}},
 ) {
   test {
     my $c = shift;

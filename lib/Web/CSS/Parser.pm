@@ -1,7 +1,7 @@
 package Web::CSS::Parser;
 use strict;
 use warnings;
-our $VERSION = '8.0';
+our $VERSION = '9.0';
 use Web::CSS::Builder;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
@@ -471,17 +471,21 @@ sub parse_constructs_as_prop_value ($$$) {
       while @$tokens > 1 and $tokens->[-2]->{type} == S_TOKEN;
   if (@$tokens == 2 and
       $tokens->[0]->{type} == IDENT_TOKEN and
-      $tokens->[0]->{value} =~ /\A([Ii][Nn][Hh][Ee][Rr][Ii][Tt]|(?:-[Mm][Oo][Zz]-)?[Ii][Nn][Ii][Tt][Ii][Aa][Ll])\z/ and
+      $tokens->[0]->{value} =~ /\A([Ii][Nn][Hh][Ee][Rr][Ii][Tt]|(?:-[Mm][Oo][Zz]-)?[Ii][Nn][Ii][Tt][Ii][Aa][Ll]|[Uu][Nn][Ss][Ee][Tt])\z/ and
       $tokens->[1]->{type} == EOF_TOKEN) {
+    ## <http://dev.w3.org/csswg/css-cascade/#defaulting-keywords>
     $value = ['KEYWORD', {inherit => 'inherit',
                           initial => 'initial',
-                          '-moz-initial' => 'initial'}->{lc $1}];
+                          '-moz-initial' => 'initial',
+                          unset => 'unset'}->{lc $1}];
     if ($def->{is_shorthand}) {
       my $result = {prop_keys => $def->{longhand_subprops}};
       for (@{$def->{longhand_subprops}}) {
         $result->{prop_values}->{$_} = $value;
       }
       return $result;
+
+      # XXX toggle()
     } else {
       return {prop_keys => [$def->{key}],
               prop_values => {$def->{key} => $value}};

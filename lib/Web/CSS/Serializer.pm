@@ -12,7 +12,7 @@ sub new ($) {
   return bless {}, $_[0];
 } # new
 
-sub serialize_value ($$$) {
+sub serialize_value ($$$) { # XXX drop $prop_name from args?
   my ($self, $prop_name, $value) = @_;
 return '' if not defined $value; # XXX
   if ($value->[0] eq 'NUMBER' or $value->[0] eq 'WEIGHT') {
@@ -39,8 +39,6 @@ return '' if not defined $value; # XXX
       return 'rgba('.$value->[1].', '.$value->[2].', '.$value->[3].', '
           .$value->[4].')';
     }
-  } elsif ($value->[0] eq 'INHERIT') {
-    return 'inherit';
   } elsif ($value->[0] eq 'DECORATION') {
     my @v = ();
     push @v, 'underline' if $value->[1];

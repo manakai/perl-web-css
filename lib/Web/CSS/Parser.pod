@@ -68,6 +68,12 @@ structure.  See also L<Web::CSS::MediaQueries::Parser>.
 Parse the input string as a list of media queries and return the
 parsed structure.  See also L<Web::CSS::MediaQueries::Parser>.
 
+=item $props = $p->parse_char_string_as_prop_decls ($string)
+
+Parse the input string as a list of declarations, where each
+declaration is a property specification, and return the parsed
+structure.
+
 =item $props = $p->parse_char_string_as_prop_value ($prop_name, $string)
 
 Parse the input string as a property value of the specified property
@@ -102,23 +108,39 @@ representing the C<style> element.
 
 =head1 SPECIFICATIONS
 
+=over 4
+
+=item CSSSYNTAX
+
 CSS Syntax <http://dev.w3.org/csswg/css-syntax/>.
+
+An invalid declaration MUST NOT be included in the style rule.
+
+=item CSSCONDITIONAL
 
 CSS Conditional Rules <http://dev.w3.org/csswg/css-conditional/>.
 
+=item CSSCASCADE
+
 CSS Cascading and Inheritance <http://dev.w3.org/csswg/css-cascade/>.
+
+When a property value is '-moz-initial', the parser MUST replace it by
+'initial'.
+
+=item CSSNAMESPACES
 
 CSS Namespaces <http://dev.w3.org/csswg/css-namespaces/>.
 
+=item CSSOM
+
 CSSOM <http://dev.w3.org/csswg/cssom/>.
+
+=item HTML
 
 HTML Living Standard
 <http://www.whatwg.org/specs/web-apps/current-work/#styling>.
 
-An invalid declaration MUST NOT be included in the style rule.
-
-When a property value is '-moz-initial', the parser MUST replace it by
-'initial'.
+=back
 
 =head1 SEE ALSO
 

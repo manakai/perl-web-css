@@ -1,7 +1,7 @@
 package Web::CSS::Parser;
 use strict;
 use warnings;
-our $VERSION = '9.0';
+our $VERSION = '10.0';
 use Web::CSS::Builder;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
@@ -13,6 +13,7 @@ use Web::CSS::Props;
 sub init_parser ($) {
   my $self = $_[0];
   delete $self->{start_construct_count};
+  delete $self->{current};
 } # init_parser
 
 # XXX parse_byte_string
@@ -432,7 +433,34 @@ sub end_construct ($;%) {
   }
 } # end_construct
 
-# XXX style="" parsing
+sub parse_char_string_as_prop_decls ($$) {
+  my $self = $_[0];
+
+  ## <http://dev.w3.org/csswg/css-syntax/#parse-a-list-of-declarations0>.
+
+  {
+    $self->{line_prev} = $self->{line} = 1;
+    $self->{column_prev} = -1;
+    $self->{column} = 0;
+
+    $self->{chars} = [split //, $_[1]];
+    $self->{chars_pos} = 0;
+    delete $self->{chars_was_cr};
+    $self->{chars_pull_next} = sub { 0 };
+    $self->init_tokenizer;
+    $self->init_builder;
+  }
+
+  $self->{current} = [{}];
+
+  $self->start_building_decls or do {
+    1 while not $self->continue_building_decls;
+  };
+
+  @{$self->{current}} == 1 or die "|current| stack is broken";
+
+  return pop @{$self->{current}};
+} # parse_constructs_as_prop_decls
 
 sub parse_char_string_as_prop_value ($$$) {
   my $self = $_[0];

@@ -482,6 +482,59 @@ for my $test (
 }
 
 for my $test (
+  {in => '', out => {}},
+  {in => ';', out => {}},
+  {in => 'display:block',
+   out => {prop_keys => ['display'],
+           prop_values => {display => K 'block'},
+           prop_importants => {}}},
+  {in => 'display:block ! important',
+   out => {prop_keys => ['display'],
+           prop_values => {display => K 'block'},
+           prop_importants => {display => 1}}},
+  {in => 'background-POSITIon:inherit',
+   out => {prop_keys => ['background_position_x', 'background_position_y'],
+           prop_values => {background_position_x => K 'inherit',
+                           background_position_y => K 'inherit'},
+           prop_importants => {}}},
+  {in => 'background-POSITIon:left;background-position-x:12px',
+   out => {prop_keys => ['background_position_y', 'background_position_x'],
+           prop_values => {background_position_x => ['DIMENSION', '12', 'px'],
+                           background_position_y => K 'center'},
+           prop_importants => {}}},
+  {in => 'display:block}',
+   out => {}, errors => ['1;9;m;css:value:not keyword;;']},
+  {in => 'display{}:block',
+   out => {}, errors => ['1;8;m;css:decl:no colon;;']},
+  {in => '@phpge {} display:block',
+   out => {prop_keys => ['display'],
+           prop_values => {display => K 'block'},
+           prop_importants => {}}, errors => ['1;1;m;unknown at-rule;;phpge']},
+) {
+  test {
+    my $c = shift;
+    my $parser = Web::CSS::Parser->new;
+    my @error;
+    $parser->onerror (sub {
+      my %args = @_;
+      push @error, join ';',
+          $args{line} // $args{token}->{line},
+          $args{column} // $args{token}->{column},
+          $args{level},
+          $args{type},
+          $args{text} // '',
+          $args{value} // '';
+    });
+    
+    my $parsed = $parser->parse_char_string_as_prop_decls ($test->{in});
+    eq_or_diff $parsed, $test->{out};
+    eq_or_diff \@error, $test->{errors} || [];
+
+    done $c;
+  } n => 2, name => ['parse_char_string_as_prop_decls', $test->{in}];
+}
+
+for my $test (
   {prop => 'Display', in => 'BlocK',
    out => {prop_keys => ['display'], prop_values => {display => K 'block'}}},
   {prop => 'Display', in => ' /**/ BlocK /**/ ',

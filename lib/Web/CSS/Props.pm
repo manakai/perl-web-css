@@ -1,7 +1,7 @@
 package Web::CSS::Props;
 use strict;
 use warnings;
-our $VERSION = '3.0';
+our $VERSION = '4.0';
 use Web::CSS::Tokenizer;
 use Web::CSS::Colors;
 use Web::CSS::Values;
@@ -17,6 +17,7 @@ use Web::CSS::Values;
 ##     parse_longhand      Longhand property value parser
 ##     parse_shorthand     Shorthand property parser
 ##     keyword             Available keywords (key = lowercased, value = 1)
+##     serialize_shorthand Shorthand property value serializer
 
 our $Prop; ## By CSS property name
 our $Attr; ## By CSSOM attribute name
@@ -4205,7 +4206,7 @@ $Attr->{border_spacing} = $Prop->{'border-spacing'};
 
 ## NOTE: See <http://suika.fam.cx/gate/2005/sw/background-position> for
 ## browser compatibility problems.
-$Prop->{'background-position'} = {
+$Key->{background_position} = {
   css => 'background-position',
   dom => 'background_position',
   is_shorthand => 1,
@@ -4369,36 +4370,13 @@ $Prop->{'background-position'} = {
 
     my $x = $se->serialize_prop_value ($st, 'background-position-x');
     my $y = $se->serialize_prop_value ($st, 'background-position-y');
-    my $xi = $se->serialize_prop_priority ($st, 'background-position-x');
-    my $yi = $se->serialize_prop_priority ($st, 'background-position-y');
-    if (length $x) {
-      if (length $y) {
-        if ($xi eq $yi) {
-          if ($x eq 'inherit') {
-            if ($y eq 'inherit') {
-              $r->{'background-position'} = ['inherit', $xi];
-            } else {
-              $r->{'background-position-x'} = [$x, $xi];
-              $r->{'background-position-y'} = [$y, $yi];
-            }
-          } elsif ($y eq 'inherit') {
-            $r->{'background-position-x'} = [$x, $xi];
-            $r->{'background-position-y'} = [$y, $yi];
-          } else {
-            $r->{'background-position'} = [$x . ' ' . $y, $xi];
-          }
-        } else {
-          $r->{'background-position-x'} = [$x, $xi];
-          $r->{'background-position-y'} = [$y, $yi];
-        }
-      } else {
-        $r->{'background-position-x'} = [$x, $xi];
-      }
-    } else {
-      if (length $y) {
-        $r->{'background-position-y'} = [$y, $yi];
-      } else {
+    if (defined $x and defined $y) {
+      if ($x eq 'inherit' and $y eq 'inherit') { # XXX unset, initial
+        $r->{background_position} = 'inherit';
+      } elsif ($x eq 'inherit' or $y eq 'inherit') {
         #
+      } else {
+        $r->{background_position} = $x . ' ' . $y;
       }
     }
 
@@ -4406,7 +4384,6 @@ $Prop->{'background-position'} = {
   },
   serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
 };
-$Attr->{background_position} = $Prop->{'background-position'};
 
 $Prop->{background} = {
   css => 'background',
@@ -6026,6 +6003,9 @@ $Prop->{page} = {
 
 for my $key (keys %$Key) {
   my $def = $Key->{$key};
+  $def->{key} ||= $key;
+  $Attr->{$def->{dom}} ||= $def;
+  $Prop->{$def->{css}} ||= $def;
   if ($def->{keyword} and not $def->{parse_longhand}) {
     $def->{parse_longhand} = $Web::CSS::Values::GetKeywordParser->($def->{keyword});
   }

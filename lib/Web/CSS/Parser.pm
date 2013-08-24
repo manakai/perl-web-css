@@ -63,9 +63,7 @@ sub parse_char_string_as_ss ($$) {
 ##   rule_type   - "style"
 ##   parent_id   - The internal ID of the parent rule
 ##   selectors   - Selectors struct
-##   prop_keys   - The arrayref of the property keys
-##   prop_values - The hashref of the property key / value struct pairs
-##   prop_importants - The hashref of the property key / 'important' pairs
+##   prop_keys, prop_values, prop_importants - Properties struct
 
 ## @charset struct
 ##
@@ -97,6 +95,12 @@ sub parse_char_string_as_ss ($$) {
 ##   parent_id   - The internal ID of the parent rule
 ##   mqs         - List of media queries construct
 ##   rule_ids    - The arrayref of the IDs of the rules in the @media at-rule
+
+## Property struct
+##
+##   prop_keys   - The arrayref of the property keys
+##   prop_values - The hashref of the property key / value struct pairs
+##   prop_importants - The hashref of the property key / 'important' pairs
 
 my $KnownAtRules = {charset => 1, import => 1, media => 1, namespace => 1};
 

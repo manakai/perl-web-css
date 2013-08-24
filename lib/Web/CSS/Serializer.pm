@@ -1,7 +1,7 @@
 package Web::CSS::Serializer;
 use strict;
 use warnings;
-our $VERSION = '18.0';
+our $VERSION = '19.0';
 use Web::CSS::Props;
 
 # XXX API is not stable
@@ -142,56 +142,48 @@ return '' if not defined $value; # XXX
   } elsif ($value->[0] eq 'RATIO') { # <ratio>
     return $value->[1] . '/' . $value->[2]; # XXX <number>
   } else {
-    return '';
+    return undef;
   }
 } # $serialize_value
 
 sub serialize_prop_value ($$$) {
   my ($self, $style, $css_name) = @_;
+  # $style - A property struct (see Web::CSS::Parser)
 
   my $prop_def = $Web::CSS::Props::Prop->{$css_name};
-  if ($prop_def and defined $prop_def->{key}) {
-    my $value = $style->{props}->{$prop_def->{key}};
-    if (defined $value) {
-      return $self->serialize_value ($prop_def->{css}, $value->[0]);
-    } else {
-      return '';
-    }
-  } elsif ($prop_def->{serialize_shorthand} or
-           $prop_def->{serialize_multiple}) {
-    # XXX
-    my $v = eval {($prop_def->{serialize_shorthand} or
-             $prop_def->{serialize_multiple})->($self, $style) };
-    if (defined $v->{$prop_def->{css}}) {
-      return $v->{$prop_def->{css}}->[0];
-    } else {
-      return '';
-    }
-    ## ISSUE: If one of shorthand component properties is !important?
+  if (not defined $prop_def) {
+    return undef;
+  } elsif ($prop_def->{serialize_shorthand}) {
+    my $v = $prop_def->{serialize_shorthand}->($self, $style);
+    return $v->{$prop_def->{key}}; # or undef
   } else {
-    die "Property |$css_name| is not supported";
+    my $value = $style->{prop_values}->{$prop_def->{key}};
+    if (defined $value) {
+      return $self->serialize_value ($prop_def->{css}, $value);
+    } else {
+      return undef;
+    }
   }
 } # serialize_prop_value
 
 sub serialize_prop_priority ($$$) {
   my ($self, $style, $css_name) = @_;
+  # $style - A property struct (see Web::CSS::Parser)
+
   my $prop_def = $Web::CSS::Props::Prop->{$css_name};
   if (not defined $prop_def) {
-    return '';
-  } elsif (defined $prop_def->{key}) {
-    my $value = $style->{props}->{$prop_def->{key}};
-    return $value->[1] if defined $value;
-  } elsif (defined $prop_def->{serialize_shorthand} or
-           defined $prop_def->{serialize_multiple}) {
-    my $v = ($prop_def->{serialize_shorthand} or
-             $prop_def->{serialize_multiple})->($self, $style);
-    if (defined $v->{$prop_def->{css}}) {
-      return $v->{$prop_def->{css}}->[1];
-    } else {
-      return '';
+    return undef;
+  } elsif ($prop_def->{longhand_subprops}) {
+    for (@{$prop_def->{longhand_subprops}}) {
+      return undef unless $style->{prop_importants}->{$_};
     }
+    return 'important';
+  } else {
+    if ($style->{prop_importants}->{$prop_def->{key}}) {
+      return 'important';
+    }
+    return undef;
   }
-  return '';
 } # serialize_prop_priority
 
 1;

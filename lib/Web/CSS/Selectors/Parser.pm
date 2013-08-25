@@ -1,12 +1,8 @@
 package Web::CSS::Selectors::Parser;
 use strict;
 use warnings;
-our $VERSION = '15.0';
+our $VERSION = '16.0';
 push our @ISA, qw(Web::CSS::Selectors::Parser::_ Web::CSS::Builder);
-
-## XXX API of this module is not stable yet; You should not rely on
-## it.  Use $root_node->query_selector and
-## $root_node->query_selector_all instead.
 
 sub new ($) {
   my $self = bless {
@@ -15,29 +11,6 @@ sub new ($) {
   }, shift;
   return $self;
 } # new
-
-sub init ($) {
-  my $self = $_[0];
-  delete $self->{context};
-  delete $self->{onerror};
-} # init
-
-sub context ($;$) {
-  if (@_ > 1) {
-    $_[0]->{context} = $_[1];
-  }
-  return $_[0]->{context} ||= do {
-    require Web::CSS::Context;
-    Web::CSS::Context->new_empty;
-  };
-} # context
-
-sub onerror ($;$) {
-  if (@_ > 1) {
-    $_[0]->{onerror} = $_[1];
-  }
-  return $_[0]->{onerror} ||= sub { };
-} # onerror
 
 package Web::CSS::Selectors::Parser::_;
 use Carp;

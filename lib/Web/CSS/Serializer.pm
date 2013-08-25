@@ -2,6 +2,10 @@ package Web::CSS::Serializer;
 use strict;
 use warnings;
 our $VERSION = '19.0';
+use Web::CSS::Selectors::Serializer;
+use Web::CSS::MediaQueries::Serializer;
+push our @ISA, qw(Web::CSS::Selectors::Serializer
+                  Web::CSS::MediaQueries::Serializer);
 use Web::CSS::Props;
 
 # XXX API is not stable

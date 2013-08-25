@@ -58,6 +58,14 @@ Following methods can be used to parse fragments of CSS style sheets:
 
 =over 4
 
+=item $p->init_parser
+
+Initialize the parser internal states.  If you invoke the parsing
+method only once, you don't have to invoke this method.  If you are
+intended to invoke parsing methods multiple times, this method should
+be invoked before any subsequent parser invocations to clear internal
+states.
+
 =item $mq = $p->parse_char_string_as_mq ($string)
 
 Parse the input string as a media query and return the parsed

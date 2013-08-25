@@ -1,7 +1,7 @@
 package Web::CSS::Values;
 use strict;
 use warnings;
-our $VERSION = '2.0';
+our $VERSION = '3.0';
 use Web::CSS::Builder;
 
 ## Values - CSS values are represented as an array reference whose
@@ -19,14 +19,16 @@ use Web::CSS::Builder;
 ##   1: First value as Perl number
 ##   2: Second value as Perl number
 
-our $GetKeywordParser = sub ($) {
-  my $keywords = $_[0];
+our $GetKeywordParser = sub ($;$) {
+  my ($keywords, $prop_name) = @_;
   return sub ($$) {
     my ($self, $us) = @_;
     if (@$us == 2 and $us->[0]->{type} == IDENT_TOKEN) {
       my $kwd = $us->[0]->{value};
       $kwd =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-      if ($keywords->{$kwd}) {
+      if ($keywords->{$kwd} and
+          (not defined $prop_name or
+           $self->media_resolver->{prop_value}->{$prop_name}->{$kwd})) {
         return ['KEYWORD', $kwd];
       } else {
         $self->onerror->(type => 'css:keyword:not allowed', # XXX
@@ -90,6 +92,8 @@ our $NNNumberParser = sub {
 my $LengthUnits = {
   em => 1, ex => 1, px => 1,
   in => 1, cm => 1, mm => 1, pt => 1, pc => 1,
+
+  # XXX and more...
 }; # $LengthUnits
 
 ## <length>, non-negative [VALUES] [MQ]
@@ -125,7 +129,7 @@ our $RatioParser = sub {
   }
   $self->onerror->(type => 'css:value:not ratio', # XXX
                    level => 'm',
-                   token => $us->[0]);
+                   token => $us->[0]); # XXX if empty
   return undef;
 }; # $RatioParser
 

@@ -1,7 +1,7 @@
 package Web::CSS::Props;
 use strict;
 use warnings;
-our $VERSION = '4.0';
+our $VERSION = '5.0';
 use Web::CSS::Tokenizer;
 use Web::CSS::Colors;
 use Web::CSS::Values;
@@ -6007,7 +6007,7 @@ for my $key (keys %$Key) {
   $Attr->{$def->{dom}} ||= $def;
   $Prop->{$def->{css}} ||= $def;
   if ($def->{keyword} and not $def->{parse_longhand}) {
-    $def->{parse_longhand} = $Web::CSS::Values::GetKeywordParser->($def->{keyword});
+    $def->{parse_longhand} = $Web::CSS::Values::GetKeywordParser->($def->{keyword}, $def->{css});
   }
 }
 

@@ -462,6 +462,7 @@ for my $test (
     my @error;
 
     my $p = Web::CSS::Parser->new;
+    $p->media_resolver->set_supported (all => 1);
     $p->onerror (sub {
       my %args = @_;
       push @error, join ';',
@@ -480,6 +481,37 @@ for my $test (
     done $c;
   } n => 2, name => ['parse_char_string_as_ss', $test->{in}];
 }
+
+test {
+  my $c = shift;
+  my $parser = Web::CSS::Parser->new;
+  my $parsed = $parser->parse_char_string_as_ss ('p{display:block}');
+  eq_or_diff $parsed, {rules => [SS [1], S(0=>1, 'p', [], {}, {})],
+                       base_urlref => \'about:blank'};
+  done $c;
+} n => 1, name => 'parse_char_string_as_ss not supported';
+
+test {
+  my $c = shift;
+  my $parser = Web::CSS::Parser->new;
+  $parser->media_resolver->{prop}->{display} = 1;
+  my $parsed = $parser->parse_char_string_as_ss ('p{display:block}');
+  eq_or_diff $parsed, {rules => [SS [1], S(0=>1, 'p', [], {}, {})],
+                       base_urlref => \'about:blank'};
+  done $c;
+} n => 1, name => 'parse_char_string_as_ss value not supported';
+
+test {
+  my $c = shift;
+  my $parser = Web::CSS::Parser->new;
+  $parser->media_resolver->{prop}->{display} = 1;
+  $parser->media_resolver->{prop_value}->{display}->{block} = 1;
+  my $parsed = $parser->parse_char_string_as_ss ('p{display:block}');
+  eq_or_diff $parsed, {rules => [SS [1], S(0=>1, 'p', ['display'],
+                                           {display => K 'block'}, {})],
+                       base_urlref => \'about:blank'};
+  done $c;
+} n => 1, name => 'parse_char_string_as_ss value supported';
 
 for my $test (
   {in => '', out => [SS []],
@@ -515,6 +547,7 @@ for my $test (
     my @error;
 
     my $p = Web::CSS::Parser->new;
+    $p->media_resolver->set_supported (all => 1);
     $p->onerror (sub {
       my %args = @_;
       push @error, join ';',
@@ -534,9 +567,19 @@ for my $test (
   } n => 2, name => ['parse_char_string_as_rule', $test->{in}];
 }
 
+test {
+  my $c = shift;
+  my $parser = Web::CSS::Parser->new;
+  my $parsed = $parser->parse_char_string_as_rule ('p{display:block}');
+  eq_or_diff $parsed, {rules => [SS [1], S(0=>1, 'p', [], {}, {})]};
+  done $c;
+} n => 1, name => 'parse_char_string_as_rule not supported';
+
 for my $test (
-  {in => '', out => {}},
-  {in => ';', out => {}},
+  {in => '', out => {prop_keys => [], prop_values => {},
+                     prop_importants => {}}},
+  {in => ';', out => {prop_keys => [], prop_values => {},
+                      prop_importants => {}}},
   {in => 'display:block',
    out => {prop_keys => ['display'],
            prop_values => {display => K 'block'},
@@ -556,9 +599,12 @@ for my $test (
                            background_position_y => K 'center'},
            prop_importants => {}}},
   {in => 'display:block}',
-   out => {}, errors => ['1;9;m;css:value:not keyword;;']},
+   out => {prop_keys => [], prop_values => {},
+           prop_importants => {}},
+   errors => ['1;9;m;css:value:not keyword;;']},
   {in => 'display{}:block',
-   out => {}, errors => ['1;8;m;css:decl:no colon;;']},
+   out => {prop_keys => [], prop_values => {},
+           prop_importants => {}}, errors => ['1;8;m;css:decl:no colon;;']},
   {in => '@phpge {} display:block',
    out => {prop_keys => ['display'],
            prop_values => {display => K 'block'},
@@ -567,6 +613,7 @@ for my $test (
   test {
     my $c = shift;
     my $parser = Web::CSS::Parser->new;
+    $parser->media_resolver->set_supported (all => 1);
     my @error;
     $parser->onerror (sub {
       my %args = @_;
@@ -586,6 +633,15 @@ for my $test (
     done $c;
   } n => 2, name => ['parse_char_string_as_prop_decls', $test->{in}];
 }
+
+test {
+  my $c = shift;
+  my $parser = Web::CSS::Parser->new;
+  my $parsed = $parser->parse_char_string_as_prop_decls ('display:block');
+  eq_or_diff $parsed, {prop_keys => [], prop_values => {},
+                       prop_importants => {}};
+  done $c;
+} n => 1, name => 'parse_char_string_as_prop_decls not supported';
 
 for my $test (
   {prop => 'Display', in => 'BlocK',
@@ -615,6 +671,7 @@ for my $test (
   test {
     my $c = shift;
     my $parser = Web::CSS::Parser->new;
+    $parser->media_resolver->set_supported (all => 1);
     my @error;
     $parser->onerror (sub {
       my %args = @_;
@@ -635,6 +692,14 @@ for my $test (
     done $c;
   } n => 2, name => ['parse_char_string_as_prop_value', $test->{prop}, $test->{in}];
 }
+
+test {
+  my $c = shift;
+  my $parser = Web::CSS::Parser->new;
+  my $parsed = $parser->parse_char_string_as_prop_value ('display', 'block');
+  is $parsed, undef;
+  done $c;
+} n => 1, name => 'parse_char_string_as_prop_value not supported';
 
 test {
   my $c = shift;

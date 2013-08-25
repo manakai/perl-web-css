@@ -48,6 +48,27 @@ Set the "supported" flag of all known media features.
 
 =back
 
+=head1 REQUIRED FEATURES
+
+The media resolver enables the CSS implementation build on top of the
+parser to control whether features are supported or not.  However,
+features listed in this section cannot be disabled by the media
+resolver so that they must be supported.
+
+Selectors: Type, universal, attribute, class, and ID selectors.
+Descendant and child selectors.  Direct or indirect adjacent
+selectors.
+
+Media queries: Media types.
+
+At-rules: '@charset', '@namespace' (Handled by the parser).
+'@import', '@media'.
+
+Style rules: '!important'.  'inherit', 'initial', 'unset'.
+
+Units: Relative and absolute length units.  Angle units.  Resolution
+units.  Time units.  Frequency units.
+
 =head1 SEE ALSO
 
 L<Web::CSS::Parser>.

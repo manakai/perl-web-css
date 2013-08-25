@@ -1,7 +1,7 @@
 package Web::CSS::Parser;
 use strict;
 use warnings;
-our $VERSION = '10.0';
+our $VERSION = '11.0';
 use Web::CSS::Builder;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
@@ -487,7 +487,8 @@ sub parse_char_string_as_prop_decls ($$) {
     $self->init_builder;
   }
 
-  $self->{current} = [{}];
+  $self->{current} = [{prop_keys => [], prop_values => {},
+                       prop_importants => {}}];
 
   $self->start_building_decls or do {
     1 while not $self->continue_building_decls;
@@ -530,7 +531,8 @@ sub parse_constructs_as_prop_value ($$$) {
 
   # XXX custom properties
 
-  # XXX supportedness
+  $self->media_resolver->{prop}->{$prop_name} or return undef;
+
   my $def = $Web::CSS::Props::Prop->{$prop_name} or return undef;
 
   my $value;

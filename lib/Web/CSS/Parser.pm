@@ -607,6 +607,11 @@ sub parse_style_element ($$) {
   $$style->[0]->connect ($new_id => $$style->[1]);
 } # process_style_element
 
+sub get_parser_of_document ($$) {
+  my $node = $_[1];
+  return $$node->[0]->css_parser;
+} # get_parser_of_document
+
 1;
 
 =head1 LICENSE

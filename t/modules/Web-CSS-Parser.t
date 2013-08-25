@@ -658,6 +658,61 @@ test {
   done $c;
 } n => 5, name => 'parse_style_element - empty';
 
+test {
+  my $c = shift;
+  my $doc = new Web::DOM::Document;
+
+  is +Web::CSS::Parser->get_parser_of_document ($doc), $$doc->[0]->css_parser;
+  isa_ok +Web::CSS::Parser->get_parser_of_document ($doc), 'Web::CSS::Parser';
+  
+  done $c;
+} n => 2, name => 'get_parser_of_document doc';
+
+test {
+  my $c = shift;
+  my $doc = new Web::DOM::Document;
+  $doc->append_child ($doc->create_element ('a'));
+
+  is +Web::CSS::Parser->get_parser_of_document ($doc->first_child), $$doc->[0]->css_parser;
+  isa_ok +Web::CSS::Parser->get_parser_of_document ($doc->first_child), 'Web::CSS::Parser';
+  
+  done $c;
+} n => 2, name => 'get_parser_of_document non-doc node';
+
+test {
+  my $c = shift;
+  my $doc = new Web::DOM::Document;
+  my $el = $doc->create_element ('style');
+
+  my $parser = Web::CSS::Parser->new;
+  $parser->parse_style_element ($el);
+
+  my $sheet = $el->sheet;
+
+  is +Web::CSS::Parser->get_parser_of_document ($sheet), $$doc->[0]->css_parser;
+  isa_ok +Web::CSS::Parser->get_parser_of_document ($sheet), 'Web::CSS::Parser';
+  
+  done $c;
+} n => 2, name => 'get_parser_of_document sheet';
+
+test {
+  my $c = shift;
+  my $doc = new Web::DOM::Document;
+  my $el = $doc->create_element ('style');
+  $el->inner_html ('p{}');
+
+  my $parser = Web::CSS::Parser->new;
+  $parser->parse_style_element ($el);
+
+  my $sheet = $el->sheet;
+  my $rule = $sheet->css_rules->[0];
+
+  is +Web::CSS::Parser->get_parser_of_document ($rule), $$doc->[0]->css_parser;
+  isa_ok +Web::CSS::Parser->get_parser_of_document ($rule), 'Web::CSS::Parser';
+  
+  done $c;
+} n => 2, name => 'get_parser_of_document rule';
+
 run_tests;
 
 # XXX

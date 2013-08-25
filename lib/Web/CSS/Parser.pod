@@ -2,13 +2,13 @@
 
 Web::CSS::Parser - A CSS parser
 
-=head1 SYNOPSIS
-
-XXX
-
 =head1 DESCRIPTION
 
 The C<Web::CSS::Parser> module provides a CSS parser.
+
+This module is not intended for direct use by general applications.
+It should be used through standard DOM/CSSOM APIs implemented by,
+e.g., L<Web::DOM::StyleSheet> and related modules.
 
 =head1 METHODS
 
@@ -109,9 +109,19 @@ structure.
 =back
 
 Following method is intended to be used with appropriate
-L<Web::DOM::Node> object:
+L<Web::DOM::Node>, L<Web::DOM::StyleSheet>, and/or
+L<Web::DOM::CSSRule> objects:
 
 =over 4
+
+=item $p->get_parser_of_document ($obj)
+
+Return the CSS parser associated with the document.  If the argument
+is the L<Web::DOM::Document> object, its associated CSS parser is
+returned.  If the argument is other L<Web::DOM::Node> object, its
+owner document's associated CSS parser is returned.  If the argument
+is L<Web::DOM::CSSStyleSheet> or L<Web::CSS::CSSRule> object, its
+associated CSS parser is returned.
 
 =item $p->parse_style_element ($el)
 

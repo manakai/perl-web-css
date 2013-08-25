@@ -1,7 +1,7 @@
 package Web::CSS::Serializer;
 use strict;
 use warnings;
-our $VERSION = '19.0';
+our $VERSION = '20.0';
 use Web::CSS::Selectors::Serializer;
 use Web::CSS::MediaQueries::Serializer;
 push our @ISA, qw(Web::CSS::Selectors::Serializer
@@ -205,6 +205,33 @@ sub serialize_prop_decls ($$) {
 
   return join ' ', @decl;
 } # serialize_prop_decls
+
+sub serialize_rule ($$$) {
+  my ($self, $rule_set, $rule_id) = @_;
+  my $rule = $rule_set->{rules}->[$rule_id];
+
+  if ($rule->{rule_type} eq 'style') {
+    return $self->serialize_selector_text ($rule->{selectors}) . ' { '
+        . $self->serialize_prop_decls ($rule)
+        . (@{$rule->{prop_keys}} ? ' ' : '') . '}';
+  } elsif ($rule->{rule_type} eq 'media') {
+    return '@media ' . $self->serialize_mq_list ($rule->{mqs}) . ' { ' # XXX
+        . (join ' ', map { $self->serialize_rule ($rule_set, $_) } @{$rule->{rule_ids}})
+        . ' }';
+  } elsif ($rule->{rule_type} eq 'namespace') {
+    return '@namespace '
+        . (defined $rule->{prefix} ? $rule->{prefix} . ' ' : '')
+        . 'url("' . $rule->{nsurl} . '");'; # XXX
+  } elsif ($rule->{rule_type} eq 'import') {
+    return '@import url("' . $rule->{href} . '")'
+        . (@{$rule->{mqs}} ? ' ' : '')
+        . $self->serialize_mq_list ($rule->{mqs}) . ';'; # XXX
+  } elsif ($rule->{rule_type} eq 'charset') {
+    return '@charset "' . $rule->{encoding} . '";'; # XXX
+  } else {
+    die "Can't serialzie rule of type |$rule->{rule_type}|";
+  }
+} # serialize_rule
 
 1;
 

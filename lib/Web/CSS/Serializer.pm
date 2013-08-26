@@ -1,7 +1,7 @@
 package Web::CSS::Serializer;
 use strict;
 use warnings;
-our $VERSION = '20.0';
+our $VERSION = '21.0';
 use Web::CSS::Selectors::Serializer;
 use Web::CSS::MediaQueries::Serializer;
 push our @ISA, qw(Web::CSS::Selectors::Serializer
@@ -228,6 +228,8 @@ sub serialize_rule ($$$) {
         . $self->serialize_mq_list ($rule->{mqs}) . ';'; # XXX
   } elsif ($rule->{rule_type} eq 'charset') {
     return '@charset "' . $rule->{encoding} . '";'; # XXX
+  } elsif ($rule->{rule_type} eq 'sheet') {
+    return join "\x0A", map { $self->serialize_rule ($rule_set, $_) } @{$rule->{rule_ids}};
   } else {
     die "Can't serialzie rule of type |$rule->{rule_type}|";
   }

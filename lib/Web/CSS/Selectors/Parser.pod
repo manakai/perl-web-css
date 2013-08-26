@@ -180,7 +180,12 @@ of simple selectors).
 
 The namespace specification in a type of universal selector.  The
 first argument (item of index 1) is the namespace URL (or C<undef> for
-the null namespace).
+the null namespace).  The second argument (item of index 2) is the
+namespace prefix.  The namespace prefix is the empty string if the
+default namespace is used explicitly by type or universal selector, or
+implicitly by implicit universal selector.  The namespace prefix is
+C<undef> if the empty string prefix syntax (representing the null
+namespace) is used.
 
 =item LOCAL_NAME_SELECTOR
 
@@ -223,7 +228,9 @@ is the pseudo-element name in lowercase.
 
 An attribute selector.  The first argument (item of index 1) is the
 attribute name.  The second argument (item of index 2) is the type of
-matching.
+matching.  The third argument (item of index 3) depends on the type of
+matching.  The fourth argument (item of index 4) is the namespace
+prefix, if exists and is not the empty string, or C<undef> otherwise.
 
 The constants below represent the types of matches used in attribute
 selectors.
@@ -232,7 +239,8 @@ selectors.
 
 =item EXISTS_MATCH
 
-Match by the existence of an attribute.
+Match by the existence of an attribute.  The third argument (item of
+index 3) is C<undef>.
 
 =item EQUALS_MATCH
 
@@ -276,6 +284,8 @@ the module:
 =head1 SPECIFICATIONS
 
 Selectors Level 4 <http://dev.w3.org/csswg/selectors4/>.
+
+CSSOM <http://dev.w3.org/csswg/cssom/>.
 
 The CSS syntax <http://www.w3.org/TR/CSS21/syndata.html>.
 

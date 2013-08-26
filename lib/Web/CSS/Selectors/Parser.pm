@@ -1,7 +1,7 @@
 package Web::CSS::Selectors::Parser;
 use strict;
 use warnings;
-our $VERSION = '16.0';
+our $VERSION = '17.0';
 push our @ISA, qw(Web::CSS::Selectors::Parser::_ Web::CSS::Builder);
 
 sub new ($) {
@@ -174,7 +174,8 @@ sub parse_constructs_as_selectors ($$) {
                                    value => $t1->{value});
                 next A;
               }
-              push @$sss, [NAMESPACE_SELECTOR, length $url ? $url : undef];
+              push @$sss, [NAMESPACE_SELECTOR, length $url ? $url : undef,
+                           $t1->{value}];
             }
             if ($t->{type} == IDENT_TOKEN) {
               push @$sss, [LOCAL_NAME_SELECTOR, $t->{value}];
@@ -191,7 +192,8 @@ sub parse_constructs_as_selectors ($$) {
         } else {
           if (defined $default_ns) {
             push @$sss,
-                [NAMESPACE_SELECTOR, length $default_ns ? $default_ns : undef];
+                [NAMESPACE_SELECTOR, length $default_ns ? $default_ns : undef,
+                 ''];
           }
           if ($t1->{type} == IDENT_TOKEN) {
             push @$sss, [LOCAL_NAME_SELECTOR, $t1->{value}];
@@ -201,12 +203,12 @@ sub parse_constructs_as_selectors ($$) {
       } elsif ($t->{type} == VBAR_TOKEN) {
         $t = shift @$tokens;
         if ($t->{type} == IDENT_TOKEN) {
-          push @$sss, [NAMESPACE_SELECTOR, undef];
+          push @$sss, [NAMESPACE_SELECTOR, undef, undef];
           push @$sss, [LOCAL_NAME_SELECTOR, $t->{value}];
           $t = shift @$tokens;
           $found_tu = 1;
         } elsif ($t->{type} == STAR_TOKEN) {
-          push @$sss, [NAMESPACE_SELECTOR, undef];
+          push @$sss, [NAMESPACE_SELECTOR, undef, undef];
           $t = shift @$tokens;
           $found_tu = 1;
         } else {
@@ -238,6 +240,7 @@ sub parse_constructs_as_selectors ($$) {
 
           my $t1;
           my $nsurl = '';
+          my $prefix = undef;
           if ($u->{type} == IDENT_TOKEN) { # [hoge] or [hoge|fuga]
             $t1 = $u;
             $u = shift @$us;
@@ -246,6 +249,7 @@ sub parse_constructs_as_selectors ($$) {
               if ($u->{type} == IDENT_TOKEN) {
                 my $p_t = $t1;
                 $t1 = $u;
+                $prefix = $p_t->{value};
                 $nsurl = $self->context->get_url_by_prefix ($p_t->{value});
                 unless (defined $nsurl) {
                   $self->{onerror}->(type => 'namespace prefix:not declared',
@@ -322,7 +326,7 @@ sub parse_constructs_as_selectors ($$) {
                 $u->{type} == STRING_TOKEN) { # [name(match)value]
               push @$sss, [ATTRIBUTE_SELECTOR,
                            $nsurl, $t1->{value},
-                           $match, $u->{value}];
+                           $match, $u->{value}, $prefix];
               $u = shift @$us;
               $u = shift @$us while $u->{type} == S_TOKEN;
               if ($u->{type} != EOF_TOKEN) {
@@ -342,7 +346,8 @@ sub parse_constructs_as_selectors ($$) {
               next A;
             }
           } elsif ($u->{type} == EOF_TOKEN) { # [name]
-            push @$sss, [ATTRIBUTE_SELECTOR, $nsurl, $t1->{value}];
+            push @$sss, [ATTRIBUTE_SELECTOR, $nsurl, $t1->{value},
+                         EXISTS_MATCH, undef, $prefix];
             $t = shift @$tokens;
             redo B;
           } else {
@@ -779,7 +784,7 @@ sub parse_constructs_as_selectors ($$) {
           not $found_tu and
           not $args{in_not}) {
         unshift @$sss,
-            [NAMESPACE_SELECTOR, length $default_ns ? $default_ns : undef];
+            [NAMESPACE_SELECTOR, length $default_ns ? $default_ns : undef, ''];
       }
 
       unless ($found_tu or @$sss) {

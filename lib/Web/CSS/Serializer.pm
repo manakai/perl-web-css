@@ -211,7 +211,7 @@ sub serialize_rule ($$$) {
   my $rule = $rule_set->{rules}->[$rule_id];
 
   if ($rule->{rule_type} eq 'style') {
-    return $self->serialize_selector_text ($rule->{selectors}) . ' { '
+    return $self->serialize_selectors ($rule->{selectors}) . ' { '
         . $self->serialize_prop_decls ($rule)
         . (@{$rule->{prop_keys}} ? ' ' : '') . '}';
   } elsif ($rule->{rule_type} eq 'media') {

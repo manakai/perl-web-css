@@ -475,7 +475,7 @@ for my $test (
     });
 
     my $parsed = $p->parse_char_string_as_ss ($test->{in});
-    eq_or_diff $parsed, {rules => $test->{out}, base_urlref => \'about:blank'};
+    eq_or_diff $parsed, {rules => $test->{out}};
     eq_or_diff \@error, $test->{errors} || [];
     
     done $c;
@@ -486,8 +486,7 @@ test {
   my $c = shift;
   my $parser = Web::CSS::Parser->new;
   my $parsed = $parser->parse_char_string_as_ss ('p{display:block}');
-  eq_or_diff $parsed, {rules => [SS [1], S(0=>1, 'p', [], {}, {})],
-                       base_urlref => \'about:blank'};
+  eq_or_diff $parsed, {rules => [SS [1], S(0=>1, 'p', [], {}, {})]};
   done $c;
 } n => 1, name => 'parse_char_string_as_ss not supported';
 
@@ -496,8 +495,7 @@ test {
   my $parser = Web::CSS::Parser->new;
   $parser->media_resolver->{prop}->{display} = 1;
   my $parsed = $parser->parse_char_string_as_ss ('p{display:block}');
-  eq_or_diff $parsed, {rules => [SS [1], S(0=>1, 'p', [], {}, {})],
-                       base_urlref => \'about:blank'};
+  eq_or_diff $parsed, {rules => [SS [1], S(0=>1, 'p', [], {}, {})]};
   done $c;
 } n => 1, name => 'parse_char_string_as_ss value not supported';
 
@@ -508,8 +506,7 @@ test {
   $parser->media_resolver->{prop_value}->{display}->{block} = 1;
   my $parsed = $parser->parse_char_string_as_ss ('p{display:block}');
   eq_or_diff $parsed, {rules => [SS [1], S(0=>1, 'p', ['display'],
-                                           {display => K 'block'}, {})],
-                       base_urlref => \'about:blank'};
+                                           {display => K 'block'}, {})]};
   done $c;
 } n => 1, name => 'parse_char_string_as_ss value supported';
 
@@ -778,56 +775,6 @@ test {
   done $c;
 } n => 2, name => 'get_parser_of_document rule';
 
-run_tests;
-
-# XXX
-__END__
-
-test {
-  my $c = shift;
-  my $parser = Web::CSS::Parser->new;
-  $parser->parse_char_string ('');
-  my $result = $parser->parsed_sheet_set;
-  is scalar @{$result->{sheets}}, 1;
-  eq_or_diff $result->{sheets}->[0]->{rules}, [];
-  is ${$result->{sheets}->[0]->{base_urlref}}, 'about:blank';
-  is scalar @{$result->{rules}}, 0;
-  done $c;
-} n => 4, name => 'parse_char_string empty string';
-
-test {
-  my $c = shift;
-  my $parser = Web::CSS::Parser->new;
-  $parser->parse_char_string ('@charset "utf-8";');
-  my $result = $parser->parsed_sheet_set;
-  is scalar @{$result->{sheets}}, 1;
-  eq_or_diff $result->{sheets}->[0]->{rules}, [0];
-  is ${$result->{sheets}->[0]->{base_urlref}}, 'about:blank';
-  is scalar @{$result->{rules}}, 1;
-  is $result->{rules}->[0]->{type}, '@charset';
-  is $result->{rules}->[0]->{encoding}, 'utf-8';
-  done $c;
-} n => 6, name => 'parse_char_string @charset';
-
-test {
-  my $c = shift;
-  my $parser = Web::CSS::Parser->new;
-  $parser->media_resolver->{prop}->{color} = 1;
-  $parser->media_resolver->{prop}->{'font-size'} = 1;
-  $parser->parse_char_string ('p { color : blue; opacity: 0; font-size: small }');
-  my $result = $parser->parsed_sheet_set;
-  is scalar @{$result->{sheets}}, 1;
-  eq_or_diff $result->{sheets}->[0]->{rules}, [0];
-  is ${$result->{sheets}->[0]->{base_urlref}}, 'about:blank';
-  is scalar @{$result->{rules}}, 1;
-  is $result->{rules}->[0]->{type}, 'style';
-  eq_or_diff $result->{rules}->[0]->{style},
-      {props => {color => [[KEYWORD => 'blue'], ''],
-                 font_size => [[KEYWORD => 'small'], '']},
-       prop_names => ['color', 'font_size']};
-  done $c;
-} n => 6, name => 'parse_char_string style declarations';
-
 test {
   my $c = shift;
   my $p = Web::CSS::Parser->new;
@@ -837,45 +784,12 @@ test {
     my %args = @_;
     push @url, ${$args{uri}};
   };
-  $p->parse_char_string ('& { } @hoge; @media abc { }');
+  $p->parse_char_string_as_ss ('& { } @hoge; @media abc { }');
 
-  eq_or_diff \@url, ['hoge://fuga', 'hoge://fuga', 'hoge://fuga'];
+  eq_or_diff \@url, ['hoge://fuga', 'hoge://fuga'];
 
   done $c;
 } n => 1, name => 'context->url';
-
-# XXX broken
-for my $test (
-  {input => '', result => {props => {}, prop_names => []}},
-  {input => 'color:red',
-   result => {props => {color => [['KEYWORD', 'red'], '']},
-              prop_names => ['color']}},
-  {input => 'color:red; font-size: 10px ! imporTant',
-   result => {props => {color => [['KEYWORD', 'red'], ''],
-                        font_size => [['DIMENSION', 10, 'px'], 'important']},
-              prop_names => ['color', 'font_size']}},
-) {
-  test {
-    my $c = shift;
-    my $parser = Web::CSS::Parser->new;
-    my @error;
-    $parser->onerror (sub {
-      my %args = @_;
-      push @error, join ';',
-          $args{token}->{line}, $args{token}->{column},
-          $args{level},
-          $args{type};
-    });
-    $parser->media_resolver->set_supported (all => 1);
-    $parser->parse_char_string_as_style_decls ($test->{input});
-    my $result = $parser->parsed_style_decls;
-    eq_or_diff $result, $test->{result};
-    eq_or_diff \@error, $test->{errors} || [];
-    done $c;
-  } n => 2, name => 'parse_char_string_as_style_decls';
-}
-
-## TODO: Test <style>'s base URI change and url()
 
 run_tests;
 

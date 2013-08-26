@@ -22,7 +22,6 @@ sub init_parser ($) {
 ##   rules
 ##     0         - The "style sheet" struct
 ##     n > 0     - Rules in the style sheet
-##   base_urlref - The scalarref to the base URL of the style sheet XXX is this really necessary???
 
 ## Style sheet struct
 ##
@@ -424,8 +423,7 @@ sub parse_char_string_as_ss ($$) {
     $self->init_builder;
   }
 
-  $self->{parsed} = {rules => [],
-                     base_urlref => $self->context->base_urlref};
+  $self->{parsed} = {rules => []};
 
   $self->start_building_rules or do {
     1 while not $self->continue_building_rules;

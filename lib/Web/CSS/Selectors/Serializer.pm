@@ -1,7 +1,7 @@
 package Web::CSS::Selectors::Serializer;
 use strict;
 use warnings;
-our $VERSION = '1.9';
+our $VERSION = '10.0';
 use Web::CSS::Selectors::Parser;
 
 sub new ($) {
@@ -221,8 +221,7 @@ sub serialize_selector_text ($$$) {
               ':lang(' . $ident->($vv->[2]) . ')';
             } elsif ($vv->[1] eq 'not') {
               my $vvv = Web::CSS::Selectors::Serializer
-                  ->serialize_selector_text
-                  ([[DESCENDANT_COMBINATOR, [@{$vv}[2..$#{$vv}]]]]);
+                  ->serialize_selector_text ($vv->[2]);
               $vvv =~ s/^\*\|\*(?!$)//;
               $v .= ":not(" . $vvv . ")";
             } elsif ({'nth-child' => 1,

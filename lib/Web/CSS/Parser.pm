@@ -1,7 +1,7 @@
 package Web::CSS::Parser;
 use strict;
 use warnings;
-our $VERSION = '11.0';
+our $VERSION = '12.0';
 use Web::CSS::Builder;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
@@ -267,6 +267,8 @@ sub end_construct ($;%) {
                              level => 'm',
                              uri => $self->context->urlref,
                              token => $t);
+            @{$context->{url_to_prefixes}->{$context->{prefix_to_url}->{$rule->{prefix}}}}
+                = grep { $_ ne $rule->{prefix} } @{$context->{url_to_prefixes}->{$context->{prefix_to_url}->{$rule->{prefix}}}};
           }
           $t = shift @$tokens;
           $t = shift @$tokens while $t->{type} == S_TOKEN;
@@ -284,6 +286,8 @@ sub end_construct ($;%) {
           $t = shift @$tokens while $t->{type} == S_TOKEN;
           if ($t->{type} == EOF_TOKEN) {
             $context->{prefix_to_url}->{defined $rule->{prefix} ? $rule->{prefix} : ''} = $rule->{nsurl};
+            push @{$context->{url_to_prefixes}->{$rule->{nsurl}} ||= []},
+                $rule->{prefix} if defined $rule->{prefix};
             my $rule_id = @{$self->{parsed}->{rules}};
             $self->{parsed}->{rules}->[$rule_id] = $rule;
             $rule->{id} = $rule_id;
@@ -579,6 +583,7 @@ sub parse_constructs_as_prop_value ($$$) {
   }
 } # parse_constructs_as_prop_value
 
+# XXX at risk
 sub parse_style_element ($$) {
   my ($self, $style) = @_;
 
@@ -592,6 +597,12 @@ sub parse_style_element ($$) {
   ## |media| attribute and the |title| attribute do not affect this
   ## method's processing.
 
+  $self->context (undef);
+  my $context = $self->context;
+  $context->url ($style->owner_document->url);
+  $context->base_url ($style->base_uri);
+  $context->manakai_compat_mode ($style->owner_document->manakai_compat_mode);
+
   my $parsed = $self->parse_char_string_as_ss
       (join '', map { $_->data } grep { $_->node_type == $_->TEXT_NODE } @{$style->child_nodes});
   
@@ -603,8 +614,21 @@ sub parse_style_element ($$) {
 
   my $new_id = $$style->[0]->import_parsed_ss ($parsed);
   $$style->[2]->{sheet} = $new_id;
-  $$style->[0]->{data}->[$new_id]->{owner} = $$style->[1];
   $$style->[0]->connect ($new_id => $$style->[1]);
+  my $ss_data = $$style->[0]->{data}->[$new_id];
+  #$ss_data->{href};
+  $ss_data->{context} = $context;
+  $context->url (undef);
+  $ss_data->{owner} = $$style->[1];
+  #$ss_data->{parent_style_sheet};
+  $ss_data->{title} = $style->get_attribute ('title');
+  #$ss_data->{disabled};
+  #XXX origin
+
+  my $mq = $style->get_attribute ('media');
+  $style->sheet->media ($mq) if defined $mq;
+
+  $self->context (undef);
 } # process_style_element
 
 sub get_parser_of_document ($$) {

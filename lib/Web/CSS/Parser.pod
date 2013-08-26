@@ -125,6 +125,8 @@ associated CSS parser is returned.
 
 =item $p->parse_style_element ($el)
 
+XXX at risk
+
 Parse the content of the HTML C<style> element and set the C<sheet>
 IDL attribute.  The argument MUST be a L<Web::DOM::Element> object
 representing the C<style> element.

@@ -10,14 +10,65 @@ use Web::CSS::Builder;
 ##
 ## KEYWORD - Keyword
 ##   1: Keyword in lowercase
+## STRING - String
+##   1: Value as Perl character string
+## URL - URL
+##   1: URL as Perl character string, resolved if possible
 ## NUMBER - Number (including integer)
 ##   1: Value as Perl number
-## DIMENSION - Number with unit
+## PERCENTAGE - Number in percentage
+##   1: Value as Perl number
+## LENGTH - Number with length unit
+##   1: Value as Perl number
+##   2: Unit in lowercase
+## ANGLE - Number with angle unit
+##   1: Value as Perl number
+##   2: Unit in lowercase
+## TIME - Number with time unit
+##   1: Value as Perl number
+##   2: Unit in lowercase
+## FREQUENCY - Number with frequency unit
+##   1: Value as Perl number
+##   2: Unit in lowercase
+## RESOLUTION - Number with resolution unit
 ##   1: Value as Perl number
 ##   2: Unit in lowercase
 ## RATIO - <ratio>
 ##   1: First value as Perl number
 ##   2: Second value as Perl number
+## RGBA - RGBA color
+##   1: Red as Perl number [0-255]
+##   2: Green as Perl number [0-255]
+##   3: Blue as Perl number [0-255]
+##   4: Alpha as Perl number [0-1]
+## COUNTER
+##   XXX
+## COUNTERS
+##   XXX
+## SETCOUNTER
+##   XXX
+## ADDCOUNTER
+##   XXX
+## RECT
+##   XXX
+## WEIGHT
+##   XXX
+## PAGE
+##   XXX
+## DECORATION
+##   XXX
+## QUOTES
+##   XXX
+## CONTENT
+##   XXX
+## FONT
+##   XXX
+## CURSOR
+##   XXX
+## MARKS
+##   XXX
+## SIZE
+##   XXX
 
 our $GetKeywordParser = sub ($;$) {
   my ($keywords, $prop_name) = @_;

@@ -26,7 +26,7 @@ sub serialize_mq ($$) {
   for (@{$mq->{features}}) {
     if (defined $_->{value}) {
       use Web::CSS::Serializer; # XXX
-      push @result, '(' . $_->{name} . ': ' . Web::CSS::Serializer->new->serialize_value ('', $_->{value}) . ')'; # XXX
+      push @result, '(' . $_->{name} . ': ' . Web::CSS::Serializer->new->serialize_value ($_->{value}) . ')'; # XXX
     } else {
       push @result, '(' . $_->{name} . ')'; # XXX
     }

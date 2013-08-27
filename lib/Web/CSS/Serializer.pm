@@ -1,48 +1,126 @@
 package Web::CSS::Serializer;
 use strict;
 use warnings;
-our $VERSION = '21.0';
+our $VERSION = '22.0';
 use Web::CSS::Selectors::Serializer;
 use Web::CSS::MediaQueries::Serializer;
 push our @ISA, qw(Web::CSS::Selectors::Serializer
                   Web::CSS::MediaQueries::Serializer);
 use Web::CSS::Props;
 
-# XXX API is not stable
-
-# XXX tests
-
 sub new ($) {
   return bless {}, $_[0];
 } # new
 
-sub serialize_value ($$$) { # XXX drop $prop_name from args?
-  my ($self, $prop_name, $value) = @_;
-return '' if not defined $value; # XXX
-  if ($value->[0] eq 'NUMBER' or $value->[0] eq 'WEIGHT') {
+sub _number ($) {
+  my $n = sprintf '%f', $_[0];
+  $n =~ s/0+$//;
+  $n =~ s/\.$//;
+  $n =~ s/^-0$/0/;
+  return $n;
+} # _number
+
+sub _string ($) {
+  my $s = $_[0];
+  ## XXX According to the CSSOM spec U+0000 must throw an exception.
+  ## (Chrome does not throw.)
+  $s =~ s{([\x00-\x1F\x7F-\x9F\"\\])}{
+    $1 eq '\\' ? '\\\\' :
+    $1 eq '"' ? '\\"' :
+    sprintf '\\%x ', ord $1;
+  }ge;
+  return '"' . $s . '"';
+} # _string
+
+my $ValueSerializer = {
+  KEYWORD => sub {
+    ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>.
+    return $_[0]->[1];
+  },
+  NUMBER => sub {
+    ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>
+    ## + Serializer.pod.
+    return _number $_[0]->[1];
+  },
+  PERCENTAGE => sub {
+    ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>
+    ## + Serializer.pod.
+    return _number ($_[0]->[1]) . '%';
+  },
+  RGBA => sub {
+    ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>
+    ## + Serializer.pod.
+    my $alpha = _number $_[0]->[4];
+    if ($alpha eq '1') {
+      return 'rgb('.(_number $_[0]->[1]).', '.(_number $_[0]->[2]).', '.(_number $_[0]->[3]).')';
+    } else {
+      return 'rgba('.(_number $_[0]->[1]).', '.(_number $_[0]->[2]).', '.(_number $_[0]->[3]).', '.(_number $_[0]->[4]).')';
+    }
+  },
+  STRING => sub {
+    ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>.
+    return _string $_[0]->[1];
+  },
+  URL => sub {
+    ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>.
+    return 'url(' . _string ($_[0]->[1]) . ')';
+  },
+  RATIO => sub {
+    ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>
+    ## + [MQ] + Serializer.pod.
+    return _number ($_[0]->[1]) . '/' . _number ($_[0]->[2]);
+  },
+
+## COUNTER
+##   XXX
+## COUNTERS
+##   XXX
+## SETCOUNTER
+##   XXX
+## ADDCOUNTER
+##   XXX
+## RECT
+##   XXX
+## WEIGHT
+##   XXX
+## PAGE
+##   XXX
+## DECORATION
+##   XXX
+## QUOTES
+##   XXX
+## CONTENT
+##   XXX
+## FONT
+##   XXX
+## CURSOR
+##   XXX
+## MARKS
+##   XXX
+## SIZE
+##   XXX
+}; # $ValueSerializer
+
+$ValueSerializer->{$_} = sub {
+  ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>
+  ## + Serializer.pod.
+  return _number ($_[0]->[1]) . $_[0]->[2];
+} for qw(ANGLE FREQUENCY LENGTH RESOLUTION TIME);
+
+sub serialize_value ($$) {
+  my ($self, $value) = @_;
+  return ($ValueSerializer->{$value->[0]} || sub { die "Serializer for |$value->[0]| not implemented" })->($value);
+
+  if ($value->[0] eq 'WEIGHT') {
     ## TODO: What we currently do for 'font-weight' is different from
     ## any browser for lighter/bolder cases.  We need to fix this, but
     ## how?
     return $value->[1]; ## TODO: big or small number cases?
-  } elsif ($value->[0] eq 'DIMENSION') {
-    return $value->[1] . $value->[2]; ## NOTE: This is what browsers do.
-  } elsif ($value->[0] eq 'PERCENTAGE') {
-    return $value->[1] . '%';
-  } elsif ($value->[0] eq 'KEYWORD' or $value->[0] eq 'PAGE') {
+  } elsif ($value->[0] eq 'PAGE') {
     return $value->[1];
   } elsif ($value->[0] eq 'URI') {
     ## NOTE: This is what browsers do.
     return 'url('.$value->[1].')';
-  } elsif ($value->[0] eq 'RGBA') {
-    if ($value->[4] == 1) {
-      return 'rgb('.$value->[1].', '.$value->[2].', '.$value->[3].')';
-    } elsif ($value->[4] == 0) {
-      ## TODO: check what browsers do...
-      return 'transparent';
-    } else {
-      return 'rgba('.$value->[1].', '.$value->[2].', '.$value->[3].', '
-          .$value->[4].')';
-    }
   } elsif ($value->[0] eq 'DECORATION') {
     my @v = ();
     push @v, 'underline' if $value->[1];
@@ -143,12 +221,14 @@ return '' if not defined $value; # XXX
     } else {
       return $s1 . ' ' . $s2;
     }
-  } elsif ($value->[0] eq 'RATIO') { # <ratio>
-    return $value->[1] . '/' . $value->[2]; # XXX <number>
   } else {
     return undef;
   }
 } # serialize_value
+
+# XXX API is not stable
+
+# XXX tests
 
 sub serialize_prop_value ($$$) {
   my ($self, $style, $css_name) = @_;

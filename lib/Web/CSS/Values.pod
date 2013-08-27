@@ -8,13 +8,28 @@ XXX
 
 =head1 SPECIFICATIONS
 
-[VALUES] CSS Values and Units <http://dev.w3.org/csswg/css-values/>.
+=over 4
 
-[SYNTAX] CSS Syntax <http://dev.w3.org/csswg/css-syntax/#integer>.
+=item CSSVALUES
 
-[MQ] Media Queries <http://w3c-test.org/csswg/mediaqueries/#values>.
+CSS Values and Units <http://dev.w3.org/csswg/css-values/>.
+
+The parser MUST convert non-keyword <color> values to the |rgba()|
+functional notation.
+
+The parser MUST interpret <length> value '0' as '0px'.
 
 The number of <resolution> must be positive.
+
+=item CSSSYNTAX
+
+CSS Syntax <http://dev.w3.org/csswg/css-syntax/#integer>.
+
+=item MQ
+
+Media Queries <http://dev.w3.org/csswg/mediaqueries/#values>.
+
+=back
 
 =head1 SEE ALSO
 

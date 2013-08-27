@@ -1,7 +1,7 @@
 package Web::CSS::Values;
 use strict;
 use warnings;
-our $VERSION = '3.0';
+our $VERSION = '4.0';
 use Web::CSS::Builder;
 
 ## Values - CSS values are represented as an array reference whose
@@ -154,9 +154,9 @@ our $NNLengthParser = sub {
     my $unit = $us->[0]->{value};
     $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
     if ($us->[0]->{number} >= 0 and $LengthUnits->{$unit}) {
-      return ['DIMENSION', 0+$us->[0]->{number}, $unit];
+      return ['LENGTH', 0+$us->[0]->{number}, $unit];
     }
-  }
+  } # XXX zero
   $self->onerror->(type => 'css:value:not nnlength', # XXX
                    level => 'm',
                    token => $us->[0]);
@@ -193,7 +193,7 @@ our $ResolutionParser = sub {
     my $unit = $us->[0]->{value};
     $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
     if ($us->[0]->{number} > 0 and $ResolutionUnits->{$unit}) {
-      return ['DIMENSION', 0+$us->[0]->{number}, $unit];
+      return ['RESOLUTION', 0+$us->[0]->{number}, $unit];
     }
   }
   $self->onerror->(type => 'css:value:not resolution', # XXX

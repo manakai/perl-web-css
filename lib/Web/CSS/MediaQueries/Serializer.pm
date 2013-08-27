@@ -1,11 +1,12 @@
 package Web::CSS::MediaQueries::Serializer;
 use strict;
 use warnings;
-our $VERSION = '3.0';
+our $VERSION = '4.0';
+use Web::CSS::Values::Serializer;
+push our @ISA, qw(Web::CSS::MediaQueries::Serializer::_
+                  Web::CSS::Values::Serializer);
 
-sub new ($) {
-  return bless {}, $_[0];
-} # new
+package Web::CSS::MediaQueries::Serializer::_;
 
 sub serialize_mq_list ($$) {
   my ($self, $list) = @_;

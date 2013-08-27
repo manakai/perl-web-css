@@ -1,26 +1,20 @@
 package Web::CSS::Selectors::Serializer;
 use strict;
 use warnings;
-our $VERSION = '11.0';
+our $VERSION = '12.0';
+use Web::CSS::Values::Serializer;
+push our @ISA, qw(Web::CSS::Selectors::Serializer::_
+                  Web::CSS::Values::Serializer);
+
+package Web::CSS::Selectors::Serializer::_;
 use Web::CSS::Selectors::Parser;
-
-sub new ($) {
-  return bless {}, $_[0];
-} # new
-
-sub context ($;$) {
-  if (@_ > 1) {
-    $_[0]->{context} = $_[1];
-  }
-  return $_[0]->{context};
-} # context
 
 sub serialize_selectors ($$) {
   my ($self, $selectors) = @_;
   my $i = 0;
   my $ident = sub { $_[0] };
   my $str = sub { '"' . $_[0] . '"' };
-  my $nsmap = $self->context;
+  my $nsmap = $self->context; # XXX
 
   ## NOTE: See <http://suika.fam.cx/gate/2005/sw/namespace> for browser
   ## implementation issues.
@@ -142,6 +136,8 @@ sub serialize_selectors ($$) {
   return $r;
 } # serialize_selectors
 
+1;
+
 =head1 LICENSE
 
 Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
@@ -150,5 +146,3 @@ This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-1;

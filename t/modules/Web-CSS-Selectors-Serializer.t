@@ -160,6 +160,8 @@ for my $test (
    out => '::before'},
   {in => [[DESCENDANT_COMBINATOR, [[PSEUDO_ELEMENT_SELECTOR, 'first-line']]]],
    out => '::first-line'},
+  {in => [[DESCENDANT_COMBINATOR, [[PSEUDO_ELEMENT_SELECTOR, 'cue']]]],
+   out => '::cue'},
   {in => [[DESCENDANT_COMBINATOR, [[PSEUDO_ELEMENT_SELECTOR, 'cue',
      [[DESCENDANT_COMBINATOR, [[NAMESPACE_SELECTOR, undef, undef],
                                [LOCAL_NAME_SELECTOR, 'a']]],

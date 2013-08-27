@@ -118,7 +118,7 @@ sub serialize_selectors ($$) {
               $v .= ':' . _ident ($vv->[1]);
             }
           } elsif ($_->[0] == PSEUDO_ELEMENT_SELECTOR) {
-            if ($_->[1] eq 'cue') {
+            if ($_->[1] eq 'cue' and defined $_->[2]) {
               $v .= '::' . _ident ($_->[1]) . '(' . $self->serialize_selectors ($_->[2]) . ')';
             } else {
               $v .= '::' . _ident ($_->[1]);

@@ -2,11 +2,11 @@ package Web::CSS::MediaQueries::Serializer;
 use strict;
 use warnings;
 our $VERSION = '4.0';
-use Web::CSS::Values::Serializer;
 push our @ISA, qw(Web::CSS::MediaQueries::Serializer::_
                   Web::CSS::Values::Serializer);
 
 package Web::CSS::MediaQueries::Serializer::_;
+use Web::CSS::Values::Serializer; # exporting
 
 sub serialize_mq_list ($$) {
   my ($self, $list) = @_;
@@ -21,15 +21,14 @@ sub serialize_mq ($$) {
     push @result, join ' ',
         ($mq->{not} ? 'not' : ()),
         ($mq->{only} ? 'only' : ()),
-        $mq->{type}; # XXX identifier
+        _ident ($mq->{type});
   }
 
   for (@{$mq->{features}}) {
     if (defined $_->{value}) {
-      use Web::CSS::Serializer; # XXX
-      push @result, '(' . $_->{name} . ': ' . Web::CSS::Serializer->new->serialize_value ($_->{value}) . ')'; # XXX
+      push @result, '(' . $_->{name} . ': ' . $self->serialize_value ($_->{value}) . ')';
     } else {
-      push @result, '(' . $_->{name} . ')'; # XXX
+      push @result, '(' . $_->{name} . ')';
     }
   }
 

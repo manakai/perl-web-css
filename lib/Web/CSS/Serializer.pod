@@ -28,6 +28,16 @@ Return a new serializer instance.
 
 Return or set the L<Web::CSS::Context> object used for serialization.
 
+=item $string = $serializer->serialize_mq ($mq)
+
+Serialize a media query.  See L<Web::CSS::MediaQueries::Serializer>
+for details.
+
+=item $string = $serializer->serialize_mq_list ($mq_list)
+
+Serialize a list of media queries.  See
+L<Web::CSS::MediaQueries::Serializer> for details.
+
 =item $string = $serializer->serialize_prop_decls ($style)
 
 Return the character string representation of the list of

@@ -335,6 +335,22 @@ for my $test (
   } n => 1, name => ['serialize_rule', $test->{out}];
 }
 
+test {
+  my $c = shift;
+  my $serializer = Web::CSS::Serializer->new;
+  is $serializer->serialize_mq ({type => 'a b', features => []}), 'a\\ b';
+  done $c;
+} n => 1, name => 'serialize_mq';
+
+test {
+  my $c = shift;
+  my $serializer = Web::CSS::Serializer->new;
+  is $serializer->serialize_mq_list
+      ([{type => 'a b', features => []},
+        {features => [{name => 'color'}]}]), 'a\\ b, (color)';
+  done $c;
+} n => 1, name => 'serialize_mq_list';
+
 run_tests;
 
 =head1 LICENSE

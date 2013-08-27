@@ -17,6 +17,8 @@ string representation of it.
 
 =head1 METHODS
 
+Following methods are available:
+
 =over 4
 
 =item $serializer = Web::CSS::MediaQueries::Serializer->new
@@ -48,6 +50,10 @@ Media Queries <http://dev.w3.org/csswg/mediaqueries/>.
 =item CSSOM
 
 CSSOM <http://dev.w3.org/csswg/cssom/#media-queries>.
+
+If a media query contains the 'only' keyword, the string "only"
+followed by a U+0020 SPACE character MUST be prepended to the result
+of the serialize a media query steps.
 
 =back
 

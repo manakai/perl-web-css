@@ -1,0 +1,75 @@
+=head1 NAME
+
+Web::CSS::Selectors::Serializer - A Selectors serializer
+
+=head1 DESCRIPTION
+
+The C<Web::CSS::Selectors::Serializer> class has a method to serialize
+parsed Selectors data structure into its string form.
+
+=head1 METHODS
+
+There are following methods:
+
+=over 4
+
+=item $serializer = Web::CSS::Selectors::Serializer->new
+
+Create a new instance of the serializer.
+
+=item $string = $serializer->serialize_selectors ($selectors)
+
+Return the character string representation of the specified parsed
+list of selectors structure, as specified in the CSSOM specification.
+The argument must be a parsed list of selectors structure (See
+L<Web::CSS::Selectors::Parser>).
+
+=back
+
+=head1 SPECIFICATIONS
+
+=over 4
+
+=item CSSOM
+
+CSS Object Model (CSSOM)
+<http://dev.w3.org/csswg/cssom/#serializing-selectors>.
+
+In the serialization of selectors, whether the universal selector is
+explicitly given or not, whether the namespace prefix (or '*|' for
+wildcard) is specified or not, and what namespace prefix (or the
+default namespace) is used, MUST be preserved.  (Chrome's behavior)
+
+To serialize a simple selector which is a ':-manakai-contains'
+pseudo-class, the concatenation of followings MUST be returned:
+
+  1. The string ':-manakai-contains('
+
+  2. The result of serializing the argument using the rules for
+     serializaing a string
+
+  3. The string ')'
+
+In the steps to serialize a selector, any '::cue()' pseudo-element
+MUST be serialized as the concatenation of '::cue', the result of
+serializing the argument using the rules for serializing a group of
+selectors, and ')'.
+
+=head1 SEE ALSO
+
+L<Web::CSS::Serializer>.
+
+L<Web::CSS::Selectors::Parser>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

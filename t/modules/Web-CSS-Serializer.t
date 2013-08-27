@@ -6,6 +6,8 @@ use lib file (__FILE__)->dir->parent->parent->subdir ('lib')->stringify;
 use lib glob file (__FILE__)->dir->parent->parent->subdir ('t_deps', 'modules', '*', 'lib')->stringify;
 use Test::X1;
 use Web::CSS::Serializer;
+use Web::CSS::Selectors::Parser;
+use Web::CSS::Parser;
 use Test::More;
 use Test::Differences;
 
@@ -350,6 +352,79 @@ test {
         {features => [{name => 'color'}]}]), 'a\\ b, (color)';
   done $c;
 } n => 1, name => 'serialize_mq_list';
+
+test {
+  my $c = shift;
+  my $serializer = Web::CSS::Serializer->new;
+  is $serializer->serialize_selectors
+      ([[DESCENDANT_COMBINATOR, [[LOCAL_NAME_SELECTOR, 'a'],
+                                 [CLASS_SELECTOR, 'b']]]]),
+          'a.b';
+  done $c;
+} n => 1, name => 'serialize_selectors';
+
+for my $test (
+  {in => q{hoge{} |fuga{} *|abc {}
+           *{} |*{} *|*{}
+           .a {} *.a {} |*.a {} *|*.a {}}, out => q{hoge { }
+|fuga { }
+*|abc { }
+* { }
+|* { }
+*|* { }
+.a { }
+*.a { }
+|*.a { }
+*|*.a { }}},
+  {in => q{@namespace "";hoge{} |fuga{}*|abc{}
+           *{} |*{} *|*{}
+           .a {} *.a {} |*.a {} *|*.a {}}, out => q{@namespace url("");
+hoge { }
+|fuga { }
+*|abc { }
+* { }
+|* { }
+*|* { }
+.a { }
+*.a { }
+|*.a { }
+*|*.a { }}},
+  {in => q{@namespace "hoge";hoge{} |fuga{}*|abc{}
+           *{} |*{} *|*{}
+           .a {} *.a {} |*.a {} *|*.a {}}, out => q{@namespace url("hoge");
+hoge { }
+|fuga { }
+*|abc { }
+* { }
+|* { }
+*|* { }
+.a { }
+*.a { }
+|*.a { }
+*|*.a { }}},
+  {in => q{@namespace abc "hoge";hoge{} |fuga{}*|abc{}
+           *{} |*{} *|*{}
+           .a {} *.a {} |*.a {} *|*.a {}}, out => q{@namespace abc url("hoge");
+hoge { }
+|fuga { }
+*|abc { }
+* { }
+|* { }
+*|* { }
+.a { }
+*.a { }
+|*.a { }
+*|*.a { }}},
+) {
+  test {
+    my $c = shift;
+    my $parser = Web::CSS::Parser->new;
+    my $parsed = $parser->parse_char_string_as_ss ($test->{in});
+    my $serializer = Web::CSS::Serializer->new;
+    eq_or_diff $serializer->serialize_rule ($parsed, 0), $test->{out};
+    done $c;
+  } n => 1, name => ['parse then serialize', $test->{in}];
+}
 
 run_tests;
 

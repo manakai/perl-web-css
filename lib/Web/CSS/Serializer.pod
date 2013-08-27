@@ -72,6 +72,11 @@ construct (See L<Web::CSS::Parser>) containing the sheet or rule in
 question.  The second argument must be the ID in the parsed style
 sheet, identifying the sheet or rule to serialize.
 
+=item $string = $serializer->serialize_selectors ($selectors)
+
+Return the character string representation of the specified list of
+selectors.  See L<Web::CSS::Selectors::Serializer> for details.
+
 =item $string = $serializer->serialize_value ($value)
 
 Return the character string representation of the specified CSS value.

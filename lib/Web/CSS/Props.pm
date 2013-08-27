@@ -2227,13 +2227,13 @@ $Prop->{'background-position-x'} = {
         my $unit = $tokens->[0]->{value};
         $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
         if ($length_unit->{$unit}) {
-          return ['DIMENSION', $tokens->[0]->{number}, $unit];
+          return ['LENGTH', $tokens->[0]->{number}, $unit];
         }
       } elsif ($tokens->[0]->{type} == PERCENTAGE_TOKEN) {
         return ['PERCENTAGE', $tokens->[0]->{number}];
       } elsif ($tokens->[0]->{type} == NUMBER_TOKEN and
                $tokens->[0]->{number} == 0) {
-        return ['NUMBER', $tokens->[0]->{value}];
+        return ['LENGTH', $tokens->[0]->{value}, 'px'];
       } elsif ($tokens->[0]->{type} == IDENT_TOKEN) {
         my $value = $tokens->[0]->{value};
         $value =~ tr/A-Z/a-z/; ## ASCII case-insenstiive.
@@ -4223,7 +4223,7 @@ $Key->{background_position} = {
       my $unit = $t->{value};
       $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
       if ($length_unit->{$unit}) {
-        $prop_value{background_position_x} = ['DIMENSION', $t->{number}, $unit];
+        $prop_value{background_position_x} = ['LENGTH', $t->{number}, $unit];
         $prop_value{background_position_y} = ['PERCENTAGE', 50];
         $t = shift @$tokens;
       } else {
@@ -4239,7 +4239,7 @@ $Key->{background_position} = {
       $t = shift @$tokens;
     } elsif ($t->{type} == NUMBER_TOKEN and
              ($self->context->quirks or $t->{number} == 0)) {
-      $prop_value{background_position_x} = ['DIMENSION', $t->{number}, 'px'];
+      $prop_value{background_position_x} = ['LENGTH', $t->{number}, 'px'];
       $prop_value{background_position_y} = ['PERCENTAGE', 50];
       $t = shift @$tokens;
     } elsif ($t->{type} == IDENT_TOKEN) {
@@ -4329,7 +4329,7 @@ $Key->{background_position} = {
       my $unit = $t->{value};
       $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
       if ($length_unit->{$unit}) {
-        $prop_value{background_position_y} = ['DIMENSION', $t->{number}, $unit];
+        $prop_value{background_position_y} = ['LENGTH', $t->{number}, $unit];
         $t = shift @$tokens;
       } else {
         $self->onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
@@ -4343,7 +4343,7 @@ $Key->{background_position} = {
       $t = shift @$tokens;
     } elsif ($t->{type} == NUMBER_TOKEN and
              ($self->context->quirks or $t->{number} == 0)) {
-      $prop_value{background_position_y} = ['DIMENSION', $t->{number}, 'px'];
+      $prop_value{background_position_y} = ['LENGTH', $t->{number}, 'px'];
       $t = shift @$tokens;
     } elsif ($t->{type} == IDENT_TOKEN) {
       my $value = $t->{value};

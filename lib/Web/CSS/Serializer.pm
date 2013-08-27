@@ -1,7 +1,8 @@
 package Web::CSS::Serializer;
 use strict;
 use warnings;
-our $VERSION = '23.0';
+no warnings 'utf8';
+our $VERSION = '24.0';
 use Web::CSS::Selectors::Serializer;
 use Web::CSS::MediaQueries::Serializer;
 push our @ISA, qw(Web::CSS::Selectors::Serializer
@@ -31,6 +32,22 @@ sub _string ($) {
   }ge;
   return '"' . $s . '"';
 } # _string
+
+sub _ident ($) {
+  my $s = $_[0];
+  ## XXX According to the CSSOM spec U+0000 must throw an exception.
+  ## (Chrome does not throw.)
+  $s =~ s{([\x00-\x1F\x20\x7F-\x9F\"\\])}{
+    $1 eq '\\' ? '\\\\' :
+    $1 eq '"' ? '\\"' :
+    $1 eq ' ' ? '\\ ' :
+    sprintf '\\%x ', ord $1;
+  }ge;
+  $s =~ s{^(-|)([0-9])}{$1\\3$2 };
+  $s =~ s{^--}{-\\-};
+  $s =~ s{([\x21\x23-\x2C\x2E\x2F\x3A-\x40\x5B\x5D\x5E\x60\x7B-\x7E])}{\\$1}g;
+  return $s;
+} # _ident
 
 my $ValueSerializer = {
   KEYWORD => sub {
@@ -312,32 +329,31 @@ sub serialize_prop_decls ($$) {
   return join ' ', @decl;
 } # serialize_prop_decls
 
-# XXX API is not stable
-
-# XXX tests
-
 sub serialize_rule ($$$) {
   my ($self, $rule_set, $rule_id) = @_;
   my $rule = $rule_set->{rules}->[$rule_id];
+
+  ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-rule> +
+  ## Serializer.pod.
 
   if ($rule->{rule_type} eq 'style') {
     return $self->serialize_selectors ($rule->{selectors}) . ' { '
         . $self->serialize_prop_decls ($rule)
         . (@{$rule->{prop_keys}} ? ' ' : '') . '}';
   } elsif ($rule->{rule_type} eq 'media') {
-    return '@media ' . $self->serialize_mq_list ($rule->{mqs}) . ' { ' # XXX
-        . (join ' ', map { $self->serialize_rule ($rule_set, $_) } @{$rule->{rule_ids}})
-        . ' }';
+    return '@media ' . $self->serialize_mq_list ($rule->{mqs}) . " { \x0A"
+        . (join '', map { '  ' . $self->serialize_rule ($rule_set, $_) . "\x0A" } @{$rule->{rule_ids}})
+        . '}';
   } elsif ($rule->{rule_type} eq 'namespace') {
     return '@namespace '
-        . (defined $rule->{prefix} ? $rule->{prefix} . ' ' : '')
-        . 'url("' . $rule->{nsurl} . '");'; # XXX
+        . (defined $rule->{prefix} ? (_ident $rule->{prefix}) . ' ' : '')
+        . 'url(' . (_string $rule->{nsurl}) . ');';
   } elsif ($rule->{rule_type} eq 'import') {
-    return '@import url("' . $rule->{href} . '")'
+    return '@import url(' . (_string $rule->{href}) . ')'
         . (@{$rule->{mqs}} ? ' ' : '')
-        . $self->serialize_mq_list ($rule->{mqs}) . ';'; # XXX
+        . $self->serialize_mq_list ($rule->{mqs}) . ';';
   } elsif ($rule->{rule_type} eq 'charset') {
-    return '@charset "' . $rule->{encoding} . '";'; # XXX
+    return '@charset ' . (_string $rule->{encoding}) . ';';
   } elsif ($rule->{rule_type} eq 'sheet') {
     return join "\x0A", map { $self->serialize_rule ($rule_set, $_) } @{$rule->{rule_ids}};
   } else {

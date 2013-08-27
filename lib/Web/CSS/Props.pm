@@ -14,6 +14,7 @@ use Web::CSS::Values;
 ##     is_shorthand        Whether it is a shorthand property
 ##     longhand_subprops   List of keys of longhand sub-properties,
 ##                         in canonical order
+##     shorthand_prop      Reference to the shorthand property
 ##     parse_longhand      Longhand property value parser
 ##     parse_shorthand     Shorthand property parser
 ##     keyword             Available keywords (key = lowercased, value = 1)
@@ -4366,21 +4367,19 @@ $Key->{background_position} = {
   serialize_shorthand => sub {
     my ($se, $st) = @_;
 
-    my $r = {};
-
-    my $x = $se->serialize_prop_value ($st, 'background-position-x');
-    my $y = $se->serialize_prop_value ($st, 'background-position-y');
+    my $x = $se->serialize_prop_value ($st, 'background_position_x');
+    my $y = $se->serialize_prop_value ($st, 'background_position_y');
     if (defined $x and defined $y) {
       if ($x eq 'inherit' and $y eq 'inherit') { # XXX unset, initial
-        $r->{background_position} = 'inherit';
+        return 'inherit';
       } elsif ($x eq 'inherit' or $y eq 'inherit') {
         #
       } else {
-        $r->{background_position} = $x . ' ' . $y;
+        return $x . ' ' . $y;
       }
     }
 
-    return $r;
+    return undef;
   },
   serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
 };
@@ -6009,7 +6008,10 @@ for my $key (keys %$Key) {
   if ($def->{keyword} and not $def->{parse_longhand}) {
     $def->{parse_longhand} = $Web::CSS::Values::GetKeywordParser->($def->{keyword}, $def->{css});
   }
-}
+  for (@{$def->{longhand_subprops} or []}) {
+    $Key->{$_}->{shorthand_prop} ||= $key;
+  }
+} # $key
 
 1;
 

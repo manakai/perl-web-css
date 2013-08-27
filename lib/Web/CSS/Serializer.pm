@@ -1,7 +1,7 @@
 package Web::CSS::Serializer;
 use strict;
 use warnings;
-our $VERSION = '22.0';
+our $VERSION = '23.0';
 use Web::CSS::Selectors::Serializer;
 use Web::CSS::MediaQueries::Serializer;
 push our @ISA, qw(Web::CSS::Selectors::Serializer
@@ -226,24 +226,20 @@ sub serialize_value ($$) {
   }
 } # serialize_value
 
-# XXX API is not stable
-
-# XXX tests
-
 sub serialize_prop_value ($$$) {
-  my ($self, $style, $css_name) = @_;
-  # $style - A property struct (see Web::CSS::Parser)
+  my ($self, $style, $prop_key) = @_;
+  ## $style - A property struct (see Web::CSS::Parser)
+  ## $key - The key of the property
 
-  my $prop_def = $Web::CSS::Props::Prop->{$css_name};
-  if (not defined $prop_def) {
-    return undef;
-  } elsif ($prop_def->{serialize_shorthand}) {
-    my $v = $prop_def->{serialize_shorthand}->($self, $style);
-    return $v->{$prop_def->{key}}; # or undef
+  ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-value>.
+  ## <http://dev.w3.org/csswg/cssom/#dom-cssstyledeclaration-getpropertyvalue>.
+
+  if (defined $style->{prop_values}->{$prop_key}) {
+    return $self->serialize_value ($style->{prop_values}->{$prop_key});
   } else {
-    my $value = $style->{prop_values}->{$prop_def->{key}};
-    if (defined $value) {
-      return $self->serialize_value ($prop_def->{css}, $value);
+    my $prop_def = $Web::CSS::Props::Key->{$prop_key};
+    if (defined $prop_def and $prop_def->{serialize_shorthand}) {
+      return $prop_def->{serialize_shorthand}->($self, $style); # or undef
     } else {
       return undef;
     }
@@ -251,40 +247,74 @@ sub serialize_prop_value ($$$) {
 } # serialize_prop_value
 
 sub serialize_prop_priority ($$$) {
-  my ($self, $style, $css_name) = @_;
-  # $style - A property struct (see Web::CSS::Parser)
+  my ($self, $style, $prop_key) = @_;
+  ## $style - A property struct (see Web::CSS::Parser)
+  ## $key - The key of the property
 
-  my $prop_def = $Web::CSS::Props::Prop->{$css_name};
-  if (not defined $prop_def) {
-    return undef;
-  } elsif ($prop_def->{longhand_subprops}) {
-    for (@{$prop_def->{longhand_subprops}}) {
-      return undef unless $style->{prop_importants}->{$_};
-    }
+  ## <http://dev.w3.org/csswg/cssom/#dom-cssstyledeclaration-getpropertypriority>.
+
+  if ($style->{prop_importants}->{$prop_key}) {
     return 'important';
   } else {
-    if ($style->{prop_importants}->{$prop_def->{key}}) {
+    my $prop_def = $Web::CSS::Props::Key->{$prop_key};
+    if (defined $prop_def and defined $prop_def->{longhand_subprops}) {
+      for (@{$prop_def->{longhand_subprops}}) {
+        return undef unless $style->{prop_importants}->{$_};
+      }
       return 'important';
+    } else {
+      return undef;
     }
-    return undef;
   }
 } # serialize_prop_priority
 
 sub serialize_prop_decls ($$) {
   my ($self, $style) = @_;
-
-  # XXX
-
   my @decl;
+  my %done;
+
+  ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-declaration-block>.
+
   for my $key (@{$style->{prop_keys}}) {
-    my $css_name = $Web::CSS::Props::Key->{$key}->{css};
-    my $value = $self->serialize_prop_value ($style, $css_name);
-    my $priority = $self->serialize_prop_priority ($style, $css_name);
-    push @decl, "$css_name: $value" . ($priority ? " !$priority" : '') . ';';
+    next if $done{$key};
+    my $def = $Web::CSS::Props::Key->{$key};
+    my $short_key = $def->{shorthand_prop};
+    if (defined $short_key) {
+      my $short_def = $Web::CSS::Props::Key->{$short_key};
+      my $has_important;
+      my $has_non_important;
+      for (@{$short_def->{longhand_subprops}}) {
+        if ($style->{prop_importants}->{$_}) {
+          $has_important = 1;
+        } else {
+          $has_non_important = 1;
+        }
+      }
+      unless ($has_important and $has_non_important) {
+        my $short_value = $short_def->{serialize_shorthand}->($self, $style);
+        if (defined $short_value) {
+          push @decl, $short_def->{css} . ': ' . $short_value .
+              ($has_important ? ' !important' : '') . ';';
+          $done{$_} = 1 for @{$short_def->{longhand_subprops}};
+          next;
+        }
+        # XXX 'background' > 'background-position' > 'background-position-*'
+        # XXX 'border' > 'border-{top|...}' / 'border-{style|...}' > ...
+      }
+    }
+    
+    my $value = $self->serialize_value ($style->{prop_values}->{$key});
+    push @decl, $def->{css} . ': ' . $value
+        . ($style->{prop_importants}->{$key} ? ' !important' : '') . ';';
+    $done{$key} = 1;
   }
 
   return join ' ', @decl;
 } # serialize_prop_decls
+
+# XXX API is not stable
+
+# XXX tests
 
 sub serialize_rule ($$$) {
   my ($self, $rule_set, $rule_id) = @_;

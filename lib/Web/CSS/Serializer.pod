@@ -14,6 +14,8 @@ L<Web::DOM::CSSStyleSheet> and related modules.
 
 =head1 METHODS
 
+Following methods are available:
+
 =over 4
 
 =item $serializer = Web::CSS::Serializer->new
@@ -26,7 +28,33 @@ Return a new serializer instance.
 
 Return or set the L<Web::CSS::Context> object used for serialization.
 
-=item $string = $serialize->serialize_value ($value)
+=item $string = $serializer->serialize_prop_decls ($style)
+
+Return the character string representation of the list of
+declarations, declaring property values (and C<important> flags)
+contained by the specified property construct (See
+L<Web::DOM::Parser>).
+
+=item $string = $serializer->serialize_prop_priority ($style, $key)
+
+Return the character string representation of the C<important> flag of
+the property.  The first argument must be a property construct,
+possibly containing the property in question (See
+L<Web::CSS::Parser>).  The second argument must be the key identifying
+the property (See L<Web::CSS::Props>).  If the specified property has
+the C<important> flag, the string C<important> is returned.  Otherwise
+C<undef> is returned.
+
+=item $string = $serializer->serialize_prop_value ($style, $key)
+
+Return the character string representation of the property value.  The
+first argument must be a property construct, possibly containing the
+property value in question (See L<Web::CSS::Parser>).  The second
+argument must be the key identifying the property (See
+L<Web::CSS::Props>).  If the specified property has no value, C<undef>
+is returned.
+
+=item $string = $serializer->serialize_value ($value)
 
 Return the character string representation of the specified CSS value.
 The argument must be a parsed representation of the CSS value.  See

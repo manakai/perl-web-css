@@ -90,6 +90,111 @@ for my $test (
   } n => 1, name => ['serialize_value', $test->{out}];
 }
 
+for my $test (
+  {in => {prop_values => {}}, key => 'display', out => undef},
+  {in => {prop_values => {display => ['KEYWORD', 'block']}},
+   key => 'display', out => 'block'},
+  {in => {prop_values => {}}, key => 'background_position', out => undef},
+  {in => {prop_values => {background_position_x => ['PERCENTAGE', 40]}},
+   key => 'background_position', out => undef},
+  {in => {prop_values => {background_position_x => ['PERCENTAGE', 40],
+                          background_position_y => ['KEYWORD', 'top']}},
+   key => 'background_position', out => '40% top'},
+) {
+  test {
+    my $c = shift;
+    my $serializer = Web::CSS::Serializer->new;
+    my $actual = $serializer->serialize_prop_value ($test->{in}, $test->{key});
+    is $actual, $test->{out};
+    done $c;
+  } n => 1, name => ['serialize_prop_value', $test->{out}];
+}
+
+for my $test (
+  {in => {prop_importants => {}}, key => 'display', out => undef},
+  {in => {prop_importants => {display => 1}},
+   key => 'display', out => 'important'},
+  {in => {prop_importants => {}},
+   key => 'background_position', out => undef},
+  {in => {prop_importants => {background_position_x => 1}},
+   key => 'background_position', out => undef},
+  {in => {prop_importants => {background_position_x => 1,
+                              background_position_y => 1}},
+   key => 'background_position', out => 'important'},
+) {
+  test {
+    my $c = shift;
+    my $serializer = Web::CSS::Serializer->new;
+    my $actual = $serializer->serialize_prop_priority
+        ($test->{in}, $test->{key});
+    is $actual, $test->{out};
+    done $c;
+  } n => 1, name => ['serialize_prop_priority', $test->{out}];
+}
+
+for my $test (
+  {in => {}, out => ''},
+  {in => {prop_keys => ['display'],
+          prop_values => {display => ['KEYWORD', 'block']}},
+   out => 'display: block;'},
+  {in => {prop_keys => ['list_style_type', 'display'],
+          prop_values => {display => ['KEYWORD', 'block'],
+                          list_style_type => ['KEYWORD', 'none']}},
+   out => 'list-style-type: none; display: block;'},
+  {in => {prop_keys => ['list_style_type', 'display'],
+          prop_values => {display => ['KEYWORD', 'block'],
+                          list_style_type => ['KEYWORD', 'none']},
+          prop_importants => {list_style_type => 1}},
+   out => 'list-style-type: none !important; display: block;'},
+  {in => {prop_keys => ['background_position_x'],
+          prop_values => {background_position_x => ['KEYWORD', 'left']}},
+   out => 'background-position-x: left;'},
+  {in => {prop_keys => ['background_position_y', 'background_position_x'],
+          prop_values => {background_position_x => ['KEYWORD', 'left'],
+                          background_position_y => ['PERCENTAGE', 29]}},
+   out => 'background-position: left 29%;'},
+  {in => {prop_keys => ['background_position_y', 'background_position_x'],
+          prop_values => {background_position_x => ['KEYWORD', 'left'],
+                          background_position_y => ['PERCENTAGE', 29]},
+          prop_importants => {background_position_x => 1,
+                              background_position_y => 1}},
+   out => 'background-position: left 29% !important;'},
+  {in => {prop_keys => ['background_position_y', 'background_position_x'],
+          prop_values => {background_position_x => ['KEYWORD', 'left'],
+                          background_position_y => ['PERCENTAGE', 29]},
+          prop_importants => {background_position_x => 0,
+                              background_position_y => 1}},
+   out => 'background-position-y: 29% !important; background-position-x: left;'},
+  {in => {prop_keys => ['background_position_y', 'background_position_x'],
+          prop_values => {background_position_x => ['KEYWORD', 'inherit'],
+                          background_position_y => ['PERCENTAGE', 29]},
+          prop_importants => {background_position_x => 1,
+                              background_position_y => 1}},
+   out => 'background-position-y: 29% !important; background-position-x: inherit !important;'},
+  {in => {prop_keys => ['background_position_y', 'background_position_x'],
+          prop_values => {background_position_x => ['KEYWORD', 'inherit'],
+                          background_position_y => ['KEYWORD', 'inherit']},
+          prop_importants => {background_position_x => 1,
+                              background_position_y => 1}},
+   out => 'background-position: inherit !important;'},
+  {in => {prop_keys => ['background_position_y', 'display', 'background_position_x'],
+          prop_values => {background_position_x => ['KEYWORD', 'left'],
+                          background_position_y => ['PERCENTAGE', 29],
+                          display => ['KEYWORD', 'inline']},
+          prop_importants => {background_position_x => 0,
+                              background_position_y => 1}},
+   out => 'background-position-y: 29% !important; display: inline; background-position-x: left;'},
+) {
+  test {
+    my $c = shift;
+    my $serializer = Web::CSS::Serializer->new;
+    my $actual = $serializer->serialize_prop_decls
+        ($test->{in}, $test->{key});
+    is $actual, $test->{out};
+    done $c;
+  } n => 1, name => ['serialize_prop_decls', $test->{out}];
+}
+
 run_tests;
 
 =head1 LICENSE

@@ -22,12 +22,13 @@ sub serialize_simple_selector ($) {
   my $result = '';
 
   ## A simple selector
-  if ($_->[0] == LOCAL_NAME_SELECTOR) {
-    $result .= "<" . $_->[1] . ">\n";
+  if ($_->[0] == ELEMENT_SELECTOR) {
+    $result .= "{" . $_->[1] . "}" . "\n" if defined $_->[1]; # nsurl
+    $result .= "<" . $_->[2] . ">\n" if defined $_->[2]; # local name
   } elsif ($_->[0] == ATTRIBUTE_SELECTOR) {
     $result .= "[" . (defined $_->[1] ? "{" . ($_->[1]) . "}" : "");
     $result .= $_->[2] . "]\n";
-    if (defined $_->[3]) {
+    if (defined $_->[4]) {
       $result .= {
         EQUALS_MATCH, '=',
         INCLUDES_MATCH, '~=',
@@ -35,42 +36,28 @@ sub serialize_simple_selector ($) {
         PREFIX_MATCH, '^=',
         SUFFIX_MATCH, '$=',
         SUBSTRING_MATCH, '*=',
-      }->{$_->[3]} || $_->[3];
+      }->{$_->[3]} || '??' . $_->[3] . '??';
       $result .= $_->[4] . "\n";
     }
-  } elsif ($_->[0] == NAMESPACE_SELECTOR) {
-    $result .= "{" . (defined $_->[1] ? length $_->[1] ? $_->[1] : '}empty{' : '') . "}" . "\n";
   } else {
     $result .= {
       ID_SELECTOR, '#',
       CLASS_SELECTOR, '.',
       PSEUDO_CLASS_SELECTOR, ':',
       PSEUDO_ELEMENT_SELECTOR, '::',
-    }->{$_->[0]} || $_->[0];
-    if (exists $_->[1]) {
-      $result .= $_->[1];
-    }
-    $result .= "\n";
-    if (exists $_->[2]) {
-      my $value = $_->[1];
-      for (@{$_}[2..$#{$_}]) {
-        if (ref $_ eq 'ARRAY') {
-          if ($value eq 'cue' or $value eq 'not') {
-            my $v = serialize_selector_object $_;
-            $v =~ s/\x0A/\x0A  /g;
-            $result .= "  " . $v . "\n";
-          } else {
-            my $r = "  " . serialize_simple_selector $_;
-            $r =~ s/\n/\n  /g;
-            $r =~ s/\n  $/\n/;
-            $result .= $r;
-          }
-        } else {
+    }->{$_->[0]} || '??' . $_->[0] . '??';
+    $result .= $_->[1] . "\n";
+    if ($_->[0] == PSEUDO_CLASS_SELECTOR or
+        $_->[0] == PSEUDO_ELEMENT_SELECTOR) {
+      if (exists $_->[2] and {not => 1, cue => 1}->{$_->[1]}) {
+        my $v = serialize_selector_object $_->[2];
+        $v =~ s/\x0A/\x0A  /g;
+        $result .= "  " . $v . "\n";
+      } elsif (exists $_->[2]) {
+        for (@$_[2..$#$_]) {
           $result .= q<  "> . $_ . qq<"\n>;
         }
       }
-    } elsif ($_->[1] eq 'not') {
-      $result .= qq<  *\n>;
     }
   }
   return $result;
@@ -95,18 +82,20 @@ sub serialize_selector_object ($) {
           CHILD_COMBINATOR, '>',
           ADJACENT_SIBLING_COMBINATOR, '+',
           GENERAL_SIBLING_COMBINATOR, '~',
-        }->{$combinator} || $combinator;
+        }->{$combinator} || '??' . $combinator . '??';
         $result .= "\n";
       } else {
         $result .= "***\n" if $j;
       }
 
       ## A simple selector sequence
-      if (@$sss) {
-        for (@$sss) {
-          $result .= serialize_simple_selector $_;
-        }
-      } else {
+      for (@$sss) {
+        $result .= serialize_simple_selector $_;
+      }
+      if (@$sss == 1 and
+          not defined $sss->[0]->[1] and # nsurl
+          not defined $sss->[0]->[2] and # local name
+          $sss->[0]->[5]) { # local name wildcard
         $result .= "*\n";
       }
 

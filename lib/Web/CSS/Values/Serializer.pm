@@ -2,24 +2,28 @@ package Web::CSS::Values::Serializer;
 use strict;
 use warnings;
 no warnings 'utf8';
-our $VERSION = '1.0';
-use Exporter::Lite;
+our $VERSION = '2.0';
+use Carp;
 
 ## This module is not intended for standalone use.  See
 ## |Web::CSS::Serializer|.
 
 our @EXPORT = qw(_number _string _ident);
 
+sub import ($;@) {
+  my $from_class = shift;
+  my ($to_class, $file, $line) = caller;
+  for (@_ ? @_ : @EXPORT) {
+    my $code = $from_class->can ($_)
+        or croak qq{"$_" is not exported by the $from_class module at $file line $line};
+    no strict 'refs';
+    *{$to_class . '::' . $_} = $code;
+  }
+} # import
+
 sub new ($) {
   return bless {}, $_[0];
 } # new
-
-sub context ($;$) {
-  if (@_ > 1) {
-    $_[0]->{context} = $_[1];
-  }
-  return $_[0]->{context};
-} # context
 
 sub _number ($) {
   my $n = sprintf '%f', $_[0];

@@ -72,13 +72,15 @@ A part of the input, in which an error is detected.
 
 =back
 
-=item $parsed = $parser->parse_char_string ($selectors)
+=item $parsed = $parser->parse_char_string_as_selectors ($selectors)
 
-Parses a character string.  If it is a valid group of selectors, the
-method returns the parsed group of selectors data structure.
+Parses a character string.  If it is a valid list of selectors, the
+method returns the parsed list of selectors data structure.
 Otherwise, it returns C<undef>.
 
 =item $specificity = $parser->get_selector_specificity ($parsed_selector)
+
+XXX
 
 Returns the specificity of a parsed selector data structure.  Note
 that the input has to be a I<selector>, not a I<group of selectors>.
@@ -88,44 +90,15 @@ attribute flag (always C<0>), I<a>, I<b>, and I<c>.
 
 =back
 
-=head1 PARAMETERS
-
-Following parameters can be specified on a parser object:
-
-=over 4
-
-=item $parser->{pseudo_class} = {class_name => 1, class_name => 1, ...}
-
-The list of pseudo-classes supported by the implementation,
-represented as a hash reference, where the hash key is the lowercased
-pseudo-class name and the hash key is a boolean representing whther
-the pseudo-class is supported or not.  Any pseudo-class not supported
-by both the parser and the implementation (as declared by this
-parameter) are ignored and the entire group of selectors is considered
-I<invalid> for the purpose of parsing.
-
-=item $parser->{pseudo_element} = {element_name => 1, element_name => 1, ...}
-
-The list of pseudo-elements supported by the implementation,
-represented as a hash reference, where the hash key is the lowercased
-pseudo-element name and the hash key is a boolean representing whther
-the pseudo-lelement is supported or not.  Any pseudo-element not
-supported by both the parser and the implementation (as declared by
-this parameter) are ignored and the entire group of selectors is
-considered I<invalid> for the purpose of parsing.
-
-=back
-
 =head1 DATA STRUCTURES
 
-See also:
-<http://suika.suikawiki.org/www/manakai-core/lib/Whatpm/CSS/selectors-object.en.html>.
+This section describes the "list of selectors" data structure.
 
-=head2 A group of selectors
+=head2 A list of selectors
 
-The C<parse_char_string> method returns an array reference, which
-contains one or more selector data structures.  They corresponds to
-selectors in the original group of selectors string, in order.
+An array reference, which contains one or more selector data
+structures.  They corresponds to selectors in the original group of
+selectors string, in order.
 
 =head2 A selector
 
@@ -176,21 +149,79 @@ of simple selectors).
 
 =over 4
 
-=item NAMESPACE_SELECTOR
+=item ELEMENT_SELECTOR
 
-The namespace specification in a type of universal selector.  The
-first argument (item of index 1) is the namespace URL (or C<undef> for
-the null namespace).  The second argument (item of index 2) is the
-namespace prefix.  The namespace prefix is the empty string if the
-default namespace is used explicitly by type or universal selector, or
-implicitly by implicit universal selector.  The namespace prefix is
-C<undef> if the empty string prefix syntax (representing the null
-namespace) is used.
+The "element selector" simple selector data structure takes the
+following form:
 
-=item LOCAL_NAME_SELECTOR
+  [ELEMENT_SELECTOR, $nsurl, $local_name, $prefix, $wc_prefix, $wc_type]
 
-The local name specification in a type selector.  The first argument
-(item of index 1) is the local name.
+The item with index 1 is the namespace URL of the selector.  If it is
+C<undef>, any namespace (including the null namespace) matches.  If it
+is the empty string, only the null namespace matches.  Otherwise, the
+specified namespace URL is compared literally with the target
+element's (non-null) namespace URL.
+
+The item with index 2 is the local name of the selector.  If it is
+C<undef>, any local name matches.  Otherwise, the specified local name
+is compared literally with the target element's local name (In HTML,
+it might be compared ASCII case-insensitively, however).
+
+The item with index 3 is the namespace prefix of the selector.  If it
+is the empty string, the selector has no prefix (and separator '|').
+Otherwise, if it is non-C<undef> value, it is the namespace prefix.
+Otherwise, the value is C<undef> and the item has no effect (Either
+the null namespace notation ('|' without prefix) or wildcard prefix
+('*|') is used).
+
+The item with index 4 is the namespace wildcard flag of the selector.
+It is a boolean value representing whether the wildcard prefix ('*|')
+is explicitly used or not.
+
+The item with index 5 is the local name wildcard flag of the selector.
+It is a boolean value representing whether the type selector is
+explicitly used or not.
+
+A sequence of simple selectors always contains a simple selector whose
+type is C<ELEMENT_SELECTOR> as its first component.  There are
+following patterns of "element selector" simple selector:
+
+  [ELEMENT_SELECTOR, undef, 'a'  , ''   , 0, 0]   a
+  [ELEMENT_SELECTOR, undef, undef, ''   , 0, 1]   *
+  [ELEMENT_SELECTOR, ''   , 'a'  , undef, 0, 0]  |a
+  [ELEMENT_SELECTOR, ''   , undef, undef, 0, 1]  |*
+  [ELEMENT_SELECTOR, undef, 'a'  , undef, 1, 0] *|a
+  [ELEMENT_SELECTOR, undef, undef, undef, 1, 1] *|*
+  [ELEMENT_SELECTOR, undef, undef, ''   , 0, 0] .b (= *.b)
+
+  @namespace '';
+  [ELEMENT_SELECTOR, ''   , 'a'  , ''   , 0, 0]   a
+  [ELEMENT_SELECTOR, ''   , undef, ''   , 0, 1]   *
+  [ELEMENT_SELECTOR, ''   , 'a'  , undef, 0, 0]  |a
+  [ELEMENT_SELECTOR, ''   , undef, undef, 0, 1]  |*
+  [ELEMENT_SELECTOR, undef, 'a'  , undef, 1, 0] *|a
+  [ELEMENT_SELECTOR, undef, undef, undef, 1, 1] *|*
+  [ELEMENT_SELECTOR, ''   , undef, ''   , 0, 0] .b (= *.b)
+
+  @namespace 'ns';
+  [ELEMENT_SELECTOR, 'ns' , 'a'  , ''   , 0, 0]   a
+  [ELEMENT_SELECTOR, 'ns' , undef, ''   , 0, 1]   *
+  [ELEMENT_SELECTOR, ''   , 'a'  , undef, 0, 0]  |a
+  [ELEMENT_SELECTOR, ''   , undef, undef, 0, 1]  |*
+  [ELEMENT_SELECTOR, undef, 'a'  , undef, 1, 0] *|a
+  [ELEMENT_SELECTOR, undef, undef, undef, 1, 1] *|*
+  [ELEMENT_SELECTOR, 'ns' , undef, ''   , 0, 0] .b (= *.b)
+
+  @namespace p '';
+  [ELEMENT_SELECTOR, ''   , 'a'  , 'p'  , 0, 0] p|a
+  [ELEMENT_SELECTOR, ''   , undef, 'p'  , 0, 1] p|*
+
+  @namespace p 'ns';
+  [ELEMENT_SELECTOR, 'ns' , 'a'  , 'p'  , 0, 0] p|a
+  [ELEMENT_SELECTOR, 'ns' , undef, 'p'  , 0, 1] p|*
+
+  In :not() or :match()
+  [ELEMENT_SELECTOR, undef, undef, ''   , 0, 0] .b (= *|*.b)
 
 =item ID_SELECTOR
 
@@ -210,19 +241,17 @@ Otherwise, if the pseudo-class takes a C<an+b> argument
 (e.g. C<:nth-child()>), the second argument (item of index 2)
 represents the I<a> value and the third argument (item of index 3)
 represents the I<b> value (Even an incomplete argument is normalized
-to this form).  If the pseudo-class takes a simple selector
-(e.g. C<:not()>), any arguments (the zero or more items with index 2
-or more) are simple selector data structures.
-
-For example, the simple selector data structure for C<:NOT(a|b)> would
-contain four items: constant C<PSEUDO_CLASS_SELECTOR>, string C<not>,
-the namespace selector for the namespace I<a>, the local name selector
-with local name C<b>.
+to this form).  If the pseudo-class takes a list of selectors
+(e.g. C<:not()>), the item with index 2 is the list of selectors data
+structure, representing the selectors within the functional notation.
 
 =item PSEUDO_ELEMENT_SELECTOR
 
 A pseudo-element specification.  The first argument (item of index 1)
-is the pseudo-element name in lowercase.
+is the pseudo-element name in lowercase.  If the pseudo-element takes
+a list of selectors (e.g. C<::cue()>), the item with index 2 is the
+list of selectors data structure, representing the selectors within
+the functional notation.
 
 =item ATTRIBUTE_SELECTOR
 

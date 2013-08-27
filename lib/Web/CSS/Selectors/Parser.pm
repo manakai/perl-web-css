@@ -1,7 +1,7 @@
 package Web::CSS::Selectors::Parser;
 use strict;
 use warnings;
-our $VERSION = '17.0';
+our $VERSION = '18.0';
 push our @ISA, qw(Web::CSS::Selectors::Parser::_ Web::CSS::Builder);
 
 sub new ($) {
@@ -41,8 +41,7 @@ sub AFTER_NEGATION_SIMPLE_SELECTOR_STATE () { 22 }
 sub BEFORE_CONTAINS_STRING_STATE () { 23 }
 sub AFTER_A_PLUS_STATE () { 24 }
 
-sub NAMESPACE_SELECTOR () { 1 }
-sub LOCAL_NAME_SELECTOR () { 2 }
+sub ELEMENT_SELECTOR () { 1 }
 sub ID_SELECTOR () { 3 }
 sub CLASS_SELECTOR () { 4 }
 sub PSEUDO_CLASS_SELECTOR () { 5 }
@@ -62,7 +61,7 @@ sub PREFIX_MATCH () { PREFIXMATCH_TOKEN }
 sub SUFFIX_MATCH () { SUFFIXMATCH_TOKEN }
 sub SUBSTRING_MATCH () { SUBSTRINGMATCH_TOKEN }
 
-our @EXPORT = qw(NAMESPACE_SELECTOR LOCAL_NAME_SELECTOR ID_SELECTOR
+our @EXPORT = qw(ELEMENT_SELECTOR ID_SELECTOR
     CLASS_SELECTOR PSEUDO_CLASS_SELECTOR PSEUDO_ELEMENT_SELECTOR
     ATTRIBUTE_SELECTOR
     DESCENDANT_COMBINATOR CHILD_COMBINATOR
@@ -152,7 +151,9 @@ sub parse_constructs_as_selectors ($$) {
     my $t = shift @$tokens;
     my $selector_group = [];
     my $selector = [DESCENDANT_COMBINATOR];
-    my $sss = [];
+    my @default_sss = (ELEMENT_SELECTOR, undef, undef, '', 0, 0);
+    $default_sss[1] = $default_ns unless $args{in_not};
+    my $sss = [[@default_sss]];
 
     A: {
       $t = shift @$tokens while $t->{type} == S_TOKEN;
@@ -174,11 +175,21 @@ sub parse_constructs_as_selectors ($$) {
                                    value => $t1->{value});
                 next A;
               }
-              push @$sss, [NAMESPACE_SELECTOR, length $url ? $url : undef,
-                           $t1->{value}];
+              # hoge|* or hoge|fuga
+              $sss->[0]->[1] = $url; # nsurl
+              $sss->[0]->[3] = $t1->{value}; # prefix
+            } else {
+              # *|* or *|hoge
+              $sss->[0]->[1] = undef; # nsurl
+              $sss->[0]->[3] = undef; # prefix
+              $sss->[0]->[4] = 1; # prefix wildcard
             }
             if ($t->{type} == IDENT_TOKEN) {
-              push @$sss, [LOCAL_NAME_SELECTOR, $t->{value}];
+              # hoge|fuga
+              $sss->[0]->[2] = $t->{value}; # local name
+            } else {
+              # hoge|*
+              $sss->[0]->[5] = 1; # local name wildcard
             }
             $found_tu = 1;
             $t = shift @$tokens;
@@ -190,25 +201,34 @@ sub parse_constructs_as_selectors ($$) {
             next A;
           }
         } else {
+          # hoge or *
+          $sss->[0]->[3] = ''; # prefix
           if (defined $default_ns) {
-            push @$sss,
-                [NAMESPACE_SELECTOR, length $default_ns ? $default_ns : undef,
-                 ''];
+            $sss->[0]->[1] = $default_ns; # nsurl
           }
           if ($t1->{type} == IDENT_TOKEN) {
-            push @$sss, [LOCAL_NAME_SELECTOR, $t1->{value}];
+            # hoge
+            $sss->[0]->[2] = $t1->{value}; # local name
+          } else {
+            # *
+            $sss->[0]->[5] = 1; # local name wildcard
           }
           $found_tu = 1;
         }
       } elsif ($t->{type} == VBAR_TOKEN) {
         $t = shift @$tokens;
         if ($t->{type} == IDENT_TOKEN) {
-          push @$sss, [NAMESPACE_SELECTOR, undef, undef];
-          push @$sss, [LOCAL_NAME_SELECTOR, $t->{value}];
+          # |hoge
+          $sss->[0]->[1] = ''; # nsurl
+          $sss->[0]->[2] = $t->{value}; # local name
+          $sss->[0]->[3] = undef; # prefix
           $t = shift @$tokens;
           $found_tu = 1;
         } elsif ($t->{type} == STAR_TOKEN) {
-          push @$sss, [NAMESPACE_SELECTOR, undef, undef];
+          # |*
+          $sss->[0]->[1] = ''; # nsurl
+          $sss->[0]->[3] = undef; # prefix
+          $sss->[0]->[5] = 1; # local name wildcard
           $t = shift @$tokens;
           $found_tu = 1;
         } else {
@@ -778,16 +798,7 @@ sub parse_constructs_as_selectors ($$) {
         redo B;
       } # B
 
-      ## Default namespace for implicit '*' selector
-      if (defined $default_ns and
-          @$sss and
-          not $found_tu and
-          not $args{in_not}) {
-        unshift @$sss,
-            [NAMESPACE_SELECTOR, length $default_ns ? $default_ns : undef, ''];
-      }
-
-      unless ($found_tu or @$sss) {
+      unless ($found_tu or @$sss > 1) {
         $self->{onerror}->(type => 'no sss',
                            level => 'm',
                            uri => $self->context->urlref,
@@ -805,7 +816,7 @@ sub parse_constructs_as_selectors ($$) {
         push @$selector, $sss;
         push @$selector_group, $selector;
         $selector = [DESCENDANT_COMBINATOR];
-        $sss = [];
+        $sss = [[@default_sss]];
         $t = shift @$tokens;
         redo A;
       } elsif ({GREATER_TOKEN, 1,
@@ -823,7 +834,7 @@ sub parse_constructs_as_selectors ($$) {
             {GREATER_TOKEN, CHILD_COMBINATOR,
              PLUS_TOKEN, ADJACENT_SIBLING_COMBINATOR,
              TILDE_TOKEN, GENERAL_SIBLING_COMBINATOR}->{$t->{type}};
-        $sss = [];
+        $sss = [[@default_sss]];
         $t = shift @$tokens;
         redo A;
       } elsif ($t->{type} == EOF_TOKEN) {
@@ -839,7 +850,7 @@ sub parse_constructs_as_selectors ($$) {
           next A;
         }
         push @$selector, $sss, DESCENDANT_COMBINATOR;
-        $sss = [];
+        $sss = [[@default_sss]];
         redo A;
       } else {
         $self->{onerror}->(type => 'no combinator',
@@ -878,8 +889,8 @@ sub get_selector_specificity ($$) {
     my @sss = @$sss;
     while (@sss) {
       my $ss = shift @sss;
-      if ($ss->[0] == LOCAL_NAME_SELECTOR) {
-        $r->[3]++;
+      if ($ss->[0] == ELEMENT_SELECTOR) {
+        $r->[3]++ if defined $ss->[2]; # local name
       } elsif ($ss->[0] == PSEUDO_ELEMENT_SELECTOR) {
         $r->[3]++;
         if ($ss->[1] eq 'cue' and defined $ss->[2]) {

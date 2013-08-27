@@ -1,7 +1,7 @@
 package Web::CSS::Selectors::Serializer;
 use strict;
 use warnings;
-our $VERSION = '13.0';
+our $VERSION = '14.0';
 push our @ISA, qw(Web::CSS::Selectors::Serializer::_
                   Web::CSS::Values::Serializer);
 
@@ -18,47 +18,24 @@ sub serialize_selectors ($$) {
   my $r = join ", ", map {
     join "", map {
       if (ref $_) {
-        my $ns_selector;
-        my $ln_selector;
-        my $ss = [];
-        for my $s (@$_) {
-          if ($s->[0] == NAMESPACE_SELECTOR) {
-            $ns_selector = $s;
-          } elsif ($s->[0] == LOCAL_NAME_SELECTOR) {
-            $ln_selector = $s;
-          } else {
-            push @$ss, $s;
-          }
-        }
-        
         my $v = '';
-        if (not defined $ns_selector) {
-          my $has_default_ns = ''; # XXX
-          $v .= '*|' if $has_default_ns and (not @$ss or defined $ln_selector);
-        } elsif (defined $ns_selector->[1]) {
-          if (defined $ns_selector->[2] and length $ns_selector->[2]) {
-            if ($ns_selector->[1] eq '') {
+        for (@$_) {
+          if ($_->[0] == ELEMENT_SELECTOR) {
+            if ($_->[4]) { # prefix wildcard
+              $v .= '*|';
+            } elsif (defined $_->[3]) { # prefix
+              if (length $_->[3]) { # non-default
+                $v .= _ident ($_->[3]) . '|';
+              }
+            } elsif (defined $_->[1] and $_->[1] eq '') { # nsurl
               $v .= '|';
-            } else {
-              $v .= _ident ($ns_selector->[2]) . '|';
             }
-          } elsif (defined $ns_selector->[2]) { # default namespace
-            #$v .= '';
-          } else { # error
-            #$v .= '';
-          }
-        } else {
-          $v .= '|';
-        }
-
-        if (defined $ln_selector) {
-          $v .= _ident ($ln_selector->[1]);
-        } else {
-          $v .= '*' if not @$ss or length $v;
-        }
-
-        for (@$ss) {
-          if ($_->[0] == ATTRIBUTE_SELECTOR) {
+            if ($_->[5]) { # local name wildcard
+              $v .= '*';
+            } elsif (defined $_->[2]) { # local name
+              $v .= _ident ($_->[2]);
+            }
+          } elsif ($_->[0] == ATTRIBUTE_SELECTOR) {
             $v .= '[';
             if (defined $_->[1]) {
               if ($_->[1] eq '') {
@@ -128,7 +105,7 @@ sub serialize_selectors ($$) {
           }
         }
         $v;
-      } else {
+      } else { # not ref $_
         {
           DESCENDANT_COMBINATOR, ' ',
           CHILD_COMBINATOR, ' > ',

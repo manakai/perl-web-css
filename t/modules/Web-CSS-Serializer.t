@@ -6,7 +6,6 @@ use lib file (__FILE__)->dir->parent->parent->subdir ('lib')->stringify;
 use lib glob file (__FILE__)->dir->parent->parent->subdir ('t_deps', 'modules', '*', 'lib')->stringify;
 use Test::X1;
 use Web::CSS::Serializer;
-use Web::CSS::Selectors::Parser;
 use Web::CSS::Parser;
 use Test::More;
 use Test::Differences;
@@ -200,12 +199,14 @@ for my $test (
 
 for my $test (
   {in => {rules => [{rule_type => 'style',
-                     selectors => [[0, [[2, 'hoge'], [3, 'fuga']]]],
+                     selectors => [[0, [[1, undef, 'hoge', '', 0, 0],
+                                        [3, 'fuga']]]],
                      prop_keys => [], prop_values => {},
                      prop_importants => {}}]},
    out => 'hoge#fuga { }'},
   {in => {rules => [{rule_type => 'style',
-                     selectors => [[0, [[2, 'hoge'], [3, 'fuga']]]],
+                     selectors => [[0, [[1, undef, 'hoge', '', 0, 0],
+                                        [3, 'fuga']]]],
                      prop_keys => ['display'],
                      prop_values => {display => ['KEYWORD', 'block']},
                      prop_importants => {}}]},
@@ -267,7 +268,8 @@ for my $test (
                      mqs => [],
                      rule_ids => [1]},
                     {rule_type => 'style',
-                     selectors => [[0, [[2, 'hoge'], [3, 'fuga']]]],
+                     selectors => [[0, [[1, undef, 'hoge', '', 0, 0],
+                                        [3, 'fuga']]]],
                      prop_keys => [], prop_values => {},
                      prop_importants => {}}]},
    out => '@media  { '."\x0A".'  hoge#fuga { }'."\x0A".'}'},
@@ -275,14 +277,15 @@ for my $test (
                      mqs => [],
                      rule_ids => [1, 2]},
                     {rule_type => 'style',
-                     selectors => [[0, [[2, 'hoge'], [3, 'fuga']]]],
+                     selectors => [[0, [[1, undef, 'hoge', '', 0, 0],
+                                        [3, 'fuga']]]],
                      prop_keys => [], prop_values => {},
                      prop_importants => {}},
                     {rule_type => 'media',
                      mqs => [],
                      rule_ids => [3]},
                     {rule_type => 'style',
-                     selectors => [[0, [[2, 'AAA']]]],
+                     selectors => [[0, [[1, undef, 'AAA', '', 0, 0]]]],
                      prop_keys => [], prop_values => {},
                      prop_importants => {}}]},
    out => '@media  { '."\x0A".'  hoge#fuga { }'."\x0A".'  @media  { '."\x0A".'  AAA { }'."\x0A"."}\x0A".'}'},
@@ -291,21 +294,24 @@ for my $test (
                              {type => 'print'}],
                      rule_ids => [1]},
                     {rule_type => 'style',
-                     selectors => [[0, [[2, 'hoge'], [3, 'fuga']]]],
+                     selectors => [[0, [[1, undef, 'hoge', '', 0, 0],
+                                        [3, 'fuga']]]],
                      prop_keys => [], prop_values => {},
                      prop_importants => {}}]},
    out => '@media not all, print { '."\x0A".'  hoge#fuga { }'."\x0A".'}'},
   {in => {rules => [{rule_type => 'sheet',
                      rule_ids => [1]},
                     {rule_type => 'style',
-                     selectors => [[0, [[2, 'hoge'], [3, 'fuga']]]],
+                     selectors => [[0, [[1, undef, 'hoge', '', 0, 0],
+                                        [3, 'fuga']]]],
                      prop_keys => [], prop_values => {},
                      prop_importants => {}}]},
    out => 'hoge#fuga { }'},
   {in => {rules => [{rule_type => 'sheet',
                      rule_ids => [1, 2]},
                     {rule_type => 'style',
-                     selectors => [[0, [[2, 'hoge'], [3, 'fuga']]]],
+                     selectors => [[0, [[1, undef, 'hoge', '', 0, 0],
+                                        [3, 'fuga']]]],
                      prop_keys => [], prop_values => {},
                      prop_importants => {}},
                     {rule_type => 'style',
@@ -316,14 +322,15 @@ for my $test (
   {in => {rules => [{rule_type => 'sheet',
                      rule_ids => [1, 2]},
                     {rule_type => 'style',
-                     selectors => [[0, [[2, 'hoge'], [3, 'fuga']]]],
+                     selectors => [[0, [[1, undef, 'hoge', '', 0, 0],
+                                        [3, 'fuga']]]],
                      prop_keys => [], prop_values => {},
                      prop_importants => {}},
                     {rule_type => 'media',
                      mqs => [],
                      rule_ids => [3]},
                     {rule_type => 'style',
-                     selectors => [[0, [[2, 'AAA']]]],
+                     selectors => [[0, [[1, undef, 'AAA', '', 0, 0]]]],
                      prop_keys => [], prop_values => {},
                      prop_importants => {}}]},
    out => 'hoge#fuga { }'."\x0A".'@media  { '."\x0A".'  AAA { }'."\x0A".'}'},
@@ -357,9 +364,7 @@ test {
   my $c = shift;
   my $serializer = Web::CSS::Serializer->new;
   is $serializer->serialize_selectors
-      ([[DESCENDANT_COMBINATOR, [[LOCAL_NAME_SELECTOR, 'a'],
-                                 [CLASS_SELECTOR, 'b']]]]),
-          'a.b';
+      ([[0, [[1, undef, 'a', '', 0, 0], [4, 'b']]]]), 'a.b';
   done $c;
 } n => 1, name => 'serialize_selectors';
 

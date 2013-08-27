@@ -10,6 +10,168 @@ use Test::Differences;
 use Web::CSS::Context;
 use Web::CSS::Selectors::Parser;
 
+for my $test (
+  [[ELEMENT_SELECTOR, undef, 'a'  , ''   , 0, 0],   'a'],
+  [[ELEMENT_SELECTOR, undef, undef, ''   , 0, 1],   '*'],
+  [[ELEMENT_SELECTOR, ''   , 'a'  , undef, 0, 0],  '|a'],
+  [[ELEMENT_SELECTOR, ''   , undef, undef, 0, 1],  '|*'],
+  [[ELEMENT_SELECTOR, undef, 'a'  , undef, 1, 0], '*|a'],
+  [[ELEMENT_SELECTOR, undef, undef, undef, 1, 1], '*|*'],
+  [[ELEMENT_SELECTOR, undef, undef, ''   , 0, 0], '.b'],
+) {
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    my @b;
+    push @b, [CLASS_SELECTOR, 'b'] if $test->[1] eq '.b';
+    eq_or_diff $s->parse_char_string_as_selectors ($test->[1]),
+        [[DESCENDANT_COMBINATOR, [$test->[0], @b]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors', $test->[1]];
+}
+
+for my $test (
+  #@namespace '';
+  [[ELEMENT_SELECTOR, ''   , 'a'  , ''   , 0, 0],   'a'],
+  [[ELEMENT_SELECTOR, ''   , undef, ''   , 0, 1],   '*'],
+  [[ELEMENT_SELECTOR, ''   , 'a'  , undef, 0, 0],  '|a'],
+  [[ELEMENT_SELECTOR, ''   , undef, undef, 0, 1],  '|*'],
+  [[ELEMENT_SELECTOR, undef, 'a'  , undef, 1, 0], '*|a'],
+  [[ELEMENT_SELECTOR, undef, undef, undef, 1, 1], '*|*'],
+  [[ELEMENT_SELECTOR, ''   , undef, ''   , 0, 0], '.b'],
+) {
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->context->{prefix_to_url}->{''} = '';
+    my @b;
+    push @b, [CLASS_SELECTOR, 'b'] if $test->[1] eq '.b';
+    eq_or_diff $s->parse_char_string_as_selectors ($test->[1]),
+        [[DESCENDANT_COMBINATOR, [$test->[0], @b]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors', $test->[1]];
+}
+
+for my $test (
+  #@namespace 'ns';
+  [[ELEMENT_SELECTOR, 'ns' , 'a'  , ''   , 0, 0],   'a'],
+  [[ELEMENT_SELECTOR, 'ns' , undef, ''   , 0, 1],   '*'],
+  [[ELEMENT_SELECTOR, ''   , 'a'  , undef, 0, 0],  '|a'],
+  [[ELEMENT_SELECTOR, ''   , undef, undef, 0, 1],  '|*'],
+  [[ELEMENT_SELECTOR, undef, 'a'  , undef, 1, 0], '*|a'],
+  [[ELEMENT_SELECTOR, undef, undef, undef, 1, 1], '*|*'],
+  [[ELEMENT_SELECTOR, 'ns' , undef, ''   , 0, 0], '.b'],
+) {
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->context->{prefix_to_url}->{''} = 'ns';
+    my @b;
+    push @b, [CLASS_SELECTOR, 'b'] if $test->[1] eq '.b';
+    eq_or_diff $s->parse_char_string_as_selectors ($test->[1]),
+        [[DESCENDANT_COMBINATOR, [$test->[0], @b]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors', $test->[1]];
+}
+
+for my $test (
+  #@namespace p '';
+  [[ELEMENT_SELECTOR, ''   , 'a'  , 'p'  , 0, 0], 'p|a'],
+  [[ELEMENT_SELECTOR, ''   , undef, 'p'  , 0, 1], 'p|*'],
+) {
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->context->{prefix_to_url}->{p} = '';
+    eq_or_diff $s->parse_char_string_as_selectors ($test->[1]),
+        [[DESCENDANT_COMBINATOR, [$test->[0]]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors', $test->[1]];
+}
+
+for my $test (
+  #@namespace p 'ns';
+  [[ELEMENT_SELECTOR, 'ns' , 'a'  , 'p'  , 0, 0], 'p|a'],
+  [[ELEMENT_SELECTOR, 'ns' , undef, 'p'  , 0, 1], 'p|*'],
+) {
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->context->{prefix_to_url}->{p} = 'ns';
+    eq_or_diff $s->parse_char_string_as_selectors ($test->[1]),
+        [[DESCENDANT_COMBINATOR, [$test->[0]]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors', $test->[1]];
+}
+
+{
+  #In :not() or :match()
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->media_resolver->{pseudo_class}->{not} = 1;
+    eq_or_diff $s->parse_char_string_as_selectors (':not(.b)')->[0]->[1]->[1]->[2],
+        [[DESCENDANT_COMBINATOR, [[ELEMENT_SELECTOR, undef, undef, '', 0, 0],
+                                  [CLASS_SELECTOR, 'b']]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors'];
+
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->media_resolver->{pseudo_class}->{not} = 1;
+    $s->context->{prefix_to_url}->{''} = '';
+    eq_or_diff $s->parse_char_string_as_selectors (':not(.b)')->[0]->[1]->[1]->[2],
+        [[DESCENDANT_COMBINATOR, [[ELEMENT_SELECTOR, undef, undef, '', 0, 0],
+                                  [CLASS_SELECTOR, 'b']]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors'];
+
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->context->{prefix_to_url}->{''} = 'ns';
+    $s->media_resolver->{pseudo_class}->{not} = 1;
+    eq_or_diff $s->parse_char_string_as_selectors (':not(.b)')->[0]->[1]->[1]->[2],
+        [[DESCENDANT_COMBINATOR, [[ELEMENT_SELECTOR, undef, undef, '', 0, 0],
+                                  [CLASS_SELECTOR, 'b']]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors'];
+
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->context->{prefix_to_url}->{''} = 'ns';
+    $s->media_resolver->{pseudo_class}->{not} = 1;
+    eq_or_diff $s->parse_char_string_as_selectors (':not(*.b)')->[0]->[1]->[1]->[2],
+        [[DESCENDANT_COMBINATOR, [[ELEMENT_SELECTOR, 'ns', undef, '', 0, 1],
+                                  [CLASS_SELECTOR, 'b']]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors'];
+
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->context->{prefix_to_url}->{''} = 'ns';
+    $s->media_resolver->{pseudo_class}->{not} = 1;
+    eq_or_diff $s->parse_char_string_as_selectors (':not(a.b)')->[0]->[1]->[1]->[2],
+        [[DESCENDANT_COMBINATOR, [[ELEMENT_SELECTOR, 'ns', 'a', '', 0, 0],
+                                  [CLASS_SELECTOR, 'b']]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors'];
+
+  test {
+    my $c = shift;
+    my $s = Web::CSS::Selectors::Parser->new;
+    $s->context->{prefix_to_url}->{''} = 'ns';
+    $s->media_resolver->{pseudo_element}->{cue} = 1;
+    eq_or_diff $s->parse_char_string_as_selectors ('::cue(.b)')->[0]->[1]->[1]->[2],
+        [[DESCENDANT_COMBINATOR, [[ELEMENT_SELECTOR, 'ns', undef, '', 0, 0],
+                                  [CLASS_SELECTOR, 'b']]]];
+    done $c;
+  } n => 1, name => ['parse_char_string_as_selectors'];
+}
+
 for my $test (         # s  a  b  c
   ['*',                 [0, 0, 0, 0]],
   ['LI',                [0, 0, 0, 1]],

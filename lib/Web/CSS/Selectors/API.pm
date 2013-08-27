@@ -1,7 +1,7 @@
 package Web::CSS::Selectors::API;
 use strict;
 use warnings;
-our $VERSION = '1.13';
+our $VERSION = '14.0';
 use Web::CSS::Selectors::Parser;
 use Web::CSS::Context;
 
@@ -120,41 +120,44 @@ sub _sss_match ($$$) {
 
   my $sss_matched = 1;
   for my $simple_selector (@{$sss}) {
-    if ($simple_selector->[0] == LOCAL_NAME_SELECTOR) {
-            if ($simple_selector->[1] eq
-                $node->manakai_local_name) {
+    if ($simple_selector->[0] == ELEMENT_SELECTOR) {
+      my $expected_ln = $simple_selector->[2];
+      if (defined $expected_ln) {
+        if ($expected_ln eq $node->manakai_local_name) {
+          #
+        } elsif ($is_html) {
+          my $nsuri = $node->namespace_uri;
+          if (defined $nsuri and
+              $nsuri eq q<http://www.w3.org/1999/xhtml>) {
+            if (lc $expected_ln eq $node->manakai_local_name) {
+              ## TODO: What kind of case-insensitivility?
+              ## TODO: Is this checking method OK?
               #
-            } elsif ($is_html) {
-              my $nsuri = $node->namespace_uri;
-              if (defined $nsuri and
-                  $nsuri eq q<http://www.w3.org/1999/xhtml>) {
-                if (lc $simple_selector->[1] eq
-                    $node->manakai_local_name) {
-                  ## TODO: What kind of case-insensitivility?
-                  ## TODO: Is this checking method OK?
-                  #
-                } else {
-                  $sss_matched = 0;
-                }
-              } else {
-                $sss_matched = 0;
-              }
             } else {
               $sss_matched = 0;
             }
-          } elsif ($simple_selector->[0] == NAMESPACE_SELECTOR) {
-            my $nsuri = $node->namespace_uri;
-            if (defined $simple_selector->[1]) {
-              if (defined $nsuri and $nsuri eq $simple_selector->[1]) {
-                #
-              } else {
-                $sss_matched = 0;
-              }
-            } else {
-              if (defined $nsuri) {
-                $sss_matched = 0;
-              }
-            }
+          } else {
+            $sss_matched = 0;
+          }
+        } else {
+          $sss_matched = 0;
+        }
+      } # $expected_ln
+      my $expected_nsurl = $simple_selector->[1];
+      if (defined $expected_nsurl) {
+        my $nsuri = $node->namespace_uri;
+        if (length $expected_nsurl) {
+          if (defined $nsuri and $nsuri eq $expected_nsurl) {
+            #
+          } else {
+            $sss_matched = 0;
+          }
+        } else { # null namespace
+          if (defined $nsuri) {
+            $sss_matched = 0;
+          }
+        }
+      } # $expected_nsurl
     } elsif ($simple_selector->[0] == CLASS_SELECTOR) {
       M: {
         my $class_name = $node->class_name;

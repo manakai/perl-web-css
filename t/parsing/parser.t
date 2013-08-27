@@ -114,15 +114,14 @@ my $data_d = file (__FILE__)->dir->parent->parent
               (defined $opt{text} ? ';'.$opt{text} : '');
         });
 
-        $p->parse_char_string ($test->{data});
-        my $set = $p->parsed_sheet_set;
+        my $ss = $p->parse_char_string_as_ss ($test->{data});
 
         eq_or_diff
             ((join "\n", @actual_error), (join "\n", @{$test->{errors} or []}),
              "#result ($test->{data})");
 
         if (defined $test->{cssom}) {
-          my $actual = serialize_cssom ({}, $set, 0);
+          my $actual = serialize_cssom ({}, $ss);
           eq_or_diff $actual, $test->{cssom}, "#cssom ($test->{data})";
         }
 
@@ -356,41 +355,40 @@ sub serialize_rule ($$$$) {
   my ($self, $set, $rule_id, $indent) = @_;
   my $rule = $set->{rules}->[$rule_id];
   my $v = '';
-  if ($rule->{type} eq 'style') {
+  if ($rule->{rule_type} eq 'style') {
     $v .= $indent . '<' . (serialize_selectors $self, $rule->{selectors}) . ">\n";
-    $v .= serialize_style ($self, $rule->{style}, $indent . '  ');
-  } elsif ($rule->{type} eq '@media') {
-    $v .= $indent . '@media ' . (serialize_mq $self, $rule->{media}) . "\n";
-    $v .= serialize_rule ($self, $set, $_, $indent . '  ') for @{$rule->{rules}};
-  } elsif ($rule->{type} eq '@namespace') {
+    $v .= serialize_style ($self, $rule, $indent . '  ');
+  } elsif ($rule->{rule_type} eq '@media') {
+    $v .= $indent . '@media ' . (serialize_mq $self, $rule->{mqs}) . "\n";
+    $v .= serialize_rule ($self, $set, $_, $indent . '  ') for @{$rule->{rule_ids}};
+  } elsif ($rule->{rule_type} eq '@namespace') {
     $v .= $indent . '@namespace ';
     my $prefix = $rule->{prefix};
     $v .= $$prefix . ': ' if defined $prefix and length $$prefix;
-    $v .= '<' . ${$rule->{namespace_uri}} . ">\n";
+    $v .= '<' . $rule->{nsurl} . ">\n";
     $self->{nsmap}->{has_namespace} = 1;
-    push @{$self->{nsmap}->{uri_to_prefixes}->{${$rule->{namespace_uri}}} ||= []},
+    push @{$self->{nsmap}->{uri_to_prefixes}->{$rule->{nsurl}} ||= []},
         defined $$prefix && length $$prefix ? $$prefix . '|' : '';
-  } elsif ($rule->{type} eq '@import') {
-    $v .= $indent . '@import <' . $rule->{href} . '> ' . serialize_mq $self, $rule->{media};
+  } elsif ($rule->{rule_type} eq '@import') {
+    $v .= $indent . '@import <' . $rule->{href} . '> ' . serialize_mq $self, $rule->{mqs};
     $v .= "\n";
-  } elsif ($rule->{type} eq '@charset') {
+  } elsif ($rule->{rule_type} eq '@charset') {
     $v .= $indent . '@charset ' . $rule->{encoding} . "\n";
   } else {
-    die "Rule type $rule->{type} is not supported";
+    die "Rule type |$rule->{rule_type}| is not supported";
   }
   return $v;
 } # serialize_rule
 
-sub serialize_cssom ($$$) {
-  my ($self, $set, $ss_id) = @_;
-  my $ss = $set->{sheets}->[$ss_id];
+sub serialize_cssom ($$) {
+  my ($self, $ss) = @_;
 
   if (defined $ss) {
     if (ref $ss eq 'HASH') {
       my $v = '';
       for my $rule_id (@{$ss->{rules}}) {
         my $indent = '';
-        $v .= serialize_rule ($self, $set, $rule_id, $indent);
+        $v .= serialize_rule ($self, $ss, $rule_id, $indent);
       }
       return $v;
     } else {

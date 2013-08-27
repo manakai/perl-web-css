@@ -18,9 +18,7 @@ sub S ($$$$$$) { {parent_id => $_[0], id => $_[1], rule_type => 'style',
                     if (ref $_[2]) {
                       my $s = shift @{$_[2]};
                       my $p = Web::CSS::Selectors::Parser->new;
-                      for (0..$#{$_[2]}) {
-                        $p->context->{prefix_to_url}->{'N' . $_} = $_[2]->[$_];
-                      }
+                      $p->context->{prefix_to_url} = $_[2]->[0] || {};
                       $p->parse_char_string_as_selectors($s);
                     } else {
                       Web::CSS::Selectors::Parser->new->parse_char_string_as_selectors($_[2]);
@@ -332,26 +330,26 @@ for my $test (
    out => [SS [1, 2], NS(0=>1, 'aa', 'bb'), NS(0=>2, 'aa', '')],
    errors => ['1;31;m;duplicate @namespace;;aa']},
   {in => '@namespace aa "bb";@namespace AA "bc";aa|p{}',
-   out => [SS [1, 2, 3], NS(0=>1, 'aa', 'bb'), NS(0=>2, 'AA', 'bc'), S(0=>3, ['N0|p', 'bb'], [], {}, {})]},
+   out => [SS [1, 2, 3], NS(0=>1, 'aa', 'bb'), NS(0=>2, 'AA', 'bc'), S(0=>3, ['aa|p', {aa => 'bb'}], [], {}, {})]},
   {in => '@namespace aa "bb";@namespace AA "bc";AA|p{}',
-   out => [SS [1, 2, 3], NS(0=>1, 'aa', 'bb'), NS(0=>2, 'AA', 'bc'), S(0=>3, ['N0|p', 'bc'], [], {}, {})]},
+   out => [SS [1, 2, 3], NS(0=>1, 'aa', 'bb'), NS(0=>2, 'AA', 'bc'), S(0=>3, ['AA|p', {AA => 'bc'}], [], {}, {})]},
   {in => '@namespace aa "bb";@namespace aa "bc";aa|p{}',
-   out => [SS [1, 2, 3], NS(0=>1, 'aa', 'bb'), NS(0=>2, 'aa', 'bc'), S(0=>3, ['N0|p', 'bc'], [], {}, {})],
+   out => [SS [1, 2, 3], NS(0=>1, 'aa', 'bb'), NS(0=>2, 'aa', 'bc'), S(0=>3, ['aa|p', {aa => 'bc'}], [], {}, {})],
    errors => ['1;31;m;duplicate @namespace;;aa']},
   {in => '@namespace "bb";@namespace "bc";p{}',
-   out => [SS [1, 2, 3], NS(0=>1, undef, 'bb'), NS(0=>2, undef, 'bc'), S(0=>3, ['N0|p', 'bc'], [], {}, {})],
+   out => [SS [1, 2, 3], NS(0=>1, undef, 'bb'), NS(0=>2, undef, 'bc'), S(0=>3, ['p', {'' => 'bc'}], [], {}, {})],
    errors => ['1;28;m;duplicate @namespace;;']},
   {in => '@namespace "bb";@namespace "";p{}',
-   out => [SS [1, 2, 3], NS(0=>1, undef, 'bb'), NS(0=>2, undef, ''), S(0=>3, ['N0|p', ''], [], {}, {})],
+   out => [SS [1, 2, 3], NS(0=>1, undef, 'bb'), NS(0=>2, undef, ''), S(0=>3, ['p', {'' => ''}], [], {}, {})],
    errors => ['1;28;m;duplicate @namespace;;']},
   {in => '@namespace a "bb";@namespace a"";a|p{}',
-   out => [SS [1, 2, 3], NS(0=>1, 'a', 'bb'), NS(0=>2, 'a', ''), S(0=>3, ['N0|p', ''], [], {}, {})],
+   out => [SS [1, 2, 3], NS(0=>1, 'a', 'bb'), NS(0=>2, 'a', ''), S(0=>3, ['a|p', {'a' => ''}], [], {}, {})],
    errors => ['1;30;m;duplicate @namespace;;a']},
   {in => '@namespace a "bb";@namespace a"";a|p b{}',
-   out => [SS [1, 2, 3], NS(0=>1, 'a', 'bb'), NS(0=>2, 'a', ''), S(0=>3, ['N0|p *|b', ''], [], {}, {})],
+   out => [SS [1, 2, 3], NS(0=>1, 'a', 'bb'), NS(0=>2, 'a', ''), S(0=>3, ['a|p b', {a => ''}], [], {}, {})],
    errors => ['1;30;m;duplicate @namespace;;a']},
   {in => '@namespace "";@namespace a"";a|p b{}',
-   out => [SS [1, 2, 3], NS(0=>1, undef, ''), NS(0=>2, 'a', ''), S(0=>3, ['|p |b'], [], {}, {})]},
+   out => [SS [1, 2, 3], NS(0=>1, undef, ''), NS(0=>2, 'a', ''), S(0=>3, ['a|p b', {a => '', '' => ''}], [], {}, {})]},
   {in => '@namespace a "bb" {} p{};',
    out => [SS [1], S(0=>1, 'p', [], {}, {})],
    errors => ['1;19;m;css:at-rule:block not allowed;;namespace',

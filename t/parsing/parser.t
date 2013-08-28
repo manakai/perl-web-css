@@ -121,7 +121,7 @@ my $data_d = file (__FILE__)->dir->parent->parent
              "#result ($test->{data})");
 
         if (defined $test->{cssom}) {
-          my $actual = serialize_cssom ({}, $ss);
+          my $actual = serialize_cssom ($ss);
           eq_or_diff $actual, $test->{cssom}, "#cssom ($test->{data})";
         }
 
@@ -169,6 +169,8 @@ my $data_d = file (__FILE__)->dir->parent->parent
       } name => ['p&c'];
     } # $test
   }
+
+  sub cleanup () { undef $all_test }
 }
 
 my @longhand;
@@ -340,37 +342,31 @@ sub get_parser ($) {
   return ($p);
 } # get_parser
 
-sub serialize_selectors ($$) {
-  my ($self, $selectors) = @_;
-  $self->{selectors_serializer} ||= Web::CSS::Selectors::Serializer->new;
-  return $self->{selectors_serializer}->serialize_selector_text
-      ($selectors, $self->{nsmap});
+sub serialize_selectors ($) {
+  return Web::CSS::Selectors::Serializer->new->serialize_selectors ($_[0]);
 } # serialize_selectors
 
-sub serialize_mq ($$) {
-  return Web::CSS::MediaQueries::Serializer->new->serialize_media_query ($_[1]);
-} # serialize_mq
+sub serialize_mqs ($) {
+  return Web::CSS::MediaQueries::Serializer->new->serialize_mq_list ($_[1]);
+} # serialize_mqs
 
-sub serialize_rule ($$$$) {
-  my ($self, $set, $rule_id, $indent) = @_;
+sub serialize_rule ($$$) {
+  my ($set, $rule_id, $indent) = @_;
   my $rule = $set->{rules}->[$rule_id];
   my $v = '';
   if ($rule->{rule_type} eq 'style') {
-    $v .= $indent . '<' . (serialize_selectors $self, $rule->{selectors}) . ">\n";
-    $v .= serialize_style ($self, $rule, $indent . '  ');
+    $v .= $indent . '<' . (serialize_selectors $rule->{selectors}) . ">\n";
+    $v .= serialize_style ($rule, $indent . '  ');
   } elsif ($rule->{rule_type} eq '@media') {
-    $v .= $indent . '@media ' . (serialize_mq $self, $rule->{mqs}) . "\n";
-    $v .= serialize_rule ($self, $set, $_, $indent . '  ') for @{$rule->{rule_ids}};
+    $v .= $indent . '@media ' . (serialize_mqs $rule->{mqs}) . "\n";
+    $v .= serialize_rule ($set, $_, $indent . '  ') for @{$rule->{rule_ids}};
   } elsif ($rule->{rule_type} eq '@namespace') {
     $v .= $indent . '@namespace ';
     my $prefix = $rule->{prefix};
-    $v .= $$prefix . ': ' if defined $prefix and length $$prefix;
+    $v .= $prefix . ': ' if defined $prefix;
     $v .= '<' . $rule->{nsurl} . ">\n";
-    $self->{nsmap}->{has_namespace} = 1;
-    push @{$self->{nsmap}->{uri_to_prefixes}->{$rule->{nsurl}} ||= []},
-        defined $$prefix && length $$prefix ? $$prefix . '|' : '';
   } elsif ($rule->{rule_type} eq '@import') {
-    $v .= $indent . '@import <' . $rule->{href} . '> ' . serialize_mq $self, $rule->{mqs};
+    $v .= $indent . '@import <' . $rule->{href} . '> ' . serialize_mqs $rule->{mqs};
     $v .= "\n";
   } elsif ($rule->{rule_type} eq '@charset') {
     $v .= $indent . '@charset ' . $rule->{encoding} . "\n";
@@ -380,15 +376,15 @@ sub serialize_rule ($$$$) {
   return $v;
 } # serialize_rule
 
-sub serialize_cssom ($$) {
-  my ($self, $ss) = @_;
+sub serialize_cssom ($) {
+  my ($ss) = @_;
 
   if (defined $ss) {
     if (ref $ss eq 'HASH') {
       my $v = '';
-      for my $rule_id (@{$ss->{rules}}) {
+      for my $rule_id (@{$ss->{rules}->[0]->{rule_ids}}) {
         my $indent = '';
-        $v .= serialize_rule ($self, $ss, $rule_id, $indent);
+        $v .= serialize_rule ($ss, $rule_id, $indent);
       }
       return $v;
     } else {
@@ -422,19 +418,16 @@ sub get_computed_style ($$$$$) {
   return ($window, $style);
 } # get_computed_style
 
-sub serialize_value ($$$) {
-  my $self = $_[0];
-  $self->{value_serializer} ||= Web::CSS::Serializer->new;
-  $self->{value_serializer}->{nsmap} = $self->{nsmap};
-  return $self->{value_serializer}->serialize_prop_value ($_[1], $_[2]);
+sub serialize_value ($$) {
+  return Web::CSS::Serializer->new->serialize_prop_value ($_[0], $_[1]);
 } # serialize_value
 
-sub serialize_priority ($$$) {
-  return Web::CSS::Serializer->new->serialize_prop_priority ($_[1], $_[2]);
+sub serialize_priority ($$) {
+  return Web::CSS::Serializer->new->serialize_prop_priority ($_[0], $_[1]);
 } # serialize_priority
 
-sub serialize_style ($$$) {
-  my ($self, $style, $indent) = @_;
+sub serialize_style ($$) {
+  my ($style, $indent) = @_;
 
   ## TODO: check @$style
 
@@ -444,8 +437,8 @@ sub serialize_style ($$$) {
     my $dom = $_->[1];
     my $internal = $_->[2];
     push @v, [$_->[0], $dom,
-              (serialize_value $self, $style, $css),
-              (serialize_priority $self, $style, $css)];
+              (serialize_value $style, $internal),
+              (serialize_priority $style, $internal)];
     $v[-1]->[3] = ' !' . $v[-1]->[3]
         if defined $v[-1]->[3] and length $v[-1]->[3];
   }
@@ -457,10 +450,6 @@ sub serialize_style ($$$) {
 
 sub get_dom_names ($) {
   my $dom_name = $_[0];
-  if ($_[0] eq 'float') {
-    return ([$_[0] => 'css_float', $_[0]], [$_[0] => 'style_float', $_[0]]);
-  }
-
   $dom_name =~ tr/-/_/;
   return ([$_[0] => $dom_name => $_[0]]);
 } # get_dom_names
@@ -485,8 +474,7 @@ sub apply_diff ($$$) {
 } # apply_diff
 
 run_tests;
-
-1;
+cleanup;
 
 =head1
 

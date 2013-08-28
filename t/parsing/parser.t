@@ -197,7 +197,7 @@ BEGIN {
     letter-spacing line-height
     list-style-image list-style-position list-style-type
     margin-bottom margin-left margin-right margin-top marker-offset
-    marks max-height max-width min-height min-width opacity -moz-opacity
+    marks max-height max-width min-height min-width opacity
     orphans outline-color outline-style outline-width overflow-x overflow-y
     padding-bottom padding-left padding-right padding-top
     page page-break-after page-break-before page-break-inside
@@ -287,7 +287,6 @@ BEGIN {
   $DefaultComputed =~ s/;$//gm;
   $DefaultComputed .= q[-manakai-border-spacing-x: 0px
 -manakai-border-spacing-y: 0px
--moz-opacity: 1
 background-attachment: scroll
 background-color: transparent
 background-image: none
@@ -457,7 +456,7 @@ sub serialize_style ($$) {
     my $css = $_->[0];
     my $dom = $_->[1];
     my $internal = $_->[2];
-    push @v, [$_->[0], $dom,
+    push @v, [$css, $dom,
               (serialize_value $style, $internal),
               (serialize_priority $style, $internal)];
     $v[-1]->[3] = ' !' . $v[-1]->[3]

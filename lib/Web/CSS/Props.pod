@@ -30,6 +30,13 @@ CSS Cascading and Inheritance <http://dev.w3.org/csswg/css-cascade/>.
 
 CSS Values and Units <http://dev.w3.org/csswg/css-values/>.
 
+=item CSSCOLOR
+
+CSS Color <http://dev.w3.org/csswg/css-color/>.
+
+The '-webkit-opacity' property MUST be parsed as if it were the
+'opacity' property.
+
 =item CSSBACKGROUNDS
 
 CSS Background and Borders <http://dev.w3.org/csswg/css-backgrounds/>.
@@ -42,11 +49,10 @@ values and return the result.
 To serialzie four edge values /top/, /right/, /bottom/, and /left/,
 follow these steps:
 
-  1. If one of four values are missing, it is not serializable.
-     Return null and abort these steps.
+  1. If one of four values is missing, it is not serializable.  Return
+     null and abort these steps.
 
-  2. Otheriwse, if one of four values are CSS-wide keyword or
-     function:
+  2. Otheriwse, if one of four values is CSS-wide keyword or function:
 
     1. If serializations of four values are same, return one of them
        and abort these steps.
@@ -71,11 +77,47 @@ follow these steps:
      whitespace-separated list with values /top/, /right/, /bottom/,
      and /left/ and abort these steps.
 
+=item CSSDISPLAY
+
+CSS Diaplay <http://dev.w3.org/csswg/css-display/>.
+
+=item CSSBOX
+
+CSS Basic Box Model <http://dev.w3.org/csswg/css-box/>.
+
+=item CSSPOSITION
+
+CSS Positioned Layout <http://dev.w3.org/csswg/css-position/>.
+
+=item CSSOVERFLOW
+
+CSS Overflow <http://dev.w3.org/csswg/css-overflow/>.
+
+To serialize the 'overflow' property value, follow these steps:
+
+  1. If 'overflow-x' or 'overflow-y' is missing, it is not
+     serializable.  Return null and abort these steps.
+
+  2. Otherwise, if serialization of 'overflow-x' is equal to
+     serialization of 'overflow-y', return one of them.
+
+  3. Otherwise, it is not serializable.  Return null.
+
+=item CSSWRITINGMODES
+
+CSS Writing Modes <http://dev.w3.org/csswg/css-writing-modes/>.
+
+=item CSSUI
+
+CSS Basic User Interface <http://dev.w3.org/csswg/css-ui/>.
+
 =back
 
 =head1 OBSOLETE FEATURES
 
-Support for following feature has been removed: '-moz-use-text-color'.
+Support for following feature has been removed: Keywords
+'-moz-use-text-color' and '-webkit-marquee', and property
+'-moz-opacity'.
 
 =head1 SEE ALSO
 

@@ -29,7 +29,7 @@ my $compute_as_specified = sub ($$$$) {
   return $_[3];
 }; # $compute_as_specified
 
-## <http://dev.w3.org/csswg/css-color/#foreground>.
+## <http://dev.w3.org/csswg/css-color/#foreground> [CSSCOLOR].
 $Key->{color} = {
   css => 'color',
   dom => 'color',
@@ -70,243 +70,62 @@ $Key->{color} = {
   },
 }; # color
 
+## <http://dev.w3.org/csswg/css-backgrounds/#the-background-color>
+## [CSSBACKGROUNDS].
 $Key->{background_color} = {
   css => 'background-color',
   dom => 'background_color',
   parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
-  serialize_multiple => sub {
-    my ($se, $st) = @_;
-
-    my $r = {};
-    my $has_all;
-    
-    my $x = $se->serialize_prop_value ($st, 'background-position-x');
-    my $y = $se->serialize_prop_value ($st, 'background-position-y');
-    my $xi = $se->serialize_prop_priority ($st, 'background-position-x');
-    my $yi = $se->serialize_prop_priority ($st, 'background-position-y');
-    if (length $x) {
-      if (length $y) {
-        if ($xi eq $yi) {
-          if ($x eq 'inherit') {
-            if ($y eq 'inherit') {
-              $r->{'background-position'} = ['inherit', $xi];
-              $has_all = 1;
-            } else {
-              $r->{'background-position-x'} = [$x, $xi];
-              $r->{'background-position-y'} = [$y, $yi];
-            }
-          } elsif ($y eq 'inherit') {
-            $r->{'background-position-x'} = [$x, $xi];
-            $r->{'background-position-y'} = [$y, $yi];
-          } else {
-            $r->{'background-position'} = [$x . ' ' . $y, $xi];
-            $has_all = 1;
-          }
-        } else {
-          $r->{'background-position-x'} = [$x, $xi];
-          $r->{'background-position-y'} = [$y, $yi];
-        }
-      } else {
-        $r->{'background-position-x'} = [$x, $xi];
-      }
-    } else {
-      if (length $y) {
-        $r->{'background-position-y'} = [$y, $yi];
-      } else {
-        #
-      }
-    }
-    
-    for my $prop (qw/color image repeat attachment/) {
-      my $prop_name = 'background-'.$prop;
-      my $value = $se->serialize_prop_value ($st, $prop_name);
-      if (length $value) {
-        my $i = $se->serialize_prop_priority ($st, 'background-'.$prop);
-        undef $has_all unless $xi eq $i;
-        $r->{'background-'.$prop} = [$value, $i];
-      } else {
-        undef $has_all;
-      }
-    }
-
-    if ($has_all) {
-      my @v;
-      push @v, $r->{'background-color'}
-          unless $r->{'background-color'}->[0] eq 'transparent';
-      push @v, $r->{'background-image'}
-          unless $r->{'background-image'}->[0] eq 'none';
-      push @v, $r->{'background-repeat'}
-          unless $r->{'background-repeat'}->[0] eq 'repeat';
-      push @v, $r->{'background-attachment'}
-          unless $r->{'background-attachment'}->[0] eq 'scroll';
-      push @v, $r->{'background-position'}
-          unless $r->{'background-position'}->[0] eq '0% 0%';
-      if (@v) {
-        my $inherit = 0;
-        for (@v) {
-          $inherit++ if $_->[0] eq 'inherit';
-        }
-        if ($inherit == 5) {
-          return {background => ['inherit', $xi]};
-        } elsif ($inherit) {
-          return $r;
-        } else {
-          return {background => [(join ' ', map {$_->[0]} @v), $xi]};
-        }
-      } else {
-        return {background => ['transparent none repeat scroll 0% 0%', $xi]};
-      }
-    } else {
-      return $r;
-    }
-  },
   initial => ['KEYWORD', 'transparent'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
 }; # background-color
 
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
+## [CSSBACKGROUNDS].
 $Key->{border_top_color} = {
   css => 'border-top-color',
   dom => 'border_top_color',
   parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
-  serialize_multiple => sub {
-    my ($se, $st) = @_;
-    ## NOTE: This algorithm returns the same result as that of Firefox 2
-    ## in many case, but not always.
-    my $r = {};
-    for my $edge (qw(top right bottom left)) {
-      for my $p (qw(color style width)) {
-        my $pr = "border-$edge-$p";
-        $r->{$pr} = [$se->serialize_prop_value ($st, $pr),
-                     $se->serialize_prop_priority ($st, $pr)];
-      }
-    }
-    my $i = 0;
-    for my $prop (qw/border-top border-right border-bottom border-left/) {
-      if (length $r->{$prop.'-color'}->[0] and
-          length $r->{$prop.'-style'}->[0] and
-          length $r->{$prop.'-width'}->[0] and
-          $r->{$prop.'-color'}->[1] eq $r->{$prop.'-style'}->[1] and
-          $r->{$prop.'-color'}->[1] eq $r->{$prop.'-width'}->[1]) {
-        my $inherit = 0;
-        $inherit++ if $r->{$prop.'-color'}->[0] eq 'inherit';
-        $inherit++ if $r->{$prop.'-style'}->[0] eq 'inherit';
-        $inherit++ if $r->{$prop.'-width'}->[0] eq 'inherit';
-        if ($inherit == 3) {
-          $r->{$prop} = $r->{$prop.'-color'};
-        } elsif ($inherit) {
-          next;
-        } else {
-          $r->{$prop} = [$r->{$prop.'-width'}->[0] . ' ' .
-                             $r->{$prop.'-style'}->[0] . ' ' .
-                             $r->{$prop.'-color'}->[0],
-                         $r->{$prop.'-color'}->[1]];
-        }
-        delete $r->{$prop.'-width'};
-        delete $r->{$prop.'-style'};
-        delete $r->{$prop.'-color'};
-        $i++;
-      }
-    }
-    if ($i == 4 and
-        $r->{'border-top'}->[0] eq $r->{'border-right'}->[0] and
-        $r->{'border-right'}->[0] eq $r->{'border-bottom'}->[0] and
-        $r->{'border-bottom'}->[0] eq $r->{'border-left'}->[0] and
-        $r->{'border-top'}->[1] eq $r->{'border-right'}->[1] and
-        $r->{'border-right'}->[1] eq $r->{'border-bottom'}->[1] and
-        $r->{'border-bottom'}->[1] eq $r->{'border-left'}->[1]) {
-      return {border => $r->{'border-top'}};
-    }
-
-    unless ($i) {
-      for my $prop (qw/color style width/) {
-        if (defined $r->{'border-top-'.$prop} and
-            defined $r->{'border-bottom-'.$prop} and
-            defined $r->{'border-right-'.$prop} and
-            defined $r->{'border-left-'.$prop} and
-            length $r->{'border-top-'.$prop}->[0] and
-            length $r->{'border-bottom-'.$prop}->[0] and
-            length $r->{'border-right-'.$prop}->[0] and
-            length $r->{'border-left-'.$prop}->[0] and
-            $r->{'border-top-'.$prop}->[1]
-                eq $r->{'border-bottom-'.$prop}->[1] and
-            $r->{'border-top-'.$prop}->[1]
-                eq $r->{'border-right-'.$prop}->[1] and
-            $r->{'border-top-'.$prop}->[1]
-                eq $r->{'border-left-'.$prop}->[1]) {
-          my @v = ($r->{'border-top-'.$prop},
-                   $r->{'border-right-'.$prop},
-                   $r->{'border-bottom-'.$prop},
-                   $r->{'border-left-'.$prop});
-          my $inherit = 0;
-          for (@v) {
-            $inherit++ if $_->[0] eq 'inherit';
-          }
-          if ($inherit == 4) {
-            $r->{'border-'.$prop}
-                = ['inherit', $r->{'border-top-'.$prop}->[1]];
-          } elsif ($inherit) {
-            next;
-          } else {
-            pop @v
-                if $r->{'border-right-'.$prop}->[0]
-                    eq $r->{'border-left-'.$prop}->[0];
-            pop @v
-                if $r->{'border-bottom-'.$prop}->[0]
-                    eq $r->{'border-top-'.$prop}->[0];
-            pop @v
-                if $r->{'border-right-'.$prop}->[0]
-                    eq $r->{'border-top-'.$prop}->[0];
-            $r->{'border-'.$prop} = [(join ' ', map {$_->[0]} @v),
-                                     $r->{'border-top-'.$prop}->[1]];
-          }
-          delete $r->{'border-top-'.$prop};
-          delete $r->{'border-bottom-'.$prop};
-          delete $r->{'border-right-'.$prop};
-          delete $r->{'border-left-'.$prop};
-        }
-      }
-    }
-
-    delete $r->{$_} for grep {not length $r->{$_}->[0]} keys %$r;
-    return $r;
-  },
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
 }; # border-top-color
 
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
+## [CSSBACKGROUNDS]
 $Key->{border_right_color} = {
   css => 'border-right-color',
   dom => 'border_right_color',
   parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
 }; # border-right-color
 
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
+## [CSSBACKGROUNDS]
 $Key->{border_bottom_color} = {
   css => 'border-bottom-color',
   dom => 'border_bottom_color',
   parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
 }; # border-bottom-color
 
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
+## [CSSBACKGROUNDS]
 $Key->{border_left_color} = {
   css => 'border-left-color',
   dom => 'border_left_color',
   parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
 }; # border-left-color
 
-## <http://dev.w3.org/csswg/css-ui/#outline-color>.
+## <http://dev.w3.org/csswg/css-ui/#outline-color> [CSSUI].
 $Key->{outline_color} = {
   css => 'outline-color',
   dom => 'outline_color',
@@ -314,67 +133,38 @@ $Key->{outline_color} = {
   keyword => { # for Web::CSS::MediaResolver
     invert => 1,
   },
-  serialize_multiple => sub {
-    my ($se, $st) = @_;
-
-    # XXX priority
-    my $oc = $se->serialize_prop_value ($st, 'outline-color');
-    my $os = $se->serialize_prop_value ($st, 'outline-style');
-    my $ow = $se->serialize_prop_value ($st, 'outline-width');
-    my $r = {};
-    if (length $oc and length $os and length $ow) {
-      $r->{outline} = [$ow . ' ' . $os . ' ' . $oc];
-    } else {
-      $r->{'outline-color'} = [$oc] if length $oc;
-      $r->{'outline-style'} = [$os] if length $os;
-      $r->{'outline-width'} = [$ow] if length $ow;
-    }
-    return $r;
-  },
   initial => ['KEYWORD', '-manakai-invert-or-currentcolor'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
-}; # outline
+}; # outline-color
 
-my $one_keyword_parser = sub {
-  my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-  if ($t->{type} == IDENT_TOKEN) {
-    my $prop_value = lc $t->{value}; ## TODO: case folding
-    if ($Prop->{$prop_name}->{keyword}->{$prop_value} and
-        $self->{prop_value}->{$prop_name}->{$prop_value}) {
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ["KEYWORD", $prop_value]});
-    } elsif (my $v = $Prop->{$prop_name}->{keyword_replace}->{$prop_value}) {
-      if ($self->{prop_value}->{$prop_name}->{$v}) {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ["KEYWORD", $v]});
-      }
-    } elsif ($prop_value eq 'inherit') {
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ['INHERIT']});
-    }
-  }
-  
-  $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-             level => 'm',
-             uri => $self->context->urlref,
-             token => $t);
-  return ($t, undef);
-};
-
+## <http://dev.w3.org/csswg/css-display/#display> [CSSDISPLAY].
 $Key->{display} = {
   css => 'display',
   dom => 'display',
   keyword => {
-    ## CSS 2.1
-    block => 1, inline => 1, 'inline-block' => 1, 'inline-table' => 1,
-    'list-item' => 1, none => 1,
-    table => 1, 'table-caption' => 1, 'table-cell' => 1, 'table-column' => 1,
-    'table-column-group' => 1, 'table-header-group' => 1,
-    'table-footer-group' => 1, 'table-row' => 1, 'table-row-group' => 1,
+    inline => 1, block => 1, 'list-item' => 1, #'inline-list-item' => 1,
+    'inline-block' => 1, table => 1, 'inline-table' => 1,
+    'table-cell' => 1, 'table-caption' => 1, #flex => 1, 'inline-flex' => 1,
+    #grid => 1, 'inline-grid' => 1,
+
+    ## <display-inside>
+    #auto => 1,
+
+    ## <display-outside>
+    #'block-level' => 1, 'inline-level' => 1,
+    none => 1,
+    'table-row-group' => 1, 'table-header-group' => 1,
+    'table-footer-group' => 1, 'table-row' => 1, 'table-column-group' => 1,
+    'table-column' => 1,
+
+    ## <display-extras>
+    #
+    
     ## CSS 2.0
     compact => 1, marker => 1,
+
+    # XXX Implement as shorthand
   },
   initial => ["KEYWORD", "inline"],
   #inherited => 0,
@@ -439,26 +229,28 @@ $Key->{display} = {
   },
 }; # display
 
-$Prop->{position} = {
+## <http://dev.w3.org/csswg/css-position/#position-property>
+## [CSSPOSITION].
+$Key->{position} = {
   css => 'position',
   dom => 'position',
-  key => 'position',
   keyword => {
     static => 1, relative => 1, absolute => 1, fixed => 1,
+    #center => 1, page => 1,
   },
   initial => ["KEYWORD", "static"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{position} = $Prop->{position};
-$Key->{position} = $Prop->{position};
+}; # position
 
-$Prop->{float} = {
+## <http://dev.w3.org/csswg/css-box/#the-float-property> [CSSBOX].
+$Key->{float} = {
   css => 'float',
   dom => 'float',
   key => 'float',
   keyword => {
     left => 1, right => 1, none => 1,
+    #top => 1, bottom => 1, start => 1, end => 1,
   },
   initial => ["KEYWORD", "none"],
   #inherited => 0,
@@ -490,125 +282,99 @@ $Prop->{float} = {
     ## Case 3, 4, and 5 [CSS 2.1]
     return $specified_value;
   },
-};
-$Attr->{float} = $Prop->{float};
-$Attr->{css_float} = $Prop->{float};
-$Key->{float} = $Prop->{float};
+}; # float
+$Attr->{css_float} = $Key->{float};
 
-$Prop->{clear} = {
+## <http://dev.w3.org/csswg/css-box/#the-clear-property> [CSSBOX].
+$Key->{clear} = {
   css => 'clear',
   dom => 'clear',
-  key => 'clear',
   keyword => {
     left => 1, right => 1, none => 1, both => 1,
   },
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{clear} = $Prop->{clear};
-$Key->{clear} = $Prop->{clear};
+}; # clear
 
-$Prop->{direction} = {
+## <http://dev.w3.org/csswg/css-writing-modes/#direction>
+## [CSSWRITINGMODES].
+$Key->{direction} = {
   css => 'direction',
   dom => 'direction',
-  key => 'direction',
   keyword => {
     ltr => 1, rtl => 1,
   },
   initial => ["KEYWORD", "ltr"],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{direction} = $Prop->{direction};
-$Key->{direction} = $Prop->{direction};
+}; # direction
 
-$Prop->{'unicode-bidi'} = {
+## <http://dev.w3.org/csswg/css-writing-modes/#unicode-bidi>
+## [CSSWRITINGMODES].
+$Key->{unicode_bidi} = {
   css => 'unicode-bidi',
   dom => 'unicode_bidi',
-  key => 'unicode_bidi',
   keyword => {
     normal => 1, embed => 1, 'bidi-override' => 1,
+    isolate => 1, 'isolate-override' => 1, plaintext => 1,
   },
   initial => ["KEYWORD", "normal"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{unicode_bidi} = $Prop->{'unicode-bidi'};
-$Key->{unicode_bidi} = $Prop->{'unicode-bidi'};
+}; # unicode-bidi
 
-$Prop->{'overflow-x'} = {
+## <http://dev.w3.org/csswg/css-overflow/#overflow-properties>
+## [CSSOVERFLOW].
+$Key->{overflow_x} = {
   css => 'overflow-x',
   dom => 'overflow_x',
-  key => 'overflow_x',
-  serialize_multiple => sub {
-    my ($se, $st) = @_;
-    my $self = shift;
-    
-    my $x = $se->serialize_prop_value ($st, 'overflow-x');
-    my $xi = $se->serialize_prop_priority ($st, 'overflow-x');
-    my $y = $se->serialize_prop_value ($st, 'overflow-y');
-    my $yi = $se->serialize_prop_priority ($st, 'overflow-y');
-
-    if (length $x) {
-      if (length $y) {
-        if ($x eq $y and $xi eq $yi) {
-          return {overflow => [$x, $xi]};
-        } else {
-          return {'overflow-x' => [$x, $xi], 'overflow-y' => [$y, $yi]};
-        }
-      } else {
-        return {'overflow-x' => [$x, $xi]};
-      }
-    } else {
-      if (length $y) {
-        return {'overflow-y' => [$y, $yi]};
-      } else {
-        return {};
-      }
-    }
-  },
   keyword => {
     visible => 1, hidden => 1, scroll => 1, auto => 1,
-    '-moz-hidden-unscrollable' => 1, '-webkit-marquee' => 1,
+    '-moz-hidden-unscrollable' => 1,
+    # paged-x paged-y paged-x-controls paged-y-controls fragments
   },
   initial => ["KEYWORD", "visible"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{overflow_x} = $Prop->{'overflow-x'};
-$Key->{overflow_x} = $Prop->{'overflow-x'};
+}; # overflow-x
 
-$Prop->{'overflow-y'} = {
+## <http://dev.w3.org/csswg/css-overflow/#overflow-properties>
+## [CSSOVERFLOW].
+$Key->{overflow_y} = {
   css => 'overflow-y',
   dom => 'overflow_y',
-  key => 'overflow_y',
-  serialize_multiple => $Prop->{'overflow-x'}->{serialize_multiple},
-  keyword => $Prop->{'overflow-x'}->{keyword},
+  keyword => $Key->{overflow_x}->{keyword},
   initial => ["KEYWORD", "visible"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{overflow_y} = $Prop->{'overflow-y'};
-$Key->{overflow_y} = $Prop->{'overflow-y'};
+}; # overflow-y
 
-$Prop->{overflow} = {
+## <http://dev.w3.org/csswg/css-overflow/#overflow-properties>
+## [CSSOVERFLOW].
+$Key->{overflow} = {
   css => 'overflow',
   dom => 'overflow',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-    my ($t2, $pv) = $one_keyword_parser->($self, $prop_name, $tt, $t, $onerror);
-    if (defined $pv) {
-      return ($t2, {'overflow-x' => $pv->{overflow},
-                   'overflow-y' => $pv->{overflow}});
+  is_shorthand => 1,
+  longhand_subprops => [qw(overflow_x overflow_y)],
+  parse_shorthand => sub {
+    my ($self, $def, $tokens) = @_;
+    my $value = $Key->{overflow_x}->{parse_longhand}->($self, $tokens);
+    if (defined $value) {
+      return {overflow_x => $value, overflow_y => $value};
     } else {
-      return ($t2, $pv);
+      return undef;
     }
-  }, # parse
-  keyword => $Prop->{'overflow-x'}->{keyword},
-  serialize_multiple => $Prop->{'overflow-x'}->{serialize_multiple},
-};
-$Attr->{overflow} = $Prop->{overflow};
+  }, # parse_shorthand
+  serialize_shorthand => sub {
+    my ($se, $strings) = @_;
+    if ($strings->{overflow_x} eq $strings->{overflow_y}) {
+      return $strings->{overflow_x};
+    } else {
+      return undef;
+    }
+  }, # serialize_shorthand
+}; # overflow
 
 $Prop->{visibility} = {
   css => 'visibility',
@@ -1020,46 +786,13 @@ $Prop->{widows} = {
 $Attr->{widows} = $Prop->{widows};
 $Key->{widows} = $Prop->{widows};
 
-$Prop->{opacity} = {
+# <http://dev.w3.org/csswg/css-color/#opacity> [CSSCOLOR].
+$Key->{opacity} = {
   css => 'opacity',
   dom => 'opacity',
-  key => 'opacity',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my $has_sign;
-    my $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
-    if ($t->{type} == NUMBER_TOKEN) {
-      ## ISSUE: See <http://suika.fam.cx/gate/2005/sw/opacity> for
-      ## browser compatibility issue.
-      my $value = $t->{number};
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ["NUMBER", $sign * $value]});
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
-      }
-    }
-    
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
-  initial => ['NUMBER', 2],
-  inherited => 1,
+  parse_longhand => $Web::CSS::Values::NumberParser,
+  initial => ['NUMBER', 1],
+  #inherited => 0,
   compute => sub {
     my ($self, $element, $prop_name, $specified_value) = @_;
 
@@ -1075,17 +808,9 @@ $Prop->{opacity} = {
 
     return $specified_value;
   },
-  serialize_multiple => sub {
-    ## NOTE: This CODE is necessary to avoid two 'opacity' properties
-    ## are outputed in |cssText| (for 'opacity' and for '-moz-opacity').
-    return {opacity => [$_[0]->serialize_prop_value ($_[1], 'opacity')]},
-  },
-};
-$Attr->{opacity} = $Prop->{opacity};
-$Key->{opacity} = $Prop->{opacity};
-
-$Prop->{'-moz-opacity'} = $Prop->{opacity};
-$Attr->{_moz_opacity} = $Attr->{opacity};
+}; # opacity
+$Prop->{'-webkit-opacity'} = $Key->{opacity};
+$Attr->{_webkit_opacity} = $Key->{opacity};
 
 my $length_unit = {
   em => 1, ex => 1, px => 1,

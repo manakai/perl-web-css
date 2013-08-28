@@ -148,6 +148,18 @@ our $NNNumberParser = sub {
   return undef;
 }; # $NNNumberParser
 
+## <number> [CSSSYNTAX]
+our $NumberParser = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2 and $us->[0]->{type} == NUMBER_TOKEN) {
+    return ['NUMBER', 0+$us->[0]->{number}];
+  }
+  $self->onerror->(type => 'css:value:not number', # XXX
+                   level => 'm',
+                   token => $us->[0]);
+  return undef;
+}; # $NumberParser
+
 my $LengthUnits = {
   em => 1, ex => 1, px => 1,
   in => 1, cm => 1, mm => 1, pt => 1, pc => 1,

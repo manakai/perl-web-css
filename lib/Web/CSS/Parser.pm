@@ -533,9 +533,15 @@ sub parse_constructs_as_prop_value ($$$) {
 
   # XXX custom properties
 
-  $self->media_resolver->{prop}->{$prop_name} or return undef;
-
   my $def = $Web::CSS::Props::Prop->{$prop_name} or return undef;
+  $self->media_resolver->{prop}->{$def->{css}} or return undef;
+
+  if ($def->{css} ne $prop_name) {
+    $self->onerror->(type => 'css:obsolete', text => $prop_name, # XXX
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $tokens->[0]);
+  }
 
   my $value;
   shift @$tokens while $tokens->[0]->{type} == S_TOKEN;
@@ -552,7 +558,7 @@ sub parse_constructs_as_prop_value ($$$) {
     $value = $1;
     $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
     if ($value eq '-moz-initial') {
-      $self->onerror->(type => 'css:obsolete', text => $value,
+      $self->onerror->(type => 'css:obsolete', text => $value, # XXX
                        level => 'm',
                        uri => $self->context->urlref,
                        token => $tokens->[0]);

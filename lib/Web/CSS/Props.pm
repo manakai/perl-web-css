@@ -4252,7 +4252,7 @@ $Key->{background_position} = {
       } elsif ($prop_value eq 'center') {
         $prop_value{background_position_x} = ['KEYWORD', $prop_value];
         $t = shift @$tokens;
-        $t = shift @$tokens while $t->{type} = S_TOKEN;
+        $t = shift @$tokens while $t->{type} == S_TOKEN;
 
         if ($t->{type} == IDENT_TOKEN) {
           my $prop_value = $t->{value};

@@ -22,10 +22,6 @@ sub set_supported ($%) {
         $self->{prop_value}->{$pn}->{$_} = 1
             if $Web::CSS::Props::Prop->{$pn}->{keyword}->{$_};
       }
-      for (keys %{$Web::CSS::Props::Prop->{$pn}->{keyword_replace} or {}}) {
-        $self->{prop_value}->{$pn}->{$_} = 1
-            if $Web::CSS::Props::Prop->{$pn}->{keyword_replace}->{$_};
-      }
     }
   }
 

@@ -138,7 +138,9 @@ $Key->{outline_color} = {
   compute => $Key->{color}->{compute},
 }; # outline-color
 
-## <http://dev.w3.org/csswg/css-display/#display> [CSSDISPLAY].
+## <http://dev.w3.org/csswg/css-display/#display> [CSSDISPLAY],
+## <http://www.w3.org/TR/1998/REC-CSS2-19980512/visuren.html#display-prop>
+## [CSS20].
 $Key->{display} = {
   css => 'display',
   dom => 'display',
@@ -162,9 +164,7 @@ $Key->{display} = {
     #
     
     ## CSS 2.0
-    compact => 1, marker => 1,
-
-    # XXX Implement as shorthand
+    'run-in' => 1, compact => 1, marker => 1,
   },
   initial => ["KEYWORD", "inline"],
   #inherited => 0,
@@ -376,261 +376,245 @@ $Key->{overflow} = {
   }, # serialize_shorthand
 }; # overflow
 
-$Prop->{visibility} = {
+## <http://dev.w3.org/csswg/css-box/#the-visibility-property>
+## [CSSBOX].
+$Key->{visibility} = {
   css => 'visibility',
   dom => 'visibility',
-  key => 'visibility',
   keyword => {
     visible => 1, hidden => 1, collapse => 1,
   },
   initial => ["KEYWORD", "visible"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{visibility} = $Prop->{visibility};
-$Key->{visibility} = $Prop->{visibility};
+}; # visibility
 
-$Prop->{'list-style-type'} = {
+## <http://dev.w3.org/csswg/css-lists/#list-style-type> [CSSLISTS],
+## <http://dev.w3.org/csswg/css-counter-styles/> [CSSCOUNTERSTYLES].
+$Key->{list_style_type} = {
   css => 'list-style-type',
   dom => 'list_style_type',
-  key => 'list_style_type',
   keyword => {
-    ## CSS 2.1
-    qw/
-      disc 1 circle 1 square 1 decimal 1 decimal-leading-zero 1 
-      lower-roman 1 upper-roman 1 lower-greek 1 lower-latin 1
-      upper-latin 1 armenian 1 georgian 1 lower-alpha 1 upper-alpha 1
-      none 1
-    /,
-    ## CSS 2.0
-    hebrew => 1, 'cjk-ideographic' => 1, hiragana => 1, katakana => 1,
-    'hiragana-iroha' => 1, 'katakana-iroha' => 1,
+    map { $_ => 1 } qw(
+      none
+
+      decimal decimal-leading-zero cjk-decimal lower-roman upper-roman
+      armenian georgian hebrew
+
+      lower-alpha lower-latin upper-alpha upper-latin lower-greek
+      hiragana hiragana-iroha katakana katakana-iroha
+
+      disc circle square disclosure-open disclosure-closed
+
+      japanese-informal japanese-formal korean-hangul-formal
+      korean-hanja-informal korean-hanja-formal simp-chinese-informal
+      simp-chinese-formal trad-chinese-informal trad-chinese-formal
+      cjk-ideographic
+
+      ethiopic-numeric
+    )
   },
   initial => ["KEYWORD", 'disc'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{list_style_type} = $Prop->{'list-style-type'};
-$Key->{list_style_type} = $Prop->{'list-style-type'};
+}; # list-style-type
 
-$Prop->{'list-style-position'} = {
+## <http://dev.w3.org/csswg/css-lists/#list-style-position-property>
+## [CSSLISTS].
+$Key->{list_style_position} = {
   css => 'list-style-position',
   dom => 'list_style_position',
-  key => 'list_style_position',
   keyword => {
     inside => 1, outside => 1,
   },
   initial => ["KEYWORD", 'outside'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{list_style_position} = $Prop->{'list-style-position'};
-$Key->{list_style_position} = $Prop->{'list-style-position'};
+}; # list-style-position
 
-$Prop->{'page-break-before'} = {
+## <http://dev.w3.org/csswg/css-break/#page-break-properties>
+## [CSSBREAK].
+$Key->{page_break_before} = {
   css => 'page-break-before',
   dom => 'page_break_before',
-  key => 'page_break_before',
   keyword => {
     auto => 1, always => 1, avoid => 1, left => 1, right => 1,
   },
   initial => ["KEYWORD", 'auto'],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{page_break_before} = $Prop->{'page-break-before'};
-$Key->{page_break_before} = $Prop->{'page-break-before'};
+}; # page-break-before
 
-$Prop->{'page-break-after'} = {
+## <http://dev.w3.org/csswg/css-break/#page-break-properties>
+## [CSSBREAK].
+$Key->{page_break_after} = {
   css => 'page-break-after',
   dom => 'page_break_after',
-  key => 'page_break_after',
   keyword => {
     auto => 1, always => 1, avoid => 1, left => 1, right => 1,
   },
   initial => ["KEYWORD", 'auto'],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{page_break_after} = $Prop->{'page-break-after'};
-$Key->{page_break_after} = $Prop->{'page-break-after'};
+}; # page-break-after
 
-$Prop->{'page-break-inside'} = {
+## <http://dev.w3.org/csswg/css-break/#page-break-properties>
+## [CSSBREAK].
+$Key->{page_break_inside} = {
   css => 'page-break-inside',
   dom => 'page_break_inside',
-  key => 'page_break_inside',
   keyword => {
     auto => 1, avoid => 1,
   },
   initial => ["KEYWORD", 'auto'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{page_break_inside} = $Prop->{'page-break-inside'};
-$Key->{page_break_inside} = $Prop->{'page-break-inside'};
+}; # page-break-inside
 
-$Prop->{'background-repeat'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-background-repeat>
+## [CSSBACKGROUNDS].
+$Key->{background_repeat} = {
   css => 'background-repeat',
   dom => 'background_repeat',
-  key => 'background_repeat',
-  serialize_multiple => $Key->{background_color}->{serialize_multiple},
   keyword => {
     repeat => 1, 'repeat-x' => 1, 'repeat-y' => 1, 'no-repeat' => 1,
   },
   initial => ["KEYWORD", 'repeat'],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{background_repeat} = $Prop->{'background-repeat'};
-$Key->{backgroud_repeat} = $Prop->{'background-repeat'};
+}; # background-repeat
 
-$Prop->{'background-attachment'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-background-attachment>
+## [CSSBACKGROUNDS].
+$Key->{background_attachment} = {
   css => 'background-attachment',
   dom => 'background_attachment',
-  key => 'background_attachment',
-  serialize_multiple => $Key->{background_color}->{serialize_multiple},
   keyword => {
     scroll => 1, fixed => 1,
   },
   initial => ["KEYWORD", 'scroll'],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{background_attachment} = $Prop->{'background-attachment'};
-$Key->{backgroud_attachment} = $Prop->{'background-attachment'};
+}; # background-attachment
 
-$Prop->{'font-style'} = {
+## <http://dev.w3.org/csswg/css-fonts/#font-style-prop> [CSSFONTS].
+$Key->{font_style} = {
   css => 'font-style',
   dom => 'font_style',
-  key => 'font_style',
   keyword => {
     normal => 1, italic => 1, oblique => 1,
   },
   initial => ["KEYWORD", 'normal'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{font_style} = $Prop->{'font-style'};
-$Key->{font_style} = $Prop->{'font-style'};
+}; # font-style
 
-$Prop->{'font-variant'} = {
+## <http://dev.w3.org/csswg/css-fonts/#font-rend-desc> [CSSFONTS].
+$Key->{font_variant} = {
   css => 'font-variant',
   dom => 'font_variant',
-  key => 'font_variant',
   keyword => {
     normal => 1, 'small-caps' => 1,
   },
   initial => ["KEYWORD", 'normal'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{font_variant} = $Prop->{'font-variant'};
-$Key->{font_variant} = $Prop->{'font-variant'};
+}; # font-variant
 
-$Prop->{'text-align'} = {
+## <http://dev.w3.org/csswg/css-text/#text-align> [CSSTEXT].
+$Key->{text_align} = {
   css => 'text-align',
   dom => 'text_align',
-  key => 'text_align',
   keyword => {
-    left => 1, right => 1, center => 1, justify => 1, ## CSS 2
-    begin => 1, end => 1, ## CSS 3
+    left => 1, right => 1, center => 1, justify => 1,
+    start => 1, end => 1,
   },
-  initial => ["KEYWORD", 'begin'],
+  initial => ["KEYWORD", 'start'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{text_align} = $Prop->{'text-align'};
-$Key->{text_align} = $Prop->{'text-align'};
+}; # text-align
 
-$Prop->{'text-transform'} = {
+## <http://dev.w3.org/csswg/css-text/#text-transform> [CSSTEXT].
+$Key->{text_transform} = {
   css => 'text-transform',
   dom => 'text_transform',
-  key => 'text_transform',
   keyword => {
     capitalize => 1, uppercase => 1, lowercase => 1, none => 1,
   },
   initial => ["KEYWORD", 'none'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{text_transform} = $Prop->{'text-transform'};
-$Key->{text_transform} = $Prop->{'text-transform'};
+}; # text-transform
 
-$Prop->{'white-space'} = {
+## <http://dev.w3.org/csswg/css-text/#white-space> [CSSTEXT].
+$Key->{white_space} = {
   css => 'white-space',
   dom => 'white_space',
-  key => 'white_space',
   keyword => {
     normal => 1, pre => 1, nowrap => 1, 'pre-wrap' => 1, 'pre-line' => 1,
-  },
-  keyword_replace => {
-    '-moz-pre-wrap' => 'pre-wrap', '-o-pre-wrap' => 'pre-wrap',
   },
   initial => ["KEYWORD", 'normal'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{white_space} = $Prop->{'white-space'};
-$Key->{white_space} = $Prop->{'white-space'};
+}; # white-space
 
-$Prop->{'caption-side'} = {
+## <http://www.w3.org/TR/CSS21/tables.html#propdef-caption-side>
+## [CSS21],
+## <http://www.w3.org/TR/1998/REC-CSS2-19980512/tables.html#propdef-caption-side>
+## [CSS20].
+$Key->{caption_side} = {
   css => 'caption-side',
   dom => 'caption_side',
-  key => 'caption_side',
   keyword => {
-    ## CSS 2.1
     top => 1, bottom => 1,
+
     ## CSS 2
     left => 1, right => 1,
   },
   initial => ['KEYWORD', 'top'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{caption_side} = $Prop->{'caption-side'};
-$Key->{caption_side} = $Prop->{'caption-side'};
+}; # caption-side
 
-$Prop->{'table-layout'} = {
+## <http://www.w3.org/TR/CSS21/tables.html#width-layout> [CSS21].
+$Key->{table_layout} = {
   css => 'table-layout',
   dom => 'table_layout',
-  key => 'table_layout',
   keyword => {
     auto => 1, fixed => 1,
   },
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{table_layout} = $Prop->{'table-layout'};
-$Key->{table_layout} = $Prop->{'table-layout'};
+}; # table-layout
 
-$Prop->{'border-collapse'} = {
+## <http://www.w3.org/TR/CSS21/tables.html#propdef-border-collapse>
+## [CSS21].
+$Key->{border_collapse} = {
   css => 'border-collapse',
   dom => 'border_collapse',
-  key => 'border_collapse',
   keyword => {
     collapse => 1, separate => 1,
   },
   initial => ['KEYWORD', 'separate'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{border_collapse} = $Prop->{'border-collapse'};
-$Key->{border_collapse} = $Prop->{'border-collapse'};
+}; # border-collapse
 
-$Prop->{'empty-cells'} = {
+## <http://www.w3.org/TR/CSS21/tables.html#propdef-empty-cells>
+## [CSS21].
+$Key->{empty_cells} = {
   css => 'empty-cells',
   dom => 'empty_cells',
-  key => 'empty_cells',
   keyword => {
     show => 1, hide => 1,
   },
   initial => ['KEYWORD', 'show'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{empty_cells} = $Prop->{'empty-cells'};
-$Key->{empty_cells} = $Prop->{'empty-cells'};
+}; # empty-cells
+
+# XXX---XXX
 
 $Prop->{'z-index'} = {
   css => 'z-index',

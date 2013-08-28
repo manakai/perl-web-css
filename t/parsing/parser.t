@@ -29,6 +29,7 @@ my $data_d = file (__FILE__)->dir->parent->parent
     css-namespace.dat
     css-import.dat
     css-visual.dat
+    css-lists.dat
     css-generated.dat
     css-paged.dat
     css-text.dat

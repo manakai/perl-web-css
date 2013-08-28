@@ -103,21 +103,49 @@ To serialize the 'overflow' property value, follow these steps:
 
   3. Otherwise, it is not serializable.  Return null.
 
+=item CSSBREAK
+
+CSS Fragmentation <http://dev.w3.org/csswg/css-break/>.
+
 =item CSSWRITINGMODES
 
 CSS Writing Modes <http://dev.w3.org/csswg/css-writing-modes/>.
 
+=item CSSLISTS
+
+CSS Lists and Counters <http://dev.w3.org/csswg/css-lists/>.
+
+=item CSSCOUNTERSTYLES
+
+CSS Counter Styles <http://dev.w3.org/csswg/css-counter-styles/>.
+
 =item CSSUI
 
 CSS Basic User Interface <http://dev.w3.org/csswg/css-ui/>.
+
+=item CSSTEXT
+
+CSS Text <http://dev.w3.org/csswg/css-text/>.
+
+=item CSSFONTS
+
+CSS Fonts <http://dev.w3.org/csswg/css-fonts/>.
+
+=item CSS21
+
+CSS 2.1 <http://www.w3.org/TR/CSS21/tables.html>.
+
+=item CSS20
+
+CSS 2 <http://www.w3.org/TR/1998/REC-CSS2-19980512/>.
 
 =back
 
 =head1 OBSOLETE FEATURES
 
 Support for following feature has been removed: Keywords
-'-moz-use-text-color' and '-webkit-marquee', and property
-'-moz-opacity'.
+'-moz-pre-wrap', '-moz-use-text-color', '-o-pre-wrap', and
+'-webkit-marquee', and property '-moz-opacity'.
 
 =head1 SEE ALSO
 

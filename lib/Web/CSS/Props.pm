@@ -1,7 +1,7 @@
 package Web::CSS::Props;
 use strict;
 use warnings;
-our $VERSION = '5.0';
+our $VERSION = '6.0';
 use Web::CSS::Tokenizer;
 use Web::CSS::Colors;
 use Web::CSS::Values;
@@ -29,269 +29,14 @@ my $compute_as_specified = sub ($$$$) {
   return $_[3];
 }; # $compute_as_specified
 
-my $x11_colors = $Web::CSS::Colors::X11Colors;
-my $system_colors = $Web::CSS::Colors::SystemColors;
-
-my $parse_color = sub {
-  my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-  ## See
-  ## <http://suika.fam.cx/gate/2005/sw/%3Ccolor%3E>,
-  ## <http://suika.fam.cx/gate/2005/sw/rgb>,
-  ## <http://suika.fam.cx/gate/2005/sw/-moz-rgba>,
-  ## <http://suika.fam.cx/gate/2005/sw/hsl>,
-  ## <http://suika.fam.cx/gate/2005/sw/-moz-hsla>, and
-  ## <http://suika.fam.cx/gate/2005/sw/color>
-  ## for browser compatibility issue.
-
-  ## NOTE: Implementing CSS3 Color CR (2003), except for attr(),
-  ## rgba(), and hsla().
-  ## NOTE: rgb(...{EOF} is not supported (only Opera does).
-
-  if ($t->{type} == IDENT_TOKEN) {
-    my $value = lc $t->{value}; ## TODO: case
-    if ($x11_colors->{$value} or
-        $system_colors->{$value}) {
-      ## NOTE: "For systems that do not have a corresponding value, the
-      ## specified value should be mapped to the nearest system value, or to
-      ## a default color." [CSS 2.1].
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ['KEYWORD', $value]});
-    } elsif ({
-      transparent => 1, ## For 'background-color' in CSS2.1, everywhre in CSS3.
-      flavor => 1, ## CSS3.
-      invert => 1, ## For 'outline-color' in CSS2.1.
-      '-moz-use-text-color' => 1, ## For <border-color> in Gecko.
-      '-manakai-default' => 1, ## CSS2.1 initial for 'color'
-      '-manakai-invert-or-currentcolor' => 1, ## CSS2.1 initial4'outline-color'
-    }->{$value} and $self->{prop_value}->{$prop_name}->{$value}) {
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ['KEYWORD', $value]});
-    } elsif ($value eq 'currentcolor' or $value eq '-moz-use-text-color') {
-      ## NOTE: '-manakai-invert-or-currentcolor' is not allowed in 'color'.
-      $t = $tt->get_next_token;
-      if ($prop_name eq 'color') {
-        return ($t, {$prop_name => ['INHERIT']});
-      } else {
-        return ($t, {$prop_name => ['KEYWORD', $value]});
-      }
-    } elsif ($value eq 'inherit') {
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ['INHERIT']});
-    }
-  }
-
-  if ($t->{type} == HASH_TOKEN or
-      ($self->context->quirks and {
-        IDENT_TOKEN, 1,
-        NUMBER_TOKEN, 1,
-        DIMENSION_TOKEN, 1,
-      }->{$t->{type}})) {
-    my $v = lc (defined $t->{number} ? $t->{number} : '' . $t->{value}); ## TODO: case
-    if ($v =~ /\A([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})\z/) {
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ['RGBA', hex $1, hex $2, hex $3, 1]});
-    } elsif ($v =~ /\A([0-9a-f])([0-9a-f])([0-9a-f])\z/) {
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ['RGBA', hex $1.$1, hex $2.$2,
-                                  hex $3.$3, 1]});
-    }
-  }
-
-  if ($t->{type} == FUNCTION_TOKEN) {
-    my $func = lc $t->{value}; ## TODO: case
-    if ($func eq 'rgb') {
-      $t = $tt->get_next_token;
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      my $sign = 1;
-      if ($t->{type} == MINUS_TOKEN) {
-        $sign = -1;
-        $t = $tt->get_next_token;
-      } elsif ($t->{type} == PLUS_TOKEN) {
-        $t = $tt->get_next_token;
-      }
-      if ($t->{type} == NUMBER_TOKEN) {
-        my $r = $t->{number} * $sign;
-        $t = $tt->get_next_token;
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ($t->{type} == COMMA_TOKEN) {
-          $t = $tt->get_next_token;
-          $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-          $sign = 1;
-          if ($t->{type} == MINUS_TOKEN) {
-            $sign = -1;
-            $t = $tt->get_next_token;
-          } elsif ($t->{type} == PLUS_TOKEN) {
-            $t = $tt->get_next_token;
-          }
-          if ($t->{type} == NUMBER_TOKEN) {
-            my $g = $t->{number} * $sign;
-            $t = $tt->get_next_token;
-            $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-            if ($t->{type} == COMMA_TOKEN) {
-              $t = $tt->get_next_token;
-              $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-              $sign = 1;
-              if ($t->{type} == MINUS_TOKEN) {
-                $sign = -1;
-                $t = $tt->get_next_token;
-              } elsif ($t->{type} == PLUS_TOKEN) {
-                $t = $tt->get_next_token;
-              }
-              if ($t->{type} == NUMBER_TOKEN) {
-                my $b = $t->{number} * $sign;
-                $t = $tt->get_next_token;
-                $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-                if ($t->{type} == RPAREN_TOKEN) {
-                  $t = $tt->get_next_token;
-                  return ($t,
-                          {$prop_name =>
-                           $self->media_resolver->clip_color
-                               (['RGBA', $r, $g, $b, 1])});
-                }
-              }
-            }
-          }
-        }
-      } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-        my $r = $t->{number} * 255 / 100 * $sign;
-        $t = $tt->get_next_token;
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ($t->{type} == COMMA_TOKEN) {
-          $t = $tt->get_next_token;
-          $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-          $sign = 1;
-          if ($t->{type} == MINUS_TOKEN) {
-            $sign = -1;
-            $t = $tt->get_next_token;
-          } elsif ($t->{type} == PLUS_TOKEN) {
-            $t = $tt->get_next_token;
-          }
-          if ($t->{type} == PERCENTAGE_TOKEN) {
-            my $g = $t->{number} * 255 / 100 * $sign;
-            $t = $tt->get_next_token;
-            $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-            if ($t->{type} == COMMA_TOKEN) {
-              $t = $tt->get_next_token;
-              $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-              $sign = 1;
-              if ($t->{type} == MINUS_TOKEN) {
-                $sign = -1;
-                $t = $tt->get_next_token;
-              } elsif ($t->{type} == PLUS_TOKEN) {
-                $t = $tt->get_next_token;
-              }
-              if ($t->{type} == PERCENTAGE_TOKEN) {
-                my $b = $t->{number} * 255 / 100 * $sign;
-                $t = $tt->get_next_token;
-                $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-                if ($t->{type} == RPAREN_TOKEN) {
-                  $t = $tt->get_next_token;
-                  return ($t,
-                          {$prop_name =>
-                           $self->media_resolver->clip_color
-                               (['RGBA', $r, $g, $b, 1])});
-                }
-              }
-            }
-          }
-        }
-      }
-    } elsif ($func eq 'hsl') {
-      $t = $tt->get_next_token;
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      my $sign = 1;
-      if ($t->{type} == MINUS_TOKEN) {
-        $sign = -1;
-        $t = $tt->get_next_token;
-      } elsif ($t->{type} == PLUS_TOKEN) {
-        $t = $tt->get_next_token;
-      }
-      if ($t->{type} == NUMBER_TOKEN) {
-        my $h = (((($t->{number} * $sign) % 360) + 360) % 360) / 360;
-        $t = $tt->get_next_token;
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ($t->{type} == COMMA_TOKEN) {
-          $t = $tt->get_next_token;
-          $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-          $sign = 1;
-          if ($t->{type} == MINUS_TOKEN) {
-            $sign = -1;
-            $t = $tt->get_next_token;
-          } elsif ($t->{type} == PLUS_TOKEN) {
-            $t = $tt->get_next_token;
-          }
-          if ($t->{type} == PERCENTAGE_TOKEN) {
-            my $s = $t->{number} * $sign / 100;
-            $s = 0 if $s < 0;
-            $s = 1 if $s > 1;
-            $t = $tt->get_next_token;
-            $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-            if ($t->{type} == COMMA_TOKEN) {
-              $t = $tt->get_next_token;
-              $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-              $sign = 1;
-              if ($t->{type} == MINUS_TOKEN) {
-                $sign = -1;
-                $t = $tt->get_next_token;
-              } elsif ($t->{type} == PLUS_TOKEN) {
-                $t = $tt->get_next_token;
-              }
-              if ($t->{type} == PERCENTAGE_TOKEN) {
-                my $l = $t->{number} * $sign / 100;
-                $l = 0 if $l < 0;
-                $l = 1 if $l > 1;
-                $t = $tt->get_next_token;
-                $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-                if ($t->{type} == RPAREN_TOKEN) {
-                  my $m2 = $l <= 0.5 ? $l * ($s + 1) : $l + $s - $l * $s;
-                  my $m1 = $l * 2 - $m2;
-                  my $hue2rgb = sub ($$$) {
-                    my ($m1, $m2, $h) = @_;
-                    $h++ if $h < 0;
-                    $h-- if $h > 1;
-                    return $m1 + ($m2 - $m1) * $h * 6 if $h * 6 < 1;
-                    return $m2 if $h * 2 < 1;
-                    return $m1 + ($m2 - $m1) * (2/3 - $h) * 6 if $h * 3 < 2;
-                    return $m1;
-                  };
-                  $t = $tt->get_next_token;
-                  return ($t,
-                          {$prop_name =>
-                           $self->media_resolver->clip_color
-                               (['RGBA',
-                                 $hue2rgb->($m1, $m2, $h + 1/3) * 255,
-                                 $hue2rgb->($m1, $m2, $h) * 255,
-                                 $hue2rgb->($m1, $m2, $h - 1/3) * 255, 1])});
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  $onerror->(type => 'CSS syntax error', text => 'color',
-             level => 'm',
-             uri => $self->context->urlref,
-             token => $t);
-  
-  return ($t, undef);
-}; # $parse_color
-
-$Prop->{color} = {
+## <http://dev.w3.org/csswg/css-color/#foreground>.
+$Key->{color} = {
   css => 'color',
   dom => 'color',
-  key => 'color',
-  parse => $parse_color,
-  keyword => {
-    transparent => 1, ## For 'background-color' in CSS2.1, everywhre in CSS3.
-    flavor => 1, ## CSS3.
-    invert => 1, ## For 'outline-color' in CSS2.1.
-    '-moz-use-text-color' => 1, ## For <border-color> in Gecko.
-    '-manakai-default' => 1, ## CSS2.1 initial for 'color'
-    '-manakai-invert-or-currentcolor' => 1, ## CSS2.1 initial4'outline-color'
+  parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
+  keyword => { # for Web::CSS::MediaResolver
+    transparent => 1,
+    flavor => 1,
   },
   initial => ['KEYWORD', '-manakai-default'],
   inherited => 1,
@@ -300,12 +45,11 @@ $Prop->{color} = {
 
     if (defined $specified_value) {
       if ($specified_value->[0] eq 'KEYWORD') {
-        if ($x11_colors->{$specified_value->[1]}) {
-          return ['RGBA', @{$x11_colors->{$specified_value->[1]}}, 1];
+        if ($Web::CSS::Colors::X11Colors->{$specified_value->[1]}) {
+          return ['RGBA', @{$Web::CSS::Colors::X11Colors->{$specified_value->[1]}}, 1];
         } elsif ($specified_value->[1] eq 'transparent') {
           return ['RGBA', 0, 0, 0, 0];
         } elsif ($specified_value->[1] eq 'currentcolor' or
-                 $specified_value->[1] eq '-moz-use-text-color' or
                  ($specified_value->[1] eq '-manakai-invert-or-currentcolor'and
                   not $self->{has_invert})) {
           unless ($prop_name eq 'color') {
@@ -324,16 +68,12 @@ $Prop->{color} = {
     
     return $specified_value;
   },
-};
-$Attr->{color} = $Prop->{color};
-$Key->{color} = $Prop->{color};
+}; # color
 
-$Prop->{'background-color'} = {
+$Key->{background_color} = {
   css => 'background-color',
   dom => 'background_color',
-  key => 'background_color',
-  parse => $parse_color,
-  keyword => $Prop->{color}->{keyword},
+  parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
   serialize_multiple => sub {
     my ($se, $st) = @_;
 
@@ -422,17 +162,13 @@ $Prop->{'background-color'} = {
   },
   initial => ['KEYWORD', 'transparent'],
   #inherited => 0,
-  compute => $Prop->{color}->{compute},
-};
-$Attr->{background_color} = $Prop->{'background-color'};
-$Key->{background_color} = $Prop->{'background-color'};
+  compute => $Key->{color}->{compute},
+}; # background-color
 
-$Prop->{'border-top-color'} = {
+$Key->{border_top_color} = {
   css => 'border-top-color',
   dom => 'border_top_color',
-  key => 'border_top_color',
-  parse => $parse_color,
-  keyword => $Prop->{color}->{keyword},
+  parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
   serialize_multiple => sub {
     my ($se, $st) = @_;
     ## NOTE: This algorithm returns the same result as that of Firefox 2
@@ -537,59 +273,47 @@ $Prop->{'border-top-color'} = {
   },
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
-  compute => $Prop->{color}->{compute},
-};
-$Attr->{border_top_color} = $Prop->{'border-top-color'};
-$Key->{border_top_color} = $Prop->{'border-top-color'};
+  compute => $Key->{color}->{compute},
+}; # border-top-color
 
-$Prop->{'border-right-color'} = {
+$Key->{border_right_color} = {
   css => 'border-right-color',
   dom => 'border_right_color',
-  key => 'border_right_color',
-  parse => $parse_color,
-  keyword => $Prop->{color}->{keyword},
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
-  compute => $Prop->{color}->{compute},
-};
-$Attr->{border_right_color} = $Prop->{'border-right-color'};
-$Key->{border_right_color} = $Prop->{'border-right-color'};
+  compute => $Key->{color}->{compute},
+}; # border-right-color
 
-$Prop->{'border-bottom-color'} = {
+$Key->{border_bottom_color} = {
   css => 'border-bottom-color',
   dom => 'border_bottom_color',
-  key => 'border_bottom_color',
-  parse => $parse_color,
-  keyword => $Prop->{color}->{keyword},
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
-  compute => $Prop->{color}->{compute},
-};
-$Attr->{border_bottom_color} = $Prop->{'border-bottom-color'};
-$Key->{border_bottom_color} = $Prop->{'border-bottom-color'};
+  compute => $Key->{color}->{compute},
+}; # border-bottom-color
 
-$Prop->{'border-left-color'} = {
+$Key->{border_left_color} = {
   css => 'border-left-color',
   dom => 'border_left_color',
-  key => 'border_left_color',
-  parse => $parse_color,
-  keyword => $Prop->{color}->{keyword},
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
-  compute => $Prop->{color}->{compute},
-};
-$Attr->{border_left_color} = $Prop->{'border-left-color'};
-$Key->{border_left_color} = $Prop->{'border-left-color'};
+  compute => $Key->{color}->{compute},
+}; # border-left-color
 
-$Prop->{'outline-color'} = {
+## <http://dev.w3.org/csswg/css-ui/#outline-color>.
+$Key->{outline_color} = {
   css => 'outline-color',
   dom => 'outline_color',
-  key => 'outline_color',
-  parse => $parse_color,
-  keyword => $Prop->{color}->{keyword},
+  parse_longhand => $Web::CSS::Values::OutlineColorParser,
+  keyword => { # for Web::CSS::MediaResolver
+    invert => 1,
+  },
   serialize_multiple => sub {
     my ($se, $st) = @_;
 
@@ -609,10 +333,8 @@ $Prop->{'outline-color'} = {
   },
   initial => ['KEYWORD', '-manakai-invert-or-currentcolor'],
   #inherited => 0,
-  compute => $Prop->{color}->{compute},
-};
-$Attr->{outline_color} = $Prop->{'outline-color'};
-$Key->{outline_color} = $Prop->{'outline-color'};
+  compute => $Key->{color}->{compute},
+}; # outline
 
 my $one_keyword_parser = sub {
   my ($self, $prop_name, $tt, $t, $onerror) = @_;
@@ -641,10 +363,9 @@ my $one_keyword_parser = sub {
   return ($t, undef);
 };
 
-$Prop->{display} = {
+$Key->{display} = {
   css => 'display',
   dom => 'display',
-  key => 'display',
   keyword => {
     ## CSS 2.1
     block => 1, inline => 1, 'inline-block' => 1, 'inline-table' => 1,
@@ -716,9 +437,7 @@ $Prop->{display} = {
       return $specified_value; ## Maybe an error of the implementation.
     }
   },
-};
-$Attr->{display} = $Prop->{display};
-$Key->{display} = $Prop->{display};
+}; # display
 
 $Prop->{position} = {
   css => 'position',
@@ -988,7 +707,7 @@ $Prop->{'background-repeat'} = {
   css => 'background-repeat',
   dom => 'background_repeat',
   key => 'background_repeat',
-  serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{background_color}->{serialize_multiple},
   keyword => {
     repeat => 1, 'repeat-x' => 1, 'repeat-y' => 1, 'no-repeat' => 1,
   },
@@ -1003,7 +722,7 @@ $Prop->{'background-attachment'} = {
   css => 'background-attachment',
   dom => 'background_attachment',
   key => 'background_attachment',
-  serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{background_color}->{serialize_multiple},
   keyword => {
     scroll => 1, fixed => 1,
   },
@@ -2269,7 +1988,7 @@ $Prop->{'background-position-x'} = {
       return $compute_length->(@_);
     }
   },
-  serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{background_color}->{serialize_multiple},
 };
 $Attr->{background_position_x} = $Prop->{'background-position-x'};
 $Key->{background_position_x} = $Prop->{'background-position-x'};
@@ -2281,7 +2000,7 @@ $Prop->{'background-position-y'} = {
   parse => $Prop->{'margin-top'}->{parse},
   allow_negative => 1,
   keyword => {top => 1, center => 1, bottom => 1},
-  serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{background_color}->{serialize_multiple},
   initial => ['PERCENTAGE', 0],
   #inherited => 0,
   compute => $Prop->{'background-position-x'}->{compute},
@@ -2408,7 +2127,7 @@ $Prop->{'border-top-width'} = {
   parse => $Prop->{'margin-top'}->{parse},
   #allow_negative => 0,
   keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => sub {
@@ -2451,7 +2170,7 @@ $Prop->{'border-right-width'} = {
   parse => $Prop->{'border-top-width'}->{parse},
   #allow_negative => 0,
   keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => $Prop->{'border-top-width'}->{compute},
@@ -2466,7 +2185,7 @@ $Prop->{'border-bottom-width'} = {
   parse => $Prop->{'border-top-width'}->{parse},
   #allow_negative => 0,
   keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => $Prop->{'border-top-width'}->{compute},
@@ -2481,7 +2200,7 @@ $Prop->{'border-left-width'} = {
   parse => $Prop->{'border-top-width'}->{parse},
   #allow_negative => 0,
   keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => $Prop->{'border-top-width'}->{compute},
@@ -2496,7 +2215,7 @@ $Prop->{'outline-width'} = {
   parse => $Prop->{'border-top-width'}->{parse},
   #allow_negative => 0,
   keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Prop->{'outline-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{outline_color}->{serialize_multiple},
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => $Prop->{'border-top-width'}->{compute},
@@ -2653,7 +2372,7 @@ $Prop->{'background-image'} = {
   dom => 'background_image',
   key => 'background_image',
   parse => $uri_or_none_parser,
-  serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{background_color}->{serialize_multiple},
   initial => ['KEYWORD', 'none'],
   #inherited => 0,
   compute => $compute_uri_or_none,
@@ -2816,7 +2535,7 @@ $Prop->{'border-top-style'} = {
   css => 'border-top-style',
   dom => 'border_top_style',
   key => 'border_top_style',
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
   #inherited => 0,
@@ -2829,7 +2548,7 @@ $Prop->{'border-right-style'} = {
   css => 'border-right-style',
   dom => 'border_right_style',
   key => 'border_right_style',
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
   #inherited => 0,
@@ -2842,7 +2561,7 @@ $Prop->{'border-bottom-style'} = {
   css => 'border-bottom-style',
   dom => 'border_bottom_style',
   key => 'border_bottom_style',
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
   #inherited => 0,
@@ -2855,7 +2574,7 @@ $Prop->{'border-left-style'} = {
   css => 'border-left-style',
   dom => 'border_left_style',
   key => 'border_left_style',
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
   #inherited => 0,
@@ -2868,7 +2587,7 @@ $Prop->{'outline-style'} = {
   css => 'outline-style',
   dom => 'outline_style',
   key => 'outline_style',
-  serialize_multiple => $Prop->{'outline-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{outline_color}->{serialize_multiple},
   keyword => {%$border_style_keyword},
   initial => ['KEYWORD', 'none'],
   #inherited => 0,
@@ -3192,124 +2911,86 @@ $Prop->{'border-style'} = {
     pop @v if $v[0] eq $v[1];
     return {'border-style' => [(join ' ', @v), $i]};
   },
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
 };
 $Attr->{border_style} = $Prop->{'border-style'};
 
-$Prop->{'border-color'} = {
+$Key->{border_color} = {
   css => 'border-color',
   dom => 'border_color',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my %prop_value;
-    ($t, my $pv) = $parse_color->($self, 'border-top-color', $tt, $t, $onerror);
-    if (not defined $pv) {
-      return ($t, undef);
-    }
-    $prop_value{'border-top-color'} = $pv->{'border-top-color'};
-    $prop_value{'border-bottom-color'} = $prop_value{'border-top-color'};
-    $prop_value{'border-right-color'} = $prop_value{'border-top-color'};
-    $prop_value{'border-left-color'}= $prop_value{'border-right-color'};
-    if ($prop_value{'border-top-color'}->[0] eq 'INHERIT') {
-      return ($t, \%prop_value);
-    }
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    if ({
-         IDENT_TOKEN, 1,
-         HASH_TOKEN, 1, NUMBER_TOKEN, 1, DIMENSION_TOKEN, 1,
-         FUNCTION_TOKEN, 1,
-        }->{$t->{type}}) {
-      ($t, $pv) = $parse_color->($self, 'border-right-color', $tt, $t, $onerror);
-      if (not defined $pv) {
-        return ($t, undef);
-      } elsif ($pv->{'border-color'}->[0] eq 'INHERIT') {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      $prop_value{'border-right-color'} = $pv->{'border-right-color'};
-      $prop_value{'border-left-color'}= $prop_value{'border-right-color'};
-
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      if ({
-           IDENT_TOKEN, 1,
-           HASH_TOKEN, 1, NUMBER_TOKEN, 1, DIMENSION_TOKEN, 1,
-           FUNCTION_TOKEN, 1,
-          }->{$t->{type}}) {
-        ($t, $pv) = $parse_color->($self, 'border-bottom-color', $tt, $t, $onerror);
-        if (not defined $pv) {
-          return ($t, undef);
-        } elsif ($pv->{'border-color'}->[0] eq 'INHERIT') {
-          $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => 'm',
-                     uri => $self->context->urlref,
-                     token => $t);
-          return ($t, undef);
-        }
-        $prop_value{'border-bottom-color'} = $pv->{'border-bottom-color'};
-
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ({
-             IDENT_TOKEN, 1,
-             HASH_TOKEN, 1, NUMBER_TOKEN, 1, DIMENSION_TOKEN, 1,
-             FUNCTION_TOKEN, 1,
-            }->{$t->{type}}) {
-          ($t, $pv) = $parse_color->($self, 'border-left-color', $tt, $t, $onerror);
-          if (not defined $pv) {
-            return ($t, undef);
-          } elsif ($pv->{'border-color'}->[0] eq 'INHERIT') {
-            $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
+  is_shorthand => 1,
+  longhand_subprops => [qw(border_top_color border_right_color
+                           border_bottom_color border_left_color)],
+  parse_shorthand => sub {
+    my ($self, $def, $tokens) = @_;
+    $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
+    ## If <color> becomes to be able to include multiple component in
+    ## future, this need to be rewritten.
+    if (@$tokens == 5) { # $tokens->[-1] is EOF_TOKEN
+      my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      my $v3 = defined $v2 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
+      my $v4 = defined $v3 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[3], _to_eof_token $tokens->[4]]) : undef;
+      return {} unless defined $v4;
+      return {border_top_color => $v1,
+              border_right_color => $v2,
+              border_bottom_color => $v3,
+              border_left_color => $v4};
+    } elsif (@$tokens == 4) {
+      my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      my $v3 = defined $v2 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
+      return {} unless defined $v3;
+      return {border_top_color => $v1,
+              border_right_color => $v2,
+              border_bottom_color => $v3,
+              border_left_color => $v2};
+    } elsif (@$tokens == 3) {
+      my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      return {} unless defined $v2;
+      return {border_top_color => $v1,
+              border_right_color => $v2,
+              border_bottom_color => $v1,
+              border_left_color => $v2};
+    } elsif (@$tokens == 2) {
+      my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      return {} unless defined $v1;
+      return {border_top_color => $v1,
+              border_right_color => $v1,
+              border_bottom_color => $v1,
+              border_left_color => $v1};
+    } else {
+      $self->onerror->(type => 'CSS syntax error', text => q['border-color'],
                        level => 'm',
                        uri => $self->context->urlref,
-                       token => $t);
-            return ($t, undef);
-          }
-          $prop_value{'border-left-color'} = $pv->{'border-left-color'};
-        }
-      }
-    }
-    
-    return ($t, \%prop_value);
-  },
-  serialize_shorthand => sub {
-    my ($se, $st) = @_;
-
-    my @v;
-    push @v, $se->serialize_prop_value ($st, 'border-top-color');
-    my $i = $se->serialize_prop_priority ($st, 'border-top-color');
-    return {} unless length $v[-1];
-    push @v, $se->serialize_prop_value ($st, 'border-right-color');
-    return {} unless length $v[-1];
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-right-color');
-    push @v, $se->serialize_prop_value ($st, 'border-bottom-color');
-    return {} unless length $v[-1];
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-bottom-color');
-    push @v, $se->serialize_prop_value ($st, 'border-left-color');
-    return {} unless length $v[-1];
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-left-color');
-
-    my $v = 0;
-    for (0..3) {
-      $v++ if $v[$_] eq 'inherit';
-    }
-    if ($v == 4) {
-      return {'border-color' => ['inherit', $i]};
-    } elsif ($v) {
+                       token => $tokens->[4]);
       return {};
     }
+  }, # parse_shorthand
+  serialize_shorthand => sub {
+    my ($se, $strings) = @_;
 
-    pop @v if $v[1] eq $v[3];
-    pop @v if $v[0] eq $v[2];
-    pop @v if $v[0] eq $v[1];
-    return {'border-color' => [(join ' ', @v), $i]};
-  },
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
-};
-$Attr->{border_color} = $Prop->{'border-color'};
+    my $v1 = $strings->{border_top_color};
+    my $v2 = $strings->{border_right_color};
+    my $v3 = $strings->{border_bottom_color};
+    my $v4 = $strings->{border_left_color};
+
+    if ($v2 eq $v4) {
+      if ($v1 eq $v3) {
+        if ($v1 eq $v2) {
+          return $v1;
+        } else {
+          return "$v1 $v2";
+        }
+      } else {
+        return "$v1 $v2 $v3";
+      }
+    } else {
+      return "$v1 $v2 $v3 $v4";
+    }
+  }, # serialize_shorthand
+}; # border-color
 
 $Prop->{'border-top'} = {
   css => 'border-top',
@@ -3324,7 +3005,7 @@ $Prop->{'border-top'} = {
     ## NOTE: Since $onerror is disabled for three invocations below,
     ## some informative warning messages (if they are added someday) will not
     ## be reported.
-    ($t, $pv) = $parse_color->($self, $prop_name.'-color', $tt, $t, sub {});
+    ($t, $pv) = $Web::CSS::Values::GetColorParser->()->($self, $prop_name.'-color', $tt, $t, sub {});
     if (defined $pv) {
       if ($pv->{$prop_name.'-color'}->[0] eq 'INHERIT') {
         return ($t, {$prop_name.'-color' => ['INHERIT'],
@@ -3372,7 +3053,7 @@ $Prop->{'border-top'} = {
       }
 
       undef $pv;
-      ($t, $pv) = $parse_color->($self, $prop_name.'-color', $tt, $t, $onerror)
+      ($t, $pv) = $Web::CSS::Values::GetColorParser->()->($self, $prop_name.'-color', $tt, $t, $onerror)
           if not defined $prop_value{$prop_name.'-color'} and
               {
                 IDENT_TOKEN, 1,
@@ -3449,7 +3130,7 @@ $Prop->{'border-top'} = {
 
     return {'border-top' => [$w . ' ' . $s . ' ' . $c, $i]};
   },
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
 };
 $Attr->{border_top} = $Prop->{'border-top'};
 
@@ -3482,7 +3163,7 @@ $Prop->{'border-right'} = {
 
     return {'border-right' => [$w . ' ' . $s . ' ' . $c, $i]};
   },
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
 };
 $Attr->{border_right} = $Prop->{'border-right'};
 
@@ -3515,7 +3196,7 @@ $Prop->{'border-bottom'} = {
 
     return {'border-bottom' => [$w . ' ' . $s . ' ' . $c, $i]};
   },
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
 };
 $Attr->{border_bottom} = $Prop->{'border-bottom'};
 
@@ -3548,17 +3229,15 @@ $Prop->{'border-left'} = {
 
     return {'border-left' => [$w . ' ' . $s . ' ' . $c, $i]};
   },
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
 };
 $Attr->{border_left} = $Prop->{'border-left'};
-
-## TODO: -moz-outline -> outline
 
 $Prop->{outline} = {
   css => 'outline',
   dom => 'outline',
-  parse => $Prop->{'border-top'}->{parse},
-  serialize_multiple => $Prop->{'outline-color'}->{serialize_multiple},
+  parse => $Prop->{'border-top'}->{parse}, # XXX 'outline-color'
+  serialize_multiple => $Key->{outline_color}->{serialize_multiple},
 };
 $Attr->{outline} = $Prop->{outline};
 
@@ -3582,7 +3261,7 @@ $Prop->{border} = {
     }
     return ($t, $prop_value);
   },
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
 };
 $Attr->{border} = $Prop->{border};
 
@@ -4365,24 +4044,10 @@ $Key->{background_position} = {
     return \%prop_value;
   }, # parse_shorthand
   serialize_shorthand => sub {
-    my ($se, $st) = @_;
-
-    my $x = $se->serialize_prop_value ($st, 'background_position_x');
-    my $y = $se->serialize_prop_value ($st, 'background_position_y');
-    if (defined $x and defined $y) {
-      if ($x eq 'inherit' and $y eq 'inherit') { # XXX unset, initial
-        return 'inherit';
-      } elsif ($x eq 'inherit' or $y eq 'inherit') {
-        #
-      } else {
-        return $x . ' ' . $y;
-      }
-    }
-
-    return undef;
-  },
-  serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
-};
+    my ($se, $strings) = @_;
+    return $strings->{background_position_x} . ' ' .$strings->{background_position_y};
+  }, # serialize_shorthand
+}; # background-position
 
 $Prop->{background} = {
   css => 'background',
@@ -4503,7 +4168,7 @@ $Prop->{background} = {
           return ($t, \%prop_value);
         } elsif (not defined $prop_value{'background-color'} or
                  not keys %prop_value) {
-          ($t, my $pv) = $parse_color->($self, 'background', $tt, $t,
+          ($t, my $pv) = $Web::CSS::Values::GetColorParser->()->($self, 'background', $tt, $t,
                                         $onerror);
           if (defined $pv) {
             $prop_value{'background-color'} = $pv->{background};
@@ -4627,7 +4292,7 @@ $Prop->{background} = {
     return ($t, \%prop_value);
   },
 ## TODO: background: #fff does not work.
-  serialize_multiple => $Prop->{'background-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{background_color}->{serialize_multiple},
 };
 $Attr->{background} = $Prop->{background};
 
@@ -5103,7 +4768,7 @@ $Prop->{'border-width'} = {
     pop @v if $v[0] eq $v[1];
     return {'border-width' => [(join ' ', @v), $i]};
   },
-  serialize_multiple => $Prop->{'border-top-color'}->{serialize_multiple},
+  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
 };
 $Attr->{border_width} = $Prop->{'border-width'};
 

@@ -26,6 +26,10 @@ Set the "supported" flag to true value.
 
 Set the "supported" flag of all known constructs.
 
+=item all_functions => 1
+
+Set the "supported" flag of all known CSS functional notations.
+
 =item all_props => 1
 
 Set the "supported" flag of all known CSS properties.

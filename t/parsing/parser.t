@@ -38,6 +38,7 @@ my $data_d = file (__FILE__)->dir->parent->parent
   ]) {
     for_each_test $_, {
       data => {is_prefixed => 1},
+      unsupported => {is_list => 1},
       errors => {is_list => 1},
       cssom => {is_prefixed => 1},
       csstext => {is_prefixed => 1},
@@ -51,6 +52,7 @@ my $data_d = file (__FILE__)->dir->parent->parent
       if ($data->{data}) {
         my $test = {
           data => $data->{data}->[0],
+          unsupported => $data->{unsupported}->[0],
           csstext => $data->{csstext}->[0],
           cssom => $data->{cssom}->[0],
           errors => $data->{errors}->[0],
@@ -96,42 +98,44 @@ my $data_d = file (__FILE__)->dir->parent->parent
         die "Test data format $data->{format} is not supported";
       }
     }
+  }
 
-    for my $test (@{$all_test->{test}}) {
-      test {
-        my $c = shift;
-        my ($p) = get_parser ($test->{option}->{parse_mode});
+  for my $test (@{$all_test->{test}}) {
+    test {
+      my $c = shift;
+      my ($p) = get_parser ($test->{option}->{parse_mode},
+                            unsupported => [map { [split /\s+/, $_] } @{$test->{unsupported} or []}]);
 
-        my @actual_error;
-        $p->onerror (sub {
-          my (%opt) = @_;
-          push @actual_error, join ';',
-              '',
-              $opt{token}->{line} || $opt{line} || 0,
-              $opt{token}->{column} || $opt{column} || 0,
-              $opt{level},
-              $opt{type} .
-              (defined $opt{text} ? ';'.$opt{text} : '');
-        });
+      my @actual_error;
+      $p->onerror (sub {
+        my (%opt) = @_;
+        push @actual_error, join ';',
+            '',
+            $opt{token}->{line} || $opt{line} || 0,
+            $opt{token}->{column} || $opt{column} || 0,
+            $opt{level},
+            $opt{type} .
+            (defined $opt{text} ? ';'.$opt{text} : '');
+      });
 
-        my $ss = $p->parse_char_string_as_ss ($test->{data});
+      my $ss = $p->parse_char_string_as_ss ($test->{data});
 
-        eq_or_diff
-            ((join "\n", @actual_error), (join "\n", @{$test->{errors} or []}),
-             "#result ($test->{data})");
+      eq_or_diff
+          ((join "\n", @actual_error), (join "\n", @{$test->{errors} or []}),
+           "#result");
 
-        if (defined $test->{cssom}) {
-          my $actual = serialize_cssom ($ss);
-          eq_or_diff $actual, $test->{cssom}, "#cssom ($test->{data})";
-        }
+      if (defined $test->{cssom}) {
+        my $actual = serialize_cssom ($ss);
+        eq_or_diff $actual, $test->{cssom}, "#cssom";
+      }
 
-        done $c;
-        return; # XXX
+      if (defined $test->{csstext}) {
+        my $actual = get_css_text ($ss);
+        eq_or_diff $actual, $test->{csstext}, "#csstext";
+      }
 
-        if (defined $test->{csstext}) {
-          my $actual = XXXSHEET->css_text;
-          eq_or_diff $actual, $test->{csstext}, "#csstext ($test->{data})";
-        }
+      done $c;
+      return; # XXX
 
         for my $doc_id (keys %{$test->{computed} or {}}) {
           for my $selectors (keys %{$test->{computed}->{$doc_id}}) {
@@ -145,7 +149,7 @@ my $data_d = file (__FILE__)->dir->parent->parent
             my $diff = $test->{computed}->{$doc_id}->{$selectors};
             ($actual, $expected) = apply_diff ($actual, $expected, $diff);
             eq_or_diff $actual, $expected,
-                "#computed $doc_id $selectors ($test->{data})";
+                "#computed $doc_id $selectors";
           }
         }
 
@@ -161,14 +165,13 @@ my $data_d = file (__FILE__)->dir->parent->parent
             my $diff = $test->{computedtext}->{$doc_id}->{$selectors};
             ($actual, $expected) = apply_diff ($actual, $expected, $diff);
             eq_or_diff $actual, $expected,
-                "#computedtext $doc_id $selectors ($test->{data})";
+                "#computedtext $doc_id $selectors";
           }
         }
 
-        done $c;
-      } name => ['p&c'];
-    } # $test
-  }
+      done $c;
+    } name => ['p&c', $test->{data}];
+  } # $test
 
   sub cleanup () { undef $all_test }
 }
@@ -329,11 +332,19 @@ padding-right: 0px
 padding-top: 0px];
 }
 
-sub get_parser ($) {
-  my $parse_mode = shift;
+sub get_parser ($;%) {
+  my ($parse_mode, %args) = @_;
 
   my $p = Web::CSS::Parser->new;
   $p->media_resolver->set_supported (all => 1);
+
+  for (@{$args{unsupported} or []}) {
+    my $v = $p->media_resolver;
+    for (@$_[0..($#$_-1)]) {
+      $v = $v->{$_} ||= {};
+    }
+    $v->{$_->[$#$_]} = 0;
+  }
 
   if ($parse_mode and $parse_mode eq 'q') {
     $p->context->manakai_compat_mode ('quirks');
@@ -347,9 +358,19 @@ sub serialize_selectors ($) {
 } # serialize_selectors
 
 sub serialize_mqs ($) {
-  return Web::CSS::MediaQueries::Serializer->new->serialize_mq_list ($_[1]);
+  return Web::CSS::MediaQueries::Serializer->new->serialize_mq_list ($_[0]);
 } # serialize_mqs
 
+sub get_css_text ($) {
+  my $css = Web::CSS::Serializer->new->serialize_rule ($_[0], 0);
+  $css =~ s/\{ /\{\n  /g;
+  $css =~ s/; /;\n  /g;
+  $css =~ s/\n  \}/\n}/g;
+  $css .= "\n" unless $css =~ /\n$/;
+  return $css;
+} # get_css_text
+
+sub serialize_rule ($$$);
 sub serialize_rule ($$$) {
   my ($set, $rule_id, $indent) = @_;
   my $rule = $set->{rules}->[$rule_id];
@@ -357,18 +378,18 @@ sub serialize_rule ($$$) {
   if ($rule->{rule_type} eq 'style') {
     $v .= $indent . '<' . (serialize_selectors $rule->{selectors}) . ">\n";
     $v .= serialize_style ($rule, $indent . '  ');
-  } elsif ($rule->{rule_type} eq '@media') {
+  } elsif ($rule->{rule_type} eq 'media') {
     $v .= $indent . '@media ' . (serialize_mqs $rule->{mqs}) . "\n";
     $v .= serialize_rule ($set, $_, $indent . '  ') for @{$rule->{rule_ids}};
-  } elsif ($rule->{rule_type} eq '@namespace') {
+  } elsif ($rule->{rule_type} eq 'namespace') {
     $v .= $indent . '@namespace ';
     my $prefix = $rule->{prefix};
     $v .= $prefix . ': ' if defined $prefix;
     $v .= '<' . $rule->{nsurl} . ">\n";
-  } elsif ($rule->{rule_type} eq '@import') {
+  } elsif ($rule->{rule_type} eq 'import') {
     $v .= $indent . '@import <' . $rule->{href} . '> ' . serialize_mqs $rule->{mqs};
     $v .= "\n";
-  } elsif ($rule->{rule_type} eq '@charset') {
+  } elsif ($rule->{rule_type} eq 'charset') {
     $v .= $indent . '@charset ' . $rule->{encoding} . "\n";
   } else {
     die "Rule type |$rule->{rule_type}| is not supported";
@@ -451,7 +472,7 @@ sub serialize_style ($$) {
 sub get_dom_names ($) {
   my $dom_name = $_[0];
   $dom_name =~ tr/-/_/;
-  return ([$_[0] => $dom_name => $_[0]]);
+  return ([$_[0] => $dom_name => $dom_name]);
 } # get_dom_names
 
 sub apply_diff ($$$) {

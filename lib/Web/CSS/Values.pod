@@ -6,6 +6,43 @@ Web::CSS::Values - CSS value definitions
 
 XXX
 
+=head1 REQUIRES FEATURES
+
+XXX
+
+=head2 <color>
+
+If <color> is supported, it MUST support RGB colors (internally
+represented as 'RGBA' values with alpha 0) and CSS 2.1 system colors.
+
+=over 4
+
+=item $resolver->{prop_value}->{color}->{transparent} == 1
+
+Transparent colors (internally represented as 'RGBA' values with alpha
+1) MUST be supported.
+
+=item $resolver->{function}->{rgba} == 1
+
+Any RGBA color MUST be supported.
+
+=item $resolver->{prop_value}->{color}->{flavor} == 1
+
+The 'flavor' keyword MUST be supported.
+
+=back
+
+=head2 <'outline-color'>
+
+=over 4
+
+=item $resolver->{prop_value}->{'outline-color'}->{invert} == 1
+
+The 'invert' and '-manakai-invert-or-currentcolor' keywords MUST be
+supported.
+
+=back
+
 =head1 SPECIFICATIONS
 
 =over 4
@@ -25,9 +62,37 @@ The number of <resolution> must be positive.
 
 CSS Syntax <http://dev.w3.org/csswg/css-syntax/#integer>.
 
+=item QUIRKS
+
+Quirks Mode <http://quirks.spec.whatwg.org/>.
+
 =item MQ
 
 Media Queries <http://dev.w3.org/csswg/mediaqueries/#values>.
+
+=item CSSCOLOR
+
+CSS Color <http://dev.w3.org/csswg/css-color/#colorunits>.
+
+Color keywords MUST be compared ASCII case-insensitively.
+
+The parser MUST replace functions '-moz-rgba()' and '-moz-hsla()' by
+'rgba()' and 'hsla()', respectively.  The parser MUST replace
+functions 'hsl()' and 'hsla()' by equivalent 'rgb()' or 'rgba()'
+value.  The parser must clamp the <alphavalue> component in 'rgba()'
+function, if necessary.  If the <alphavalue> component of 'rgba()'
+function is equal to 1, it MUST be replaced by equivalent 'rgb()'
+function.  Then, the parser MAY ignore 'rgba()' function if its
+<alphavalue> is not supported.
+
+=item CSSUI
+
+CSS Basic User Interface <http://dev.w3.org/csswg/css-ui/>.
+
+=item MANAKAICSS
+
+manakai CSS Extensions
+<http://suika.suikawiki.org/~wakaba/wiki/sw/n/manakai%20CSS%20Extensions>.
 
 =back
 

@@ -2,7 +2,7 @@ package Web::CSS::Tokenizer;
 use strict;
 use warnings;
 no warnings 'utf8';
-our $VERSION = '24.0';
+our $VERSION = '25.0';
 use Carp;
 
 ## ------ Character classes ------
@@ -214,6 +214,11 @@ sub import ($;@) {
     *{$to_class . '::' . $_} = $code;
   }
 } # import
+
+push @EXPORT, qw(_to_eof_token);
+sub _to_eof_token ($) {
+  return {type => EOF_TOKEN, line => $_[0]->{line}, column => $_[0]->{column}};
+} # _to_eof_token
 
 ## ------ Initialization ------
 

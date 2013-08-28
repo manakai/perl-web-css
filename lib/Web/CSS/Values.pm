@@ -1,8 +1,9 @@
 package Web::CSS::Values;
 use strict;
 use warnings;
-our $VERSION = '4.0';
+our $VERSION = '5.0';
 use Web::CSS::Builder;
+use Web::CSS::Colors;
 
 ## Values - CSS values are represented as an array reference whose
 ## zeroth item represents the data type (encoded as an uppercase
@@ -70,6 +71,13 @@ use Web::CSS::Builder;
 ## SIZE
 ##   XXX
 
+## CSS-wide keywords
+## <http://dev.w3.org/csswg/css-values/#common-keywords>,
+## <http://dev.w3.org/csswg/css-cascade/#defaulting-keywords>.  See
+## also |Web::CSS::Parser|.
+our $CSSWidePattern = qr/\A(?:inherit|initial|unset)\z/;
+# XXX toggle
+
 our $GetKeywordParser = sub ($;$) {
   my ($keywords, $prop_name) = @_;
   return sub ($$) {
@@ -96,7 +104,7 @@ our $GetKeywordParser = sub ($;$) {
   };
 }; # $GetKeywordParser
 
-## <integer>, non-negative [SYNTAX] [MQ]
+## <integer>, non-negative [CSSSYNTAX] [MQ]
 our $NNIntegerParser = sub {
   my ($self, $us) = @_;
   if (@$us == 2 and
@@ -112,7 +120,7 @@ our $NNIntegerParser = sub {
   return undef;
 }; # $NNIntegerParser
 
-## <integer>, either 0 or 1 [SYNTAX] [MQ]
+## <integer>, either 0 or 1 [CSSSYNTAX] [MQ]
 our $BooleanIntegerParser = sub {
   my ($self, $us) = @_;
   if (@$us == 2 and
@@ -126,7 +134,7 @@ our $BooleanIntegerParser = sub {
   return undef;
 }; # $BooleanIntegerParser
 
-## <number>, non-negative [SYNTAX] [MQ]
+## <number>, non-negative [CSSSYNTAX] [MQ]
 our $NNNumberParser = sub {
   my ($self, $us) = @_;
   if (@$us == 2 and
@@ -147,7 +155,7 @@ my $LengthUnits = {
   # XXX and more...
 }; # $LengthUnits
 
-## <length>, non-negative [VALUES] [MQ]
+## <length>, non-negative [CSSVALUES] [MQ]
 our $NNLengthParser = sub {
   my ($self, $us) = @_;
   if (@$us == 2 and $us->[0]->{type} == DIMENSION_TOKEN) {
@@ -186,7 +194,7 @@ our $RatioParser = sub {
 
 my $ResolutionUnits = {dpi => 1, dpcm => 1, dppx => 1};
 
-## <resolution> [VALUES]
+## <resolution> [CSSVALUES]
 our $ResolutionParser = sub {
   my ($self, $us) = @_;
   if (@$us == 2 and $us->[0]->{type} == DIMENSION_TOKEN) {
@@ -201,6 +209,264 @@ our $ResolutionParser = sub {
                    token => $us->[0]);
   return undef;
 }; # $ResolutionParser
+
+sub hue2rgb ($$$) {
+  my ($m1, $m2, $h) = @_;
+  $h++ if $h < 0;
+  $h-- if $h > 1;
+  return $m1 + ($m2 - $m1) * $h * 6 if $h * 6 < 1;
+  return $m2 if $h * 2 < 1;
+  return $m1 + ($m2 - $m1) * (2/3 - $h) * 6 if $h * 3 < 2;
+  return $m1;
+} # hue2rgb
+
+## <color> [CSSCOLOR] / <quirky-color> [QUIRKS] / <'outline-color'>
+## [CSSUI]
+my $GetColorParser = sub {
+  my (%args) = @_;
+  # $args{is_outline_color}
+  # $args{allow_quirky_color}
+  return sub {
+    my ($self, $us) = @_;
+    my $t = shift @$us;
+
+    my $r;
+    T: {
+      if ($t->{type} == IDENT_TOKEN) {
+        my $value = $t->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($Web::CSS::Colors::X11Colors->{$value} or
+            $Web::CSS::Colors::SystemColors->{$value} or
+            $value eq '-manakai-default' or
+            $value eq 'currentcolor' or
+            (($value eq 'flavor' or $value eq 'transparent') and
+             $self->media_resolver->{prop_value}->{color}->{$value}) or
+            ($args{is_outline_color} and
+             ($value eq 'invert' or
+              $value eq '-manakai-invert-or-currentcolor') and
+             $self->media_resolver->{prop_value}->{'outline-color'}->{invert})) {
+          ## NOTE: "For systems that do not have a corresponding
+          ## value, the specified value should be mapped to the
+          ## nearest system value, or to a default color." [CSS 2.1].
+          ## (Therefore, all system color values are not ignored
+          ## irrelevant to supportedness.)
+          $r = ['KEYWORD', $value];
+          $t = shift @$us;
+          last T;
+        }
+      } # keyword
+
+      if ($t->{type} == HASH_TOKEN or
+          ($args{allow_quirky_color} and
+           $self->context->quirks and {
+             IDENT_TOKEN, 1,
+             NUMBER_TOKEN, 1,
+             DIMENSION_TOKEN, 1,
+           }->{$t->{type}})) {
+        my $v = (defined $t->{number} ? $t->{number} : '') . $t->{value};
+        if ($v =~ /\A([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})\z/) {
+          $r = ['RGBA', hex $1, hex $2, hex $3, 1];
+          if ($t->{type} != HASH_TOKEN) {
+            $self->onerror->(type => 'css:color:quirky', # XXX
+                             level => 'w',
+                             uri => $self->context->urlref,
+                             token => $t);
+          }
+          $t = shift @$us;
+          last T;
+        } elsif ($v =~ /\A([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])\z/) {
+          $r = ['RGBA', hex $1.$1, hex $2.$2, hex $3.$3, 1];
+          if ($t->{type} != HASH_TOKEN) {
+            $self->onerror->(type => 'css:color:quirky', # XXX
+                             level => 'w',
+                             uri => $self->context->urlref,
+                             token => $t);
+          }
+          $t = shift @$us;
+          last T;
+        }
+      } # hash
+
+      if ($t->{type} == FUNCTION_CONSTRUCT) {
+        my $func = $t->{name}->{value};
+        $func =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        my $vs = $t->{value};
+        $vs = [grep { $_->{type} != S_TOKEN } @$vs];
+
+        if ($func eq '-moz-rgba' or $func eq '-moz-hsla') {
+          $self->onerror->(type => 'css:obsolete', text => $func.'()',
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $t->{name});
+          $func =~ s/^-moz-//;
+        }
+
+        if ($func eq 'rgb') {
+          if (@$vs == 5 and
+              $vs->[0]->{type} == NUMBER_TOKEN and
+              $vs->[1]->{type} == COMMA_TOKEN and
+              $vs->[2]->{type} == NUMBER_TOKEN and
+              $vs->[3]->{type} == COMMA_TOKEN and
+              $vs->[4]->{type} == NUMBER_TOKEN) {
+            $r = ['RGBA',
+                  0+$vs->[0]->{number},
+                  0+$vs->[2]->{number},
+                  0+$vs->[4]->{number},
+                  1];
+            $t = shift @$us;
+            last T;
+          } elsif (@$vs == 5 and
+                   $vs->[0]->{type} == PERCENTAGE_TOKEN and
+                   $vs->[1]->{type} == COMMA_TOKEN and
+                   $vs->[2]->{type} == PERCENTAGE_TOKEN and
+                   $vs->[3]->{type} == COMMA_TOKEN and
+                   $vs->[4]->{type} == PERCENTAGE_TOKEN) {
+            $r = ['RGBA',
+                  $vs->[0]->{number} * 255 / 100,
+                  0+$vs->[2]->{number} * 255 / 100,
+                  0+$vs->[4]->{number} * 255 / 100,
+                  1];
+            $t = shift @$us;
+            last T;
+          }
+        } elsif ($func eq 'rgba') {
+          if (@$vs == 7 and
+              $vs->[0]->{type} == NUMBER_TOKEN and
+              $vs->[1]->{type} == COMMA_TOKEN and
+              $vs->[2]->{type} == NUMBER_TOKEN and
+              $vs->[3]->{type} == COMMA_TOKEN and
+              $vs->[4]->{type} == NUMBER_TOKEN and
+              $vs->[5]->{type} == COMMA_TOKEN and
+              $vs->[6]->{type} == NUMBER_TOKEN) {
+            $r = ['RGBA',
+                  0+$vs->[0]->{number},
+                  0+$vs->[2]->{number},
+                  0+$vs->[4]->{number},
+                  0+$vs->[6]->{number}];
+            $t = shift @$us;
+            last T;
+          } elsif (@$vs == 7 and
+                   $vs->[0]->{type} == PERCENTAGE_TOKEN and
+                   $vs->[1]->{type} == COMMA_TOKEN and
+                   $vs->[2]->{type} == PERCENTAGE_TOKEN and
+                   $vs->[3]->{type} == COMMA_TOKEN and
+                   $vs->[4]->{type} == PERCENTAGE_TOKEN and
+                   $vs->[5]->{type} == COMMA_TOKEN and
+                   $vs->[6]->{type} == NUMBER_TOKEN) {
+            $r = ['RGBA',
+                  $vs->[0]->{number} * 255 / 100,
+                  0+$vs->[2]->{number} * 255 / 100,
+                  0+$vs->[4]->{number} * 255 / 100,
+                  0+$vs->[6]->{number}];
+            $t = shift @$us;
+            last T;
+          }
+        } elsif ($func eq 'hsl') {
+          if (@$vs == 5 and
+              $vs->[0]->{type} == NUMBER_TOKEN and
+              $vs->[1]->{type} == COMMA_TOKEN and
+              $vs->[2]->{type} == PERCENTAGE_TOKEN and
+              $vs->[3]->{type} == COMMA_TOKEN and
+              $vs->[4]->{type} == PERCENTAGE_TOKEN) {
+            my $h = ((($vs->[0]->{number} % 360) + 360) % 360) / 360;
+            my $s = $vs->[2]->{number} / 100;
+            $s = 0 if $s < 0;
+            $s = 1 if $s > 1;
+            my $l = $vs->[4]->{number} / 100;
+            $l = 0 if $l < 0;
+            $l = 1 if $l > 1;
+
+            my $m2 = $l <= 0.5 ? $l * ($s + 1) : $l + $s - $l * $s;
+            my $m1 = $l * 2 - $m2;
+
+            $r = ['RGBA',
+                  hue2rgb ($m1, $m2, $h + 1/3) * 255,
+                  hue2rgb ($m1, $m2, $h) * 255,
+                  hue2rgb ($m1, $m2, $h - 1/3) * 255,
+                  1];
+            $t = shift @$us;
+            last T;
+          }
+        } elsif ($func eq 'hsla') {
+          if (@$vs == 7 and
+              $vs->[0]->{type} == NUMBER_TOKEN and
+              $vs->[1]->{type} == COMMA_TOKEN and
+              $vs->[2]->{type} == PERCENTAGE_TOKEN and
+              $vs->[3]->{type} == COMMA_TOKEN and
+              $vs->[4]->{type} == PERCENTAGE_TOKEN and
+              $vs->[5]->{type} == COMMA_TOKEN and
+              $vs->[6]->{type} == NUMBER_TOKEN) {
+            my $h = ((($vs->[0]->{number} % 360) + 360) % 360) / 360;
+            my $s = $vs->[2]->{number} / 100;
+            $s = 0 if $s < 0;
+            $s = 1 if $s > 1;
+            my $l = $vs->[4]->{number} / 100;
+            $l = 0 if $l < 0;
+            $l = 1 if $l > 1;
+
+            my $m2 = $l <= 0.5 ? $l * ($s + 1) : $l + $s - $l * $s;
+            my $m1 = $l * 2 - $m2;
+
+            $r = ['RGBA',
+                  hue2rgb ($m1, $m2, $h + 1/3) * 255,
+                  hue2rgb ($m1, $m2, $h) * 255,
+                  hue2rgb ($m1, $m2, $h - 1/3) * 255,
+                  0+$vs->[6]->{number}];
+            $t = shift @$us;
+            last T;
+          }
+        } # $func
+      } # function
+
+      $self->onerror->(type => 'css:color:syntax error', # XXX
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       token => $t);
+      return undef;
+    } # T
+
+    if ($r->[0] eq 'RGBA') {
+      for my $i (1, 2, 3) { # sRGB
+        $r->[$i] = 0 if $r->[$i] < 0;
+        $r->[$i] = 255 if $r->[$i] > 255;
+      }
+      $r->[4] = 0 if $r->[4] < 0;
+      $r->[4] = 1 if $r->[4] > 1;
+
+      if ($r->[4] == 1) { # = rgb()
+        #
+      } elsif ($r->[4] == 0) { # = transparent
+        unless ($self->media_resolver->{prop_value}->{color}->{transparent}) {
+          $self->onerror->(type => 'css:color:alpha:not supported', # XXX
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $t);
+          return undef;
+        }
+      } else {
+        unless ($self->media_resolver->{function}->{rgba}) {
+          $self->onerror->(type => 'css:color:alpha:not supported', # XXX
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $t);
+          return undef;
+        }
+      }
+    }
+
+    if ($t->{type} == EOF_TOKEN) {
+      return $r;
+    } else {
+      $self->onerror->(type => 'css:color:syntax error', # XXX
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       token => $t);
+      return undef;
+    }
+  };
+}; # $GetColorParser
+our $ColorOrQuirkyColorParser = $GetColorParser->(allow_quirky_color => 1);
+our $OutlineColorParser = $GetColorParser->(is_outline_color => 1);
 
 1;
 

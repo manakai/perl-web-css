@@ -1,0 +1,97 @@
+=head1 NAME
+
+Web::CSS::Props - CSS property definitions
+
+=head1 DESCRIPTION
+
+XXX
+
+=head1 SPECIFICATIONS
+
+=over 4
+
+=item CSSSYNTAX
+
+CSS Syntax <http://dev.w3.org/csswg/css-syntax/#integer>.
+
+=item QUIRKS
+
+Quirks Mode <http://quirks.spec.whatwg.org/>.
+
+=item CSSOM
+
+CSS Object Model (CSSOM) <http://dev.w3.org/csswg/cssom/>.
+
+=item CSSCASCADE
+
+CSS Cascading and Inheritance <http://dev.w3.org/csswg/css-cascade/>.
+
+=item CSSVALUES
+
+CSS Values and Units <http://dev.w3.org/csswg/css-values/>.
+
+=item CSSBACKGROUNDS
+
+CSS Background and Borders <http://dev.w3.org/csswg/css-backgrounds/>.
+
+To serialize the 'border-color' property value, follow the steps to
+serialize four edge values with 'border-top-color',
+'border-right-color', 'border-bottom-color', and 'border-left-color'
+values and return the result.
+
+To serialzie four edge values /top/, /right/, /bottom/, and /left/,
+follow these steps:
+
+  1. If one of four values are missing, it is not serializable.
+     Return null and abort these steps.
+
+  2. Otheriwse, if one of four values are CSS-wide keyword or
+     function:
+
+    1. If serializations of four values are same, return one of them
+       and abort these steps.
+
+    2. Otherwise, it is not serializable.  Return null and abort these
+       steps.
+
+  3. Otherwise, if serializations of four values are same, return one
+     of them and abort these steps.
+
+  4. Otherwise, if serializations of /top/ and /bottom/ are same and
+     serialization of /left/ and /right/ are same, return the result
+     of invoking serialize a whitespace-separated list with values
+     /top/ and /right/ and abort these steps.
+
+  5. Otherwise, if serialization of /left/ and /right/ are same,
+     return the result of invoking serialize a whitespace-separated
+     list with values /top/, /right/, and /bottom/ and abort these
+     steps.
+
+  6. Otherwise, return the result of invoking serialize a
+     whitespace-separated list with values /top/, /right/, /bottom/,
+     and /left/ and abort these steps.
+
+=back
+
+=head1 OBSOLETE FEATURES
+
+Support for following feature has been removed: '-moz-use-text-color'.
+
+=head1 SEE ALSO
+
+L<Web::CSS::Values>.
+
+L<Web::CSS::Parser>, L<Web::CSS::Serializer>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

@@ -2,7 +2,7 @@ package Web::CSS::Serializer;
 use strict;
 use warnings;
 no warnings 'utf8';
-our $VERSION = '25.0';
+our $VERSION = '26.0';
 use Web::CSS::Selectors::Serializer;
 use Web::CSS::MediaQueries::Serializer;
 use Web::CSS::Values::Serializer;
@@ -24,7 +24,30 @@ sub serialize_prop_value ($$$) {
   } else {
     my $prop_def = $Web::CSS::Props::Key->{$prop_key};
     if (defined $prop_def and $prop_def->{serialize_shorthand}) {
-      return $prop_def->{serialize_shorthand}->($self, $style); # or undef
+      my $long_strings = {};
+      my $css_wide;
+      for (0..$#{$prop_def->{longhand_subprops}}) {
+        my $key = $prop_def->{longhand_subprops}->[$_];
+        $long_strings->{$key} = $self->serialize_prop_value ($style, $key);
+        return undef unless defined $long_strings->{$key};
+        if (defined $css_wide) {
+          if ($long_strings->{$key} =~ /$Web::CSS::Values::CSSWidePattern/o) {
+            return undef unless $css_wide eq $long_strings->{$key};
+          } else {
+            return undef;
+          }
+        } elsif ($_ == 0) {
+          if ($long_strings->{$key} =~ /$Web::CSS::Values::CSSWidePattern/o) {
+            $css_wide = $long_strings->{$key};
+          }
+        } else {
+          if ($long_strings->{$key} =~ /$Web::CSS::Values::CSSWidePattern/o) {
+            return undef;
+          }
+        }
+      }
+      return $css_wide if defined $css_wide;
+      return $prop_def->{serialize_shorthand}->($self, $long_strings); # or undef
     } else {
       return undef;
     }
@@ -76,7 +99,7 @@ sub serialize_prop_decls ($$) {
         }
       }
       unless ($has_important and $has_non_important) {
-        my $short_value = $short_def->{serialize_shorthand}->($self, $style);
+        my $short_value = $self->serialize_prop_value ($style, $short_key);
         if (defined $short_value) {
           push @decl, $short_def->{css} . ': ' . $short_value .
               ($has_important ? ' !important' : '') . ';';

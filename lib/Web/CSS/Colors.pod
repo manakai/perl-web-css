@@ -10,7 +10,8 @@ Web::CSS::Colors - CSS Color Definitions
 
 =head1 DESCRIPTION
 
-The C<Web::CSS::Colors> module contains definition of CSS colors.
+The C<Web::CSS::Colors> module contains definitions for CSS color
+names.
 
 =head1 VARIABLES
 
@@ -35,9 +36,19 @@ lowercase canonical form.
 
 =back
 
-=head1 SEE ALSO
+=head1 SPECIFICATION
+
+=over 4
+
+=item CSSCOLOR
 
 CSS Color <http://dev.w3.org/csswg/css-color/>.
+
+=back
+
+=head1 SEE ALSO
+
+L<Web::CSS::Values>.
 
 =head1 AUTHOR
 

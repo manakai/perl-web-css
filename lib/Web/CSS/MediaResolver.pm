@@ -1,7 +1,7 @@
 package Web::CSS::MediaResolver;
 use strict;
 use warnings;
-our $VERSION = '4.0';
+our $VERSION = '5.0';
 
 sub new ($) {
   return bless {}, $_[0];
@@ -29,6 +29,10 @@ sub set_supported ($%) {
     }
   }
 
+  if ($args{all} or $args{all_functions}) {
+    $self->{function}->{$_} = 1 for qw(rgba);
+  }
+
   if ($args{all} or $args{all_pseudo_classes}) {
     $self->{pseudo_class}->{$_} = 1 for qw/
       active checked disabled empty enabled first-child first-of-type
@@ -51,20 +55,6 @@ sub set_supported ($%) {
         for keys %$Web::CSS::MediaQueries::Features::Defs;
   }
 } # set_supported
-
-## Media-dependent RGB color range clipper
-sub clip_color ($$) {
-  my $value = $_[1];
-  if (defined $value and $value->[0] eq 'RGBA') {
-    my ($r, $g, $b) = @$value[1, 2, 3];
-    $r = 0 if $r < 0;  $r = 255 if $r > 255;
-    $g = 0 if $g < 0;  $g = 255 if $g > 255;
-    $b = 0 if $b < 0;  $b = 255 if $b > 255;
-    return ['RGBA', $r, $g, $b, $value->[4]];
-  } else {
-    return $value;
-  }
-} # clip_color
 
 ## System dependent font expander
 sub get_system_font ($$$) {

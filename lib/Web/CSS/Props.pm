@@ -1082,125 +1082,79 @@ $Key->{marker_offset} = {
   compute => $compute_length,
 }; # marker-offset
 
-# XXX---XXX
-
-$Prop->{'margin-top'} = {
+## <http://dev.w3.org/csswg/css-box/#the-margin-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{margin_top} = {
   css => 'margin-top',
   dom => 'margin_top',
-  key => 'margin_top',
-  parse => $length_percentage_keyword_parser,
-  allow_negative => 1,
-  keyword => {auto => 1},
-  serialize_multiple => sub {
-    my ($se, $st) = @_;
-
-    ## NOTE: Same as |serialize_multiple| of 'padding-top'.
-
-    my $use_shorthand = 1;
-    my $t = $se->serialize_prop_value ($st, 'margin-top');
-    undef $use_shorthand unless length $t;
-    my $t_i = $se->serialize_prop_priority ($st, 'margin-top');
-    my $r = $se->serialize_prop_value ($st, 'margin-right');
-    undef $use_shorthand
-        if not length $r or
-            ($r eq 'inherit' and $t ne 'inherit') or
-            ($t eq 'inherit' and $r ne 'inherit');
-    my $r_i = $se->serialize_prop_priority ($st, 'margin-right');
-    undef $use_shorthand unless $r_i eq $t_i;
-    my $b = $se->serialize_prop_value ($st, 'margin-bottom');
-    undef $use_shorthand
-        if not length $b or
-            ($b eq 'inherit' and $t ne 'inherit') or
-            ($t eq 'inherit' and $b ne 'inherit');
-    my $b_i = $se->serialize_prop_priority ($st, 'margin-bottom');
-    undef $use_shorthand unless $b_i eq $t_i;
-    my $l = $se->serialize_prop_value ($st, 'margin-left');
-    undef $use_shorthand
-        if not length $l or
-            ($l eq 'inherit' and $t ne 'inherit') or
-            ($t eq 'inherit' and $l ne 'inherit');
-    my $l_i = $se->serialize_prop_priority ($st, 'margin-left');
-    undef $use_shorthand unless $l_i eq $t_i;
-
-    if ($use_shorthand) {
-      $b .= ' ' . $l if $r ne $l;
-      $r .= ' ' . $b if $t ne $b;
-      $t .= ' ' . $r if $t ne $r;
-      return {margin => [$t, $t_i]};
-    } else {
-      my $v = {};
-      if (length $t) {
-        $v->{'margin-top'} = [$t, $t_i];
-      }
-      if (length $r) {
-        $v->{'margin-right'} = [$r, $r_i];
-      }
-      if (length $b) {
-        $v->{'margin-bottom'} = [$b, $b_i];
-      }
-      if (length $l) {
-        $v->{'margin-left'} = [$l, $l_i];
-      }
-      return $v;
-    }
-  },
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{margin_top} = $Prop->{'margin-top'};
-$Key->{margin_top} = $Prop->{'margin-top'};
+}; # margin-top
 
-$Prop->{'margin-bottom'} = {
+## <http://dev.w3.org/csswg/css-box/#the-margin-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{margin_bottom} = {
   css => 'margin-bottom',
   dom => 'margin_bottom',
-  key => 'margin_bottom',
-  parse => $Prop->{'margin-top'}->{parse},
-  allow_negative => 1,
-  keyword => {auto => 1},
-  serialize_multiple => $Prop->{'margin-top'}->{serialize_multiple},
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{margin_bottom} = $Prop->{'margin-bottom'};
-$Key->{margin_bottom} = $Prop->{'margin-bottom'};
+}; # margin-bottom
 
-$Prop->{'margin-right'} = {
+## <http://dev.w3.org/csswg/css-box/#the-margin-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{margin_right} = {
   css => 'margin-right',
   dom => 'margin_right',
-  key => 'margin_right',
-  parse => $Prop->{'margin-top'}->{parse},
-  allow_negative => 1,
-  keyword => {auto => 1},
-  serialize_multiple => $Prop->{'margin-top'}->{serialize_multiple},
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{margin_right} = $Prop->{'margin-right'};
-$Key->{margin_right} = $Prop->{'margin-right'};
+}; # margin-right
 
-$Prop->{'margin-left'} = {
+## <http://dev.w3.org/csswg/css-box/#the-margin-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{margin_left} = {
   css => 'margin-left',
   dom => 'margin_left',
-  key => 'margin_left',
-  parse => $Prop->{'margin-top'}->{parse},
-  allow_negative => 1,
-  keyword => {auto => 1},
-  serialize_multiple => $Prop->{'margin-top'}->{serialize_multiple},
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{margin_left} = $Prop->{'margin-left'};
-$Key->{margin_left} = $Prop->{'margin-left'};
+}; # margin-left
+
+$Key->{$_}->{parse_longhand} = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2) {
+    if ($us->[0]->{type} == DIMENSION_TOKEN or
+        $us->[0]->{type} == NUMBER_TOKEN) {
+      return $Web::CSS::Values::LengthOrQuirkyLengthParser->($self, $us); # or undef
+    } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+      return ['PERCENTAGE', 0+$us->[0]->{number}];
+    } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+      my $value = $us->[0]->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($value eq 'auto') {
+        return ['KEYWORD', $value];
+      }
+    }
+  }
+
+  $self->onerror->(type => 'CSS syntax error', text => q['margin-*'],
+                   level => 'm',
+                   uri => $self->context->urlref,
+                   token => $us->[0]);
+  return undef;
+} for qw(margin_top margin_right margin_bottom margin_left); # parse_longhand
 
 $Prop->{top} = {
   css => 'top',
   dom => 'top',
   key => 'top',
-  parse => $Prop->{'margin-top'}->{parse},
+  parse => $Key->{margin_top}->{parse},
   allow_negative => 1,
   keyword => {auto => 1},
   initial => ['KEYWORD', 'auto'],
@@ -1261,7 +1215,6 @@ $Prop->{bottom} = {
   css => 'bottom',
   dom => 'bottom',
   key => 'bottom',
-  parse => $Prop->{'margin-top'}->{parse},
   allow_negative => 1,
   keyword => {auto => 1},
   initial => ['KEYWORD', 'auto'],
@@ -1275,7 +1228,6 @@ $Prop->{left} = {
   css => 'left',
   dom => 'left',
   key => 'left',
-  parse => $Prop->{'margin-top'}->{parse},
   allow_negative => 1,
   keyword => {auto => 1},
   initial => ['KEYWORD', 'auto'],
@@ -1358,7 +1310,6 @@ $Prop->{right} = {
   css => 'right',
   dom => 'right',
   key => 'right',
-  parse => $Prop->{'margin-top'}->{parse},
   allow_negative => 1,
   keyword => {auto => 1},
   initial => ['KEYWORD', 'auto'],
@@ -1372,7 +1323,6 @@ $Prop->{width} = {
   css => 'width',
   dom => 'width',
   key => 'width',
-  parse => $Prop->{'margin-top'}->{parse},
   #allow_negative => 0,
   keyword => {
     auto => 1,
@@ -1396,7 +1346,6 @@ $Prop->{'min-width'} = {
   css => 'min-width',
   dom => 'min_width',
   key => 'min_width',
-  parse => $Prop->{'margin-top'}->{parse},
   #allow_negative => 0,
   keyword => {
     ## Firefox 3
@@ -1414,7 +1363,6 @@ $Prop->{'max-width'} = {
   css => 'max-width',
   dom => 'max_width',
   key => 'max_width',
-  parse => $Prop->{'margin-top'}->{parse},
   #allow_negative => 0,
   keyword => {
     none => 1,
@@ -1434,7 +1382,6 @@ $Prop->{height} = {
   css => 'height',
   dom => 'height',
   key => 'height',
-  parse => $Prop->{'margin-top'}->{parse},
   #allow_negative => 0,
   keyword => {auto => 1},
   initial => ['KEYWORD', 'auto'],
@@ -1450,7 +1397,6 @@ $Prop->{'min-height'} = {
   css => 'min-height',
   dom => 'min_height',
   key => 'min_height',
-  parse => $Prop->{'margin-top'}->{parse},
   #allow_negative => 0,
   #keyword => {},
   initial => ['DIMENSION', 0, 'px'],
@@ -1464,7 +1410,6 @@ $Prop->{'max-height'} = {
   css => 'max-height',
   dom => 'max_height',
   key => 'max_height',
-  parse => $Prop->{'margin-top'}->{parse},
   #allow_negative => 0,
   keyword => {none => 1},
   initial => ['KEYWORD', 'none'],
@@ -1542,7 +1487,6 @@ $Prop->{'vertical-align'} = {
   css => 'vertical-align',
   dom => 'vertical_align',
   key => 'vertical_align',
-  parse => $Prop->{'margin-top'}->{parse},
   allow_negative => 1,
   keyword => {
     baseline => 1, sub => 1, super => 1, top => 1, 'text-top' => 1,
@@ -1565,7 +1509,6 @@ $Prop->{'text-indent'} = {
   css => 'text-indent',
   dom => 'text_indent',
   key => 'text_indent',
-  parse => $Prop->{'margin-top'}->{parse},
   allow_negative => 1,
   keyword => {},
   initial => ['DIMENSION', 0, 'px'],
@@ -1640,7 +1583,6 @@ $Prop->{'background-position-y'} = {
   css => 'background-position-y',
   dom => 'background_position_y',
   key => 'background_position_y',
-  parse => $Prop->{'margin-top'}->{parse},
   allow_negative => 1,
   keyword => {top => 1, center => 1, bottom => 1},
   serialize_multiple => $Key->{background_color}->{serialize_multiple},
@@ -1651,123 +1593,74 @@ $Prop->{'background-position-y'} = {
 $Attr->{background_position_y} = $Prop->{'background-position-y'};
 $Key->{background_position_y} = $Prop->{'background-position-y'};
 
-$Prop->{'padding-top'} = {
+## <http://dev.w3.org/csswg/css-box/#the-padding-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{padding_top} = {
   css => 'padding-top',
   dom => 'padding_top',
-  key => 'padding_top',
-  parse => $Prop->{'margin-top'}->{parse},
-  #allow_negative => 0,
-  #keyword => {},
-  serialize_multiple => sub {
-    my ($se, $st) = @_;
-
-    ## NOTE: Same as |serialize_multiple| of 'margin-top'.
-
-    my $use_shorthand = 1;
-    my $t = $se->serialize_prop_value ($st, 'padding-top');
-    undef $use_shorthand unless length $t;
-    my $t_i = $se->serialize_prop_priority ($st, 'padding-top');
-    my $r = $se->serialize_prop_value ($st, 'padding-right');
-    undef $use_shorthand
-        if not length $r or
-            ($r eq 'inherit' and $t ne 'inherit') or
-            ($t eq 'inherit' and $r ne 'inherit');
-    my $r_i = $se->serialize_prop_priority ($st, 'padding-right');
-    undef $use_shorthand unless $r_i eq $t_i;
-    my $b = $se->serialize_prop_value ($st, 'padding-bottom');
-    undef $use_shorthand
-        if not length $b or
-            ($b eq 'inherit' and $t ne 'inherit') or
-            ($t eq 'inherit' and $b ne 'inherit');
-    my $b_i = $se->serialize_prop_priority ($st, 'padding-bottom');
-    undef $use_shorthand unless $b_i eq $t_i;
-    my $l = $se->serialize_prop_value ($st, 'padding-left');
-    undef $use_shorthand
-        if not length $l or
-            ($l eq 'inherit' and $t ne 'inherit') or
-            ($t eq 'inherit' and $l ne 'inherit');
-    my $l_i = $se->serialize_prop_priority ($st, 'padding-left');
-    undef $use_shorthand unless $l_i eq $t_i;
-
-    if ($use_shorthand) {
-      $b .= ' ' . $l if $r ne $l;
-      $r .= ' ' . $b if $t ne $b;
-      $t .= ' ' . $r if $t ne $r;
-      return {padding => [$t, $t_i]};
-    } else {
-      my $v = {};
-      if (length $t) {
-        $v->{'padding-top'} = [$t, $t_i];
-      }
-      if (length $r) {
-        $v->{'padding-right'} = [$r, $r_i];
-      }
-      if (length $b) {
-        $v->{'padding-bottom'} = [$b, $b_i];
-      }
-      if (length $l) {
-        $v->{'padding-left'} = [$l, $l_i];
-      }
-      return $v;
-    }
-  },
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{padding_top} = $Prop->{'padding-top'};
-$Key->{padding_top} = $Prop->{'padding-top'};
+}; # padding-top
 
-$Prop->{'padding-bottom'} = {
+## <http://dev.w3.org/csswg/css-box/#the-padding-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{padding_bottom} = {
   css => 'padding-bottom',
   dom => 'padding_bottom',
-  key => 'padding_bottom',
-  parse => $Prop->{'padding-top'}->{parse},
-  #allow_negative => 0,
-  #keyword => {},
-  serialize_multiple => $Prop->{'padding-top'}->{serialize_multiple},
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{padding_bottom} = $Prop->{'padding-bottom'};
-$Key->{padding_bottom} = $Prop->{'padding-bottom'};
+}; # padding-bottom
 
-$Prop->{'padding-right'} = {
+## <http://dev.w3.org/csswg/css-box/#the-padding-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{padding_right} = {
   css => 'padding-right',
   dom => 'padding_right',
-  key => 'padding_right',
-  parse => $Prop->{'padding-top'}->{parse},
-  #allow_negative => 0,
-  #keyword => {},
-  serialize_multiple => $Prop->{'padding-top'}->{serialize_multiple},
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{padding_right} = $Prop->{'padding-right'};
-$Key->{padding_right} = $Prop->{'padding-right'};
+}; # padding-right
 
-$Prop->{'padding-left'} = {
+## <http://dev.w3.org/csswg/css-box/#the-padding-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{padding_left} = {
   css => 'padding-left',
   dom => 'padding_left',
-  key => 'padding_left',
-  parse => $Prop->{'padding-top'}->{parse},
-  #allow_negative => 0,
-  #keyword => {},
-  serialize_multiple => $Prop->{'padding-top'}->{serialize_multiple},
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{padding_left} = $Prop->{'padding-left'};
-$Key->{padding_left} = $Prop->{'padding-left'};
+}; # padding-left
+
+$Key->{$_}->{parse_longhand} = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2) {
+    if ($us->[0]->{type} == DIMENSION_TOKEN or
+        $us->[0]->{type} == NUMBER_TOKEN) {
+      return $Web::CSS::Values::NNLengthOrQuirkyLengthParser->($self, $us); # or undef
+    } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+      if ($us->[0]->{number} >= 0) {
+        return ['PERCENTAGE', 0+$us->[0]->{number}];
+      }
+    }
+  }
+
+  $self->onerror->(type => 'CSS syntax error', text => q['padding-*'],
+                   level => 'm',
+                   uri => $self->context->urlref,
+                   token => $us->[0]);
+  return undef;
+} for qw(padding_top padding_right padding_bottom padding_left); # parse_longhand
 
 $Prop->{'border-top-width'} = {
   css => 'border-top-width',
   dom => 'border_top_width',
   key => 'border_top_width',
-  parse => $Prop->{'margin-top'}->{parse},
   #allow_negative => 0,
   keyword => {thin => 1, medium => 1, thick => 1},
   serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
@@ -2571,14 +2464,12 @@ $Key->{border_color} = {
   parse_shorthand => sub {
     my ($self, $def, $tokens) = @_;
     $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
-    ## If <color> becomes to be able to include multiple component in
-    ## future, this need to be rewritten.
     if (@$tokens == 5) { # $tokens->[-1] is EOF_TOKEN
       my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
       my $v2 = defined $v1 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
       my $v3 = defined $v2 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
       my $v4 = defined $v3 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[3], _to_eof_token $tokens->[4]]) : undef;
-      return {} unless defined $v4;
+      return undef unless defined $v4;
       return {border_top_color => $v1,
               border_right_color => $v2,
               border_bottom_color => $v3,
@@ -2587,7 +2478,7 @@ $Key->{border_color} = {
       my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
       my $v2 = defined $v1 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
       my $v3 = defined $v2 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
-      return {} unless defined $v3;
+      return undef unless defined $v3;
       return {border_top_color => $v1,
               border_right_color => $v2,
               border_bottom_color => $v3,
@@ -2595,14 +2486,14 @@ $Key->{border_color} = {
     } elsif (@$tokens == 3) {
       my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
       my $v2 = defined $v1 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      return {} unless defined $v2;
+      return undef unless defined $v2;
       return {border_top_color => $v1,
               border_right_color => $v2,
               border_bottom_color => $v1,
               border_left_color => $v2};
     } elsif (@$tokens == 2) {
       my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      return {} unless defined $v1;
+      return undef unless defined $v1;
       return {border_top_color => $v1,
               border_right_color => $v1,
               border_bottom_color => $v1,
@@ -2611,8 +2502,8 @@ $Key->{border_color} = {
       $self->onerror->(type => 'CSS syntax error', text => q['border-color'],
                        level => 'm',
                        uri => $self->context->urlref,
-                       token => $tokens->[4]);
-      return {};
+                       token => $tokens->[0]);
+      return undef;
     }
   }, # parse_shorthand
   serialize_shorthand => sub {
@@ -2912,499 +2803,160 @@ $Prop->{border} = {
 };
 $Attr->{border} = $Prop->{border};
 
-$Prop->{margin} = {
+## <http://dev.w3.org/csswg/css-box/#the-margin-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{margin} = {
   css => 'margin',
   dom => 'margin',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my %prop_value;
-
-    my $sign = 1;
-    my $has_sign;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
+  is_shorthand => 1,
+  longhand_subprops => [qw(margin_top margin_right margin_bottom margin_left)],
+  parse_shorthand => sub {
+    my ($self, $def, $tokens) = @_;
+    $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
+    if (@$tokens == 5) { # $tokens->[-1] is EOF_TOKEN
+      my $v1 = $Key->{margin_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Key->{margin_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      my $v3 = defined $v2 ? $Key->{margin_bottom}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
+      my $v4 = defined $v3 ? $Key->{margin_left}->{parse_longhand}->($self, [$tokens->[3], _to_eof_token $tokens->[4]]) : undef;
+      return undef unless defined $v4;
+      return {margin_top => $v1,
+              margin_right => $v2,
+              margin_bottom => $v3,
+              margin_left => $v4};
+    } elsif (@$tokens == 4) {
+      my $v1 = $Key->{margin_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Key->{margin_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      my $v3 = defined $v2 ? $Key->{margin_bottom}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
+      return undef unless defined $v3;
+      return {margin_top => $v1,
+              margin_right => $v2,
+              margin_bottom => $v3,
+              margin_left => $v2};
+    } elsif (@$tokens == 3) {
+      my $v1 = $Key->{margin_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Key->{margin_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      return undef unless defined $v2;
+      return {margin_top => $v1,
+              margin_right => $v2,
+              margin_bottom => $v1,
+              margin_left => $v2};
+    } elsif (@$tokens == 2) {
+      my $v1 = $Key->{margin_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      return undef unless defined $v1;
+      return {margin_top => $v1,
+              margin_right => $v1,
+              margin_bottom => $v1,
+              margin_left => $v1};
+    } else {
+      $self->onerror->(type => 'CSS syntax error', text => q['margin'],
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       token => $tokens->[0]);
+      return undef;
     }
+  }, # parse_shorthand
+  serialize_shorthand => sub {
+    my ($se, $strings) = @_;
 
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($length_unit->{$unit}) {
-        $prop_value{'margin-top'} = ['DIMENSION', $value, $unit];
+    my $v1 = $strings->{margin_top};
+    my $v2 = $strings->{margin_right};
+    my $v3 = $strings->{margin_bottom};
+    my $v4 = $strings->{margin_left};
+
+    if ($v2 eq $v4) {
+      if ($v1 eq $v3) {
+        if ($v1 eq $v2) {
+          return $v1;
+        } else {
+          return "$v1 $v2";
+        }
       } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'margin-top'} = ['PERCENTAGE', $value];
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'margin-top'} = ['DIMENSION', $value, 'px'];
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
-      $t = $tt->get_next_token;
-      if ($prop_value eq 'auto') {
-        $prop_value{'margin-top'} = ['KEYWORD', $prop_value];
-      } elsif ($prop_value eq 'inherit') {
-        $prop_value{'margin-top'} = ['INHERIT'];
-        $prop_value{'margin-right'} = $prop_value{'margin-top'};
-        $prop_value{'margin-bottom'} = $prop_value{'margin-top'};
-        $prop_value{'margin-left'} = $prop_value{'margin-right'};
-        return ($t, \%prop_value);
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
+        return "$v1 $v2 $v3";
       }
     } else {
-      $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => 'm',
-                 uri => $self->context->urlref,
-                 token => $t);
-      return ($t, undef);
+      return "$v1 $v2 $v3 $v4";
     }
-    $prop_value{'margin-right'} = $prop_value{'margin-top'};
-    $prop_value{'margin-bottom'} = $prop_value{'margin-top'};
-    $prop_value{'margin-left'} = $prop_value{'margin-right'};
+  }, # serialize_shorthand
+}; # margin
 
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    undef $has_sign;
-    $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($length_unit->{$unit}) {
-        $prop_value{'margin-right'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'margin-right'} = ['PERCENTAGE', $value];
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'margin-right'} = ['DIMENSION', $value, 'px'];
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
-      $t = $tt->get_next_token;
-      if ($prop_value eq 'auto') {
-        $prop_value{'margin-right'} = ['KEYWORD', $prop_value];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } else {
-      if ($has_sign) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
-    }
-    $prop_value{'margin-left'} = $prop_value{'margin-right'};
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    undef $has_sign;
-    $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($length_unit->{$unit}) {
-        $prop_value{'margin-bottom'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'margin-bottom'} = ['PERCENTAGE', $value];
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'margin-bottom'} = ['DIMENSION', $value, 'px'];
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
-      $t = $tt->get_next_token;
-      if ($prop_value eq 'auto') {
-        $prop_value{'margin-bottom'} = ['KEYWORD', $prop_value];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } else {
-      if ($has_sign) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
-    }
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    undef $has_sign;
-    $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($length_unit->{$unit}) {
-        $prop_value{'margin-left'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'margin-left'} = ['PERCENTAGE', $value];
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'margin-left'} = ['DIMENSION', $value, 'px'];
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
-      $t = $tt->get_next_token;
-      if ($prop_value eq 'auto') {
-        $prop_value{'margin-left'} = ['KEYWORD', $prop_value];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } else {
-      if ($has_sign) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
-    }
-
-    return ($t, \%prop_value);
-  },
-  serialize_multiple => $Prop->{'margin-top'}->{serialize_multiple},
-};
-$Attr->{margin} = $Prop->{margin};
-
-$Prop->{padding} = {
+## <http://dev.w3.org/csswg/css-box/#the-padding-properties> [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{padding} = {
   css => 'padding',
   dom => 'padding',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my %prop_value;
-
-    my $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $sign = -1;
+  is_shorthand => 1,
+  longhand_subprops => [qw(padding_top padding_right
+                           padding_bottom padding_left)],
+  parse_shorthand => sub {
+    my ($self, $def, $tokens) = @_;
+    $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
+    if (@$tokens == 5) { # $tokens->[-1] is EOF_TOKEN
+      my $v1 = $Key->{padding_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Key->{padding_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      my $v3 = defined $v2 ? $Key->{padding_bottom}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
+      my $v4 = defined $v3 ? $Key->{padding_left}->{parse_longhand}->($self, [$tokens->[3], _to_eof_token $tokens->[4]]) : undef;
+      return undef unless defined $v4;
+      return {padding_top => $v1,
+              padding_right => $v2,
+              padding_bottom => $v3,
+              padding_left => $v4};
+    } elsif (@$tokens == 4) {
+      my $v1 = $Key->{padding_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Key->{padding_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      my $v3 = defined $v2 ? $Key->{padding_bottom}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
+      return undef unless defined $v3;
+      return {padding_top => $v1,
+              padding_right => $v2,
+              padding_bottom => $v3,
+              padding_left => $v2};
+    } elsif (@$tokens == 3) {
+      my $v1 = $Key->{padding_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Key->{padding_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      return undef unless defined $v2;
+      return {padding_top => $v1,
+              padding_right => $v2,
+              padding_bottom => $v1,
+              padding_left => $v2};
+    } elsif (@$tokens == 2) {
+      my $v1 = $Key->{padding_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      return undef unless defined $v1;
+      return {padding_top => $v1,
+              padding_right => $v1,
+              padding_bottom => $v1,
+              padding_left => $v1};
+    } else {
+      $self->onerror->(type => 'CSS syntax error', text => q['padding'],
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       token => $tokens->[0]);
+      return undef;
     }
+  }, # parse_shorthand
+  serialize_shorthand => sub {
+    my ($se, $strings) = @_;
 
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($length_unit->{$unit} and $value >= 0) {
-        $prop_value{'padding-top'} = ['DIMENSION', $value, $unit];
+    my $v1 = $strings->{padding_top};
+    my $v2 = $strings->{padding_right};
+    my $v3 = $strings->{padding_bottom};
+    my $v4 = $strings->{padding_left};
+
+    if ($v2 eq $v4) {
+      if ($v1 eq $v3) {
+        if ($v1 eq $v2) {
+          return $v1;
+        } else {
+          return "$v1 $v2";
+        }
       } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'padding-top'} = ['PERCENTAGE', $value];
-      unless ($value >= 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'padding-top'} = ['DIMENSION', $value, 'px'];
-      unless ($value >= 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($sign > 0 and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
-      $t = $tt->get_next_token;
-      if ($prop_value eq 'inherit') {
-        $prop_value{'padding-top'} = ['INHERIT'];
-        $prop_value{'padding-right'} = $prop_value{'padding-top'};
-        $prop_value{'padding-bottom'} = $prop_value{'padding-top'};
-        $prop_value{'padding-left'} = $prop_value{'padding-right'};
-        return ($t, \%prop_value);
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
+        return "$v1 $v2 $v3";
       }
     } else {
-      $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => 'm',
-                 uri => $self->context->urlref,
-                 token => $t);
-      return ($t, undef);
+      return "$v1 $v2 $v3 $v4";
     }
-    $prop_value{'padding-right'} = $prop_value{'padding-top'};
-    $prop_value{'padding-bottom'} = $prop_value{'padding-top'};
-    $prop_value{'padding-left'} = $prop_value{'padding-right'};
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $sign = -1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($length_unit->{$unit} and $value >= 0) {
-        $prop_value{'padding-right'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'padding-right'} = ['PERCENTAGE', $value];
-      unless ($value >= 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'padding-right'} = ['DIMENSION', $value, 'px'];
-      unless ($value >= 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } else {
-      if ($sign < 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
-    }
-    $prop_value{'padding-left'} = $prop_value{'padding-right'};
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $sign = -1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($length_unit->{$unit} and $value >= 0) {
-        $prop_value{'padding-bottom'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'padding-bottom'} = ['PERCENTAGE', $value];
-      unless ($value >= 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'padding-bottom'} = ['DIMENSION', $value, 'px'];
-      unless ($value >= 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } else {
-      if ($sign < 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
-    }
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $sign = -1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($length_unit->{$unit} and $value >= 0) {
-        $prop_value{'padding-left'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'padding-left'} = ['PERCENTAGE', $value];
-      unless ($value >= 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $t = $tt->get_next_token;
-      $prop_value{'padding-left'} = ['DIMENSION', $value, 'px'];
-      unless ($value >= 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } else {
-      if ($sign < 0) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
-    }
-
-    return ($t, \%prop_value);
-  },
-  serialize_multiple => $Prop->{'padding-top'}->{serialize_multiple},
-};
-$Attr->{padding} = $Prop->{padding};
+  }, # serialize_shorthand
+}; # padding
 
 ## <http://www.w3.org/TR/CSS21/tables.html#separated-borders> [CSS21],
 ## [MANAKAICSS].
@@ -3422,12 +2974,12 @@ $Key->{border_spacing} = {
     if (@$tokens == 3) {
       my $v1 = $Web::CSS::Values::NNLengthParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
       my $v2 = defined $v1 ? $Web::CSS::Values::NNLengthParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      return {} unless defined $v2;
+      return undef unless defined $v2;
       return {_webkit_border_horizontal_spacing => $v1,
               _webkit_border_vertical_spacing => $v2};
     } elsif (@$tokens == 2) {
       my $v1 = $Web::CSS::Values::NNLengthParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      return {} unless defined $v1;
+      return undef unless defined $v1;
       return {_webkit_border_horizontal_spacing => $v1,
               _webkit_border_vertical_spacing => $v1};
     } else {
@@ -3435,7 +2987,7 @@ $Key->{border_spacing} = {
                        level => 'm',
                        uri => $self->context->urlref,
                        token => $tokens->[0]);
-      return {};
+      return undef;
     }
   }, # parse_shorthand
   serialize_shorthand => sub {

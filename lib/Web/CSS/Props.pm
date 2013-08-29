@@ -24,6 +24,83 @@ our $Prop; ## By CSS property name
 our $Attr; ## By CSSOM attribute name
 our $Key; ## By internal key
 
+my $GetBoxShorthandParser = sub {
+  my $Def = $_[0];
+  my $Props = $Def->{longhand_subprops};
+  return sub {
+    my ($self, $def, $tokens) = @_;
+    $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
+    if (@$tokens == 5) { # $tokens->[-1] is EOF_TOKEN
+      my $v1 = $Key->{$Props->[0]}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Key->{$Props->[1]}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      my $v3 = defined $v2 ? $Key->{$Props->[2]}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
+      my $v4 = defined $v3 ? $Key->{$Props->[3]}->{parse_longhand}->($self, [$tokens->[3], _to_eof_token $tokens->[4]]) : undef;
+      return undef unless defined $v4;
+      return {$Props->[0] => $v1,
+              $Props->[1] => $v2,
+              $Props->[2] => $v3,
+              $Props->[3] => $v4};
+    } elsif (@$tokens == 4) {
+      my $v1 = $Key->{$Props->[0]}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Key->{$Props->[1]}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      my $v3 = defined $v2 ? $Key->{$Props->[2]}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
+      return undef unless defined $v3;
+      return {$Props->[0] => $v1,
+              $Props->[1] => $v2,
+              $Props->[2] => $v3,
+              $Props->[3] => $v2};
+    } elsif (@$tokens == 3) {
+      my $v1 = $Key->{$Props->[0]}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Key->{$Props->[1]}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      return undef unless defined $v2;
+      return {$Props->[0] => $v1,
+              $Props->[1] => $v2,
+              $Props->[2] => $v1,
+              $Props->[3] => $v2};
+    } elsif (@$tokens == 2) {
+      my $v1 = $Key->{$Props->[0]}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      return undef unless defined $v1;
+      return {$Props->[0] => $v1,
+              $Props->[1] => $v1,
+              $Props->[2] => $v1,
+              $Props->[3] => $v1};
+    } else {
+      $self->onerror->(type => 'CSS syntax error', text => "'$Def->{css}'",
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       token => $tokens->[0]);
+      return undef;
+    }
+  };
+}; # $GetBoxShorthandParser
+
+my $GetBoxShorthandSerializer = sub {
+  my $Def = $_[0];
+  my $Props = $Def->{longhand_subprops};
+  return sub {
+    my ($se, $strings) = @_;
+
+    my $v1 = $strings->{$Props->[0]};
+    my $v2 = $strings->{$Props->[1]};
+    my $v3 = $strings->{$Props->[2]};
+    my $v4 = $strings->{$Props->[3]};
+
+    if ($v2 eq $v4) {
+      if ($v1 eq $v3) {
+        if ($v1 eq $v2) {
+          return $v1;
+        } else {
+          return "$v1 $v2";
+        }
+      } else {
+        return "$v1 $v2 $v3";
+      }
+    } else {
+      return "$v1 $v2 $v3 $v4";
+    }
+  };
+}; # $GetBoxShorthandSerializer
+
 my $compute_as_specified = sub ($$$$) {
   #my ($self, $element, $prop_name, $specified_value) = @_;
   return $_[3];
@@ -1149,6 +1226,8 @@ $Key->{$_}->{parse_longhand} = sub {
                    token => $us->[0]);
   return undef;
 } for qw(margin_top margin_right margin_bottom margin_left); # parse_longhand
+
+# XXX---XXX
 
 $Prop->{top} = {
   css => 'top',
@@ -2461,74 +2540,9 @@ $Key->{border_color} = {
   is_shorthand => 1,
   longhand_subprops => [qw(border_top_color border_right_color
                            border_bottom_color border_left_color)],
-  parse_shorthand => sub {
-    my ($self, $def, $tokens) = @_;
-    $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
-    if (@$tokens == 5) { # $tokens->[-1] is EOF_TOKEN
-      my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      my $v2 = defined $v1 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      my $v3 = defined $v2 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
-      my $v4 = defined $v3 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[3], _to_eof_token $tokens->[4]]) : undef;
-      return undef unless defined $v4;
-      return {border_top_color => $v1,
-              border_right_color => $v2,
-              border_bottom_color => $v3,
-              border_left_color => $v4};
-    } elsif (@$tokens == 4) {
-      my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      my $v2 = defined $v1 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      my $v3 = defined $v2 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
-      return undef unless defined $v3;
-      return {border_top_color => $v1,
-              border_right_color => $v2,
-              border_bottom_color => $v3,
-              border_left_color => $v2};
-    } elsif (@$tokens == 3) {
-      my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      my $v2 = defined $v1 ? $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      return undef unless defined $v2;
-      return {border_top_color => $v1,
-              border_right_color => $v2,
-              border_bottom_color => $v1,
-              border_left_color => $v2};
-    } elsif (@$tokens == 2) {
-      my $v1 = $Web::CSS::Values::ColorOrQuirkyColorParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      return undef unless defined $v1;
-      return {border_top_color => $v1,
-              border_right_color => $v1,
-              border_bottom_color => $v1,
-              border_left_color => $v1};
-    } else {
-      $self->onerror->(type => 'CSS syntax error', text => q['border-color'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $tokens->[0]);
-      return undef;
-    }
-  }, # parse_shorthand
-  serialize_shorthand => sub {
-    my ($se, $strings) = @_;
-
-    my $v1 = $strings->{border_top_color};
-    my $v2 = $strings->{border_right_color};
-    my $v3 = $strings->{border_bottom_color};
-    my $v4 = $strings->{border_left_color};
-
-    if ($v2 eq $v4) {
-      if ($v1 eq $v3) {
-        if ($v1 eq $v2) {
-          return $v1;
-        } else {
-          return "$v1 $v2";
-        }
-      } else {
-        return "$v1 $v2 $v3";
-      }
-    } else {
-      return "$v1 $v2 $v3 $v4";
-    }
-  }, # serialize_shorthand
 }; # border-color
+$Key->{border_color}->{parse_shorthand} = $GetBoxShorthandParser->($Key->{border_color});
+$Key->{border_color}->{serialize_shorthand} = $GetBoxShorthandSerializer->($Key->{border_color});
 
 $Prop->{'border-top'} = {
   css => 'border-top',
@@ -2811,74 +2825,9 @@ $Key->{margin} = {
   dom => 'margin',
   is_shorthand => 1,
   longhand_subprops => [qw(margin_top margin_right margin_bottom margin_left)],
-  parse_shorthand => sub {
-    my ($self, $def, $tokens) = @_;
-    $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
-    if (@$tokens == 5) { # $tokens->[-1] is EOF_TOKEN
-      my $v1 = $Key->{margin_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      my $v2 = defined $v1 ? $Key->{margin_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      my $v3 = defined $v2 ? $Key->{margin_bottom}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
-      my $v4 = defined $v3 ? $Key->{margin_left}->{parse_longhand}->($self, [$tokens->[3], _to_eof_token $tokens->[4]]) : undef;
-      return undef unless defined $v4;
-      return {margin_top => $v1,
-              margin_right => $v2,
-              margin_bottom => $v3,
-              margin_left => $v4};
-    } elsif (@$tokens == 4) {
-      my $v1 = $Key->{margin_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      my $v2 = defined $v1 ? $Key->{margin_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      my $v3 = defined $v2 ? $Key->{margin_bottom}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
-      return undef unless defined $v3;
-      return {margin_top => $v1,
-              margin_right => $v2,
-              margin_bottom => $v3,
-              margin_left => $v2};
-    } elsif (@$tokens == 3) {
-      my $v1 = $Key->{margin_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      my $v2 = defined $v1 ? $Key->{margin_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      return undef unless defined $v2;
-      return {margin_top => $v1,
-              margin_right => $v2,
-              margin_bottom => $v1,
-              margin_left => $v2};
-    } elsif (@$tokens == 2) {
-      my $v1 = $Key->{margin_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      return undef unless defined $v1;
-      return {margin_top => $v1,
-              margin_right => $v1,
-              margin_bottom => $v1,
-              margin_left => $v1};
-    } else {
-      $self->onerror->(type => 'CSS syntax error', text => q['margin'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $tokens->[0]);
-      return undef;
-    }
-  }, # parse_shorthand
-  serialize_shorthand => sub {
-    my ($se, $strings) = @_;
-
-    my $v1 = $strings->{margin_top};
-    my $v2 = $strings->{margin_right};
-    my $v3 = $strings->{margin_bottom};
-    my $v4 = $strings->{margin_left};
-
-    if ($v2 eq $v4) {
-      if ($v1 eq $v3) {
-        if ($v1 eq $v2) {
-          return $v1;
-        } else {
-          return "$v1 $v2";
-        }
-      } else {
-        return "$v1 $v2 $v3";
-      }
-    } else {
-      return "$v1 $v2 $v3 $v4";
-    }
-  }, # serialize_shorthand
 }; # margin
+$Key->{margin}->{parse_shorthand} = $GetBoxShorthandParser->($Key->{margin});
+$Key->{margin}->{serialize_shorthand} = $GetBoxShorthandSerializer->($Key->{margin});
 
 ## <http://dev.w3.org/csswg/css-box/#the-padding-properties> [CSSBOX],
 ## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
@@ -2889,74 +2838,9 @@ $Key->{padding} = {
   is_shorthand => 1,
   longhand_subprops => [qw(padding_top padding_right
                            padding_bottom padding_left)],
-  parse_shorthand => sub {
-    my ($self, $def, $tokens) = @_;
-    $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
-    if (@$tokens == 5) { # $tokens->[-1] is EOF_TOKEN
-      my $v1 = $Key->{padding_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      my $v2 = defined $v1 ? $Key->{padding_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      my $v3 = defined $v2 ? $Key->{padding_bottom}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
-      my $v4 = defined $v3 ? $Key->{padding_left}->{parse_longhand}->($self, [$tokens->[3], _to_eof_token $tokens->[4]]) : undef;
-      return undef unless defined $v4;
-      return {padding_top => $v1,
-              padding_right => $v2,
-              padding_bottom => $v3,
-              padding_left => $v4};
-    } elsif (@$tokens == 4) {
-      my $v1 = $Key->{padding_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      my $v2 = defined $v1 ? $Key->{padding_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      my $v3 = defined $v2 ? $Key->{padding_bottom}->{parse_longhand}->($self, [$tokens->[2], _to_eof_token $tokens->[3]]) : undef;
-      return undef unless defined $v3;
-      return {padding_top => $v1,
-              padding_right => $v2,
-              padding_bottom => $v3,
-              padding_left => $v2};
-    } elsif (@$tokens == 3) {
-      my $v1 = $Key->{padding_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      my $v2 = defined $v1 ? $Key->{padding_right}->{parse_longhand}->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
-      return undef unless defined $v2;
-      return {padding_top => $v1,
-              padding_right => $v2,
-              padding_bottom => $v1,
-              padding_left => $v2};
-    } elsif (@$tokens == 2) {
-      my $v1 = $Key->{padding_top}->{parse_longhand}->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
-      return undef unless defined $v1;
-      return {padding_top => $v1,
-              padding_right => $v1,
-              padding_bottom => $v1,
-              padding_left => $v1};
-    } else {
-      $self->onerror->(type => 'CSS syntax error', text => q['padding'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $tokens->[0]);
-      return undef;
-    }
-  }, # parse_shorthand
-  serialize_shorthand => sub {
-    my ($se, $strings) = @_;
-
-    my $v1 = $strings->{padding_top};
-    my $v2 = $strings->{padding_right};
-    my $v3 = $strings->{padding_bottom};
-    my $v4 = $strings->{padding_left};
-
-    if ($v2 eq $v4) {
-      if ($v1 eq $v3) {
-        if ($v1 eq $v2) {
-          return $v1;
-        } else {
-          return "$v1 $v2";
-        }
-      } else {
-        return "$v1 $v2 $v3";
-      }
-    } else {
-      return "$v1 $v2 $v3 $v4";
-    }
-  }, # serialize_shorthand
 }; # padding
+$Key->{padding}->{parse_shorthand} = $GetBoxShorthandParser->($Key->{padding});
+$Key->{padding}->{serialize_shorthand} = $GetBoxShorthandSerializer->($Key->{padding});
 
 ## <http://www.w3.org/TR/CSS21/tables.html#separated-borders> [CSS21],
 ## [MANAKAICSS].

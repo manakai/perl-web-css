@@ -120,6 +120,22 @@ our $NNIntegerParser = sub {
   return undef;
 }; # $NNIntegerParser
 
+## <integer>, positive [CSSSYNTAX] [CSSBREAK]
+our $PositiveIntegerParser = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2 and
+      $us->[0]->{type} == NUMBER_TOKEN and
+      $us->[0]->{number} =~ /\A[+-]?[0-9]+\z/) { # <integer>
+    if ($us->[0]->{number} > 0) {
+      return ['NUMBER', 0+$us->[0]->{number}];
+    }
+  }
+  $self->onerror->(type => 'css:value:not positive integer', # XXX
+                   level => 'm',
+                   token => $us->[0]);
+  return undef;
+}; # $PositiveIntegerParser
+
 ## <integer>, either 0 or 1 [CSSSYNTAX] [MQ]
 our $BooleanIntegerParser = sub {
   my ($self, $us) = @_;
@@ -167,21 +183,98 @@ my $LengthUnits = {
   # XXX and more...
 }; # $LengthUnits
 
-## <length>, non-negative [CSSVALUES] [MQ]
+## <length> [CSSVALUES].
+our $LengthParser = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2) {
+    if ($us->[0]->{type} == DIMENSION_TOKEN) {
+      my $unit = $us->[0]->{value};
+      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($LengthUnits->{$unit}) {
+        return ['LENGTH', 0+$us->[0]->{number}, $unit];
+      }
+    } elsif ($us->[0]->{type} == NUMBER_TOKEN) {
+      if ($us->[0]->{number} == 0) {
+        return ['LENGTH', 0, 'px'];
+      }
+    }
+  }
+  $self->onerror->(type => 'css:value:not length', # XXX
+                   level => 'm',
+                   token => $us->[0]);
+  return undef;
+}; # $LengthParser
+
+## <length> | <quirky-length> [CSSVALUES] [QUIRKS].
+our $LengthOrQuirkyLengthParser = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2) {
+    if ($us->[0]->{type} == DIMENSION_TOKEN) {
+      my $unit = $us->[0]->{value};
+      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($LengthUnits->{$unit}) {
+        return ['LENGTH', 0+$us->[0]->{number}, $unit];
+      }
+    } elsif ($us->[0]->{type} == NUMBER_TOKEN) {
+      if ($us->[0]->{number} == 0) {
+        return ['LENGTH', 0, 'px'];
+      } elsif ($self->context->quirks) {
+        return ['LENGTH', 0+$us->[0]->{number}, 'px'];
+      }
+    }
+  }
+  $self->onerror->(type => 'css:value:not length', # XXX
+                   level => 'm',
+                   token => $us->[0]);
+  return undef;
+}; # $LengthOrQuirkyLengthParser
+
+## <length>, non-negative [CSSVALUES] [MQ] [CSS21].
 our $NNLengthParser = sub {
   my ($self, $us) = @_;
-  if (@$us == 2 and $us->[0]->{type} == DIMENSION_TOKEN) {
-    my $unit = $us->[0]->{value};
-    $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-    if ($us->[0]->{number} >= 0 and $LengthUnits->{$unit}) {
-      return ['LENGTH', 0+$us->[0]->{number}, $unit];
+  if (@$us == 2) {
+    if ($us->[0]->{type} == DIMENSION_TOKEN) {
+      my $unit = $us->[0]->{value};
+      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($us->[0]->{number} >= 0 and $LengthUnits->{$unit}) {
+        return ['LENGTH', 0+$us->[0]->{number}, $unit];
+      }
+    } elsif ($us->[0]->{type} == NUMBER_TOKEN) {
+      if ($us->[0]->{number} == 0) {
+        return ['LENGTH', 0, 'px'];
+      }
     }
-  } # XXX zero
+  }
   $self->onerror->(type => 'css:value:not nnlength', # XXX
                    level => 'm',
                    token => $us->[0]);
   return undef;
 }; # $NNLengthParser
+
+## <length> | <quirky-length>, non-negative [CSSVALUES] [QUIRKS] [MQ]
+## [CSSFONTS]
+our $NNLengthOrQuirkyLengthParser = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2) {
+    if ($us->[0]->{type} == DIMENSION_TOKEN) {
+      my $unit = $us->[0]->{value};
+      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($us->[0]->{number} >= 0 and $LengthUnits->{$unit}) {
+        return ['LENGTH', 0+$us->[0]->{number}, $unit];
+      }
+    } elsif ($us->[0]->{type} == NUMBER_TOKEN) {
+      if ($us->[0]->{number} == 0) {
+        return ['LENGTH', 0, 'px'];
+      } elsif ($us->[0]->{number} > 0 and $self->context->quirks) {
+        return ['LENGTH', 0+$us->[0]->{number}, 'px'];
+      }
+    }
+  }
+  $self->onerror->(type => 'css:value:not nnlength', # XXX
+                   level => 'm',
+                   token => $us->[0]);
+  return undef;
+}; # $NNLengthOrQuirkyLengthParser
 
 # <ratio> [MQ]
 our $RatioParser = sub {
@@ -233,7 +326,7 @@ sub hue2rgb ($$$) {
 } # hue2rgb
 
 ## <color> [CSSCOLOR] / <quirky-color> [QUIRKS] / <'outline-color'>
-## [CSSUI]
+## [CSSUI] / [MANAKAICSS].
 my $GetColorParser = sub {
   my (%args) = @_;
   # $args{is_outline_color}

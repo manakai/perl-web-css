@@ -189,7 +189,7 @@ BEGIN {
     border-left-color
     border-left-style border-left-width border-right-color
     border-right-style border-right-width
-    -manakai-border-spacing-x -manakai-border-spacing-y
+    -webkit-border-horizontal-spacing -webkit-border-vertical-spacing
     border-top-color border-top-style border-top-width bottom
     caption-side clear clip color content counter-increment counter-reset
     cursor direction display dominant-baseline empty-cells float
@@ -286,8 +286,8 @@ BEGIN {
   $DefaultComputed = $DefaultComputedText;
   $DefaultComputed =~ s/^  //gm;
   $DefaultComputed =~ s/;$//gm;
-  $DefaultComputed .= q[-manakai-border-spacing-x: 0px
--manakai-border-spacing-y: 0px
+  $DefaultComputed .= q[-webkit-border-horizontal-spacing: 0px
+-webkit-border-vertical-spacing: 0px
 background-attachment: scroll
 background-color: transparent
 background-image: none

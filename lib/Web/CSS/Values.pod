@@ -10,6 +10,21 @@ XXX
 
 XXX
 
+If a supported property only accepts <integer>, <number>, <length>,
+and/or <percentage>, any possible value MUST be supported.  If a
+supported property only accepts the only keyword which is the initial
+value of the property, as well as <integer>, <number>, <length>,
+and/or <percentage>, any possible value MUST be supported.
+
+If a supported property only accepts a keyword from the limited set,
+supported values MUST be flagged by:
+
+  $resolver->{prop_value}->{$prop_name}->{$value} = 1
+
+... where $prop_name is CSS property name in lowercase and $value is
+the supported keyword.  The initial value of the property MUST be
+supported.
+
 =head2 <color>
 
 If <color> is supported, it MUST support RGB colors (internally

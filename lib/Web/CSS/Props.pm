@@ -29,7 +29,9 @@ my $compute_as_specified = sub ($$$$) {
   return $_[3];
 }; # $compute_as_specified
 
-## <http://dev.w3.org/csswg/css-color/#foreground> [CSSCOLOR].
+## <http://dev.w3.org/csswg/css-color/#foreground> [CSSCOLOR],
+## <http://quirks.spec.whatwg.org/#the-hashless-hex-color-quirk>
+## [QUIRKS].
 $Key->{color} = {
   css => 'color',
   dom => 'color',
@@ -71,7 +73,9 @@ $Key->{color} = {
 }; # color
 
 ## <http://dev.w3.org/csswg/css-backgrounds/#the-background-color>
-## [CSSBACKGROUNDS].
+## [CSSBACKGROUNDS],
+## <http://quirks.spec.whatwg.org/#the-hashless-hex-color-quirk>
+## [QUIRKS].
 $Key->{background_color} = {
   css => 'background-color',
   dom => 'background_color',
@@ -82,7 +86,9 @@ $Key->{background_color} = {
 }; # background-color
 
 ## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
-## [CSSBACKGROUNDS].
+## [CSSBACKGROUNDS],
+## <http://quirks.spec.whatwg.org/#the-hashless-hex-color-quirk>
+## [QUIRKS].
 $Key->{border_top_color} = {
   css => 'border-top-color',
   dom => 'border_top_color',
@@ -93,7 +99,9 @@ $Key->{border_top_color} = {
 }; # border-top-color
 
 ## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
-## [CSSBACKGROUNDS]
+## [CSSBACKGROUNDS],
+## <http://quirks.spec.whatwg.org/#the-hashless-hex-color-quirk>
+## [QUIRKS].
 $Key->{border_right_color} = {
   css => 'border-right-color',
   dom => 'border_right_color',
@@ -104,7 +112,9 @@ $Key->{border_right_color} = {
 }; # border-right-color
 
 ## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
-## [CSSBACKGROUNDS]
+## [CSSBACKGROUNDS],
+## <http://quirks.spec.whatwg.org/#the-hashless-hex-color-quirk>
+## [QUIRKS].
 $Key->{border_bottom_color} = {
   css => 'border-bottom-color',
   dom => 'border_bottom_color',
@@ -115,7 +125,9 @@ $Key->{border_bottom_color} = {
 }; # border-bottom-color
 
 ## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
-## [CSSBACKGROUNDS]
+## [CSSBACKGROUNDS],
+## <http://quirks.spec.whatwg.org/#the-hashless-hex-color-quirk>
+## [QUIRKS].
 $Key->{border_left_color} = {
   css => 'border-left-color',
   dom => 'border_left_color',
@@ -125,7 +137,7 @@ $Key->{border_left_color} = {
   compute => $Key->{color}->{compute},
 }; # border-left-color
 
-## <http://dev.w3.org/csswg/css-ui/#outline-color> [CSSUI].
+## <http://dev.w3.org/csswg/css-ui/#outline-color> [CSSUI], [MANAKAICSS].
 $Key->{outline_color} = {
   css => 'outline-color',
   dom => 'outline_color',
@@ -614,163 +626,88 @@ $Key->{empty_cells} = {
   compute => $compute_as_specified,
 }; # empty-cells
 
-# XXX---XXX
-
-$Prop->{'z-index'} = {
+## <http://dev.w3.org/csswg/css-position/#z-index> [CSSPOSITION].
+$Key->{z_index} = {
   css => 'z-index',
   dom => 'z_index',
-  key => 'z_index',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my $has_sign;
-    my $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $sign = -1;
-      $has_sign = 1;
-      $t = $tt->get_next_token;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $has_sign = 1;
-      $t = $tt->get_next_token;
-    }
-
-    if ($t->{type} == NUMBER_TOKEN) {
-      ## ISSUE: See <http://suika.fam.cx/gate/2005/sw/z-index> for
-      ## browser compatibility issue.
-      my $value = $t->{number};
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ["NUMBER", $sign * int ($value / 1)]});
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($value eq 'auto') {
-        ## NOTE: |z-index| is the default value and therefore it must be
-        ## supported anyway.
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ["KEYWORD", 'auto']});
-      } elsif ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == NUMBER_TOKEN) {
+        if ($us->[0]->{number} =~ /\A[+-]?[0-9]+\z/) {
+          return ['NUMBER', 0+$us->[0]->{number}];
+        }
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'auto') {
+          return ['KEYWORD', $value];
+        }
       }
     }
     
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
+    $self->onerror->(type => 'CSS syntax error', text => q['z-index'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{z_index} = $Prop->{'z-index'};
-$Key->{z_index} = $Prop->{'z-index'};
+}; # z-index
 
-$Prop->{'font-size-adjust'} = {
+## <http://dev.w3.org/csswg/css-fonts/#font-size-adjust-prop>
+## [CSSFONTS].
+$Key->{font_size_adjust} = {
   css => 'font-size-adjust',
   dom => 'font_size_adjust',
-  key => 'font_size_adjust',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my $has_sign;
-    my $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $sign = -1;
-      $has_sign = 1;
-      $t = $tt->get_next_token;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $has_sign = 1;
-      $t = $tt->get_next_token;
-    }
-
-    if ($t->{type} == NUMBER_TOKEN) {
-      my $value = $t->{number};
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ["NUMBER", $sign * $value]});
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($value eq 'none') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ["KEYWORD", $value]});
-      } elsif ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == NUMBER_TOKEN) {
+        return ['NUMBER', 0+$us->[0]->{number}];
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'none') {
+          return ['KEYWORD', $value];
+        }
       }
     }
     
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
+    $self->onerror->(type => 'CSS syntax error', text => q['z-index'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   initial => ['KEYWORD', 'none'],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{font_size_adjust} = $Prop->{'font-size-adjust'};
-$Key->{font_size_adjust} = $Prop->{'font-size-adjust'};
+}; # font-size-adjust
 
-$Prop->{orphans} = {
+## <http://dev.w3.org/csswg/css-break/#widows-orphans> [CSSBREAK].
+$Key->{orphans} = {
   css => 'orphans',
   dom => 'orphans',
-  key => 'orphans',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my $has_sign;
-    my $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
-    if ($t->{type} == NUMBER_TOKEN) {
-      ## ISSUE: See <http://suika.fam.cx/gate/2005/sw/orphans> and
-      ## <http://suika.fam.cx/gate/2005/sw/widows> for
-      ## browser compatibility issue.
-      my $value = $t->{number};
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ["NUMBER", $sign * int ($value / 1)]});
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
-      }
-    }
-    
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
+  parse_longhand => $Web::CSS::Values::PositiveIntegerParser,
   initial => ['NUMBER', 2],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{orphans} = $Prop->{orphans};
-$Key->{orphans} = $Prop->{orphans};
+}; # orphans
 
-$Prop->{widows} = {
+## <http://dev.w3.org/csswg/css-break/#widows-orphans> [CSSBREAK].
+$Key->{widows} = {
   css => 'widows',
   dom => 'widows',
-  key => 'widows',
-  parse => $Prop->{orphans}->{parse},
+  parse_longhand => $Web::CSS::Values::PositiveIntegerParser,
   initial => ['NUMBER', 2],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{widows} = $Prop->{widows};
-$Key->{widows} = $Prop->{widows};
+}; # widows
 
-# <http://dev.w3.org/csswg/css-color/#opacity> [CSSCOLOR].
+## <http://dev.w3.org/csswg/css-color/#opacity> [CSSCOLOR].
 $Key->{opacity} = {
   css => 'opacity',
   dom => 'opacity',
@@ -861,65 +798,48 @@ my $length_percentage_keyword_parser = sub ($$$$$) {
     return ($t, undef);
 }; # $length_percentage_keyword_parser
 
-my $length_keyword_parser = sub {
-  my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my $has_sign;
-    my $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-    my $allow_negative = $Prop->{$prop_name}->{allow_negative};
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      if ($length_unit->{$unit} and ($allow_negative or $value >= 0)) {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['DIMENSION', $value, $unit]});
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      if ($allow_negative or $value >= 0) {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['DIMENSION', $value, 'px']});
-      }
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($Prop->{$prop_name}->{keyword}->{$value}) {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['KEYWORD', $value]});        
-      } elsif ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
-      }
-    }
-    
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-}; # $length_keyword_parser
-
-$Prop->{'font-size'} = {
+## <http://dev.w3.org/csswg/css-fonts/#font-size-prop> [CSSFONTS],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS], [MANAKAICSS].
+$Key->{font_size} = {
   css => 'font-size',
   dom => 'font_size',
-  key => 'font_size',
-  parse => $length_percentage_keyword_parser,
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::NNLengthOrQuirkyLengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+        if ($us->[0]->{number} >= 0) {
+          return ['PERCENTAGE', 0+$us->[0]->{number}];
+        }
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ({
+          # <absolute-size>
+          'xx-small' => 1, 'x-small' => 1, small => 1, medium => 1,
+          large => 1, 'x-large' => 1, 'xx-large' => 1,
+          '-webkit-xxx-large' => 1,
+
+          # <relative-size>
+          larger => 1, smaller => 1,
+        }->{$value}) {
+          return ['KEYWORD', $value];
+        } elsif ($value eq '-manakai-xxx-large') {
+          return ['KEYWORD', '-webkit-xxx-large'];
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => q['font-size'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   #allow_negative => 0,
-  keyword => {
-           'xx-small' => 1, 'x-small' => 1, small => 1, medium => 1,
-           large => 1, 'x-large' => 1, 'xx-large' => 1, 
-           '-manakai-xxx-large' => 1, '-webkit-xxx-large' => 1,
-           larger => 1, smaller => 1,
-  },
   initial => ['KEYWORD', 'medium'],
   inherited => 1,
   compute => sub {
@@ -1009,9 +929,7 @@ $Prop->{'font-size'} = {
     
     return $specified_value;
   },
-};
-$Attr->{font_size} = $Prop->{'font-size'};
-$Key->{font_size} = $Prop->{'font-size'};
+}; # font-size
 
 my $compute_length = sub {
   my ($self, $element, $prop_name, $specified_value) = @_;
@@ -1043,112 +961,128 @@ my $compute_length = sub {
   return $specified_value;
 }; # $compute_length
 
-$Prop->{'letter-spacing'} = {
+## <http://dev.w3.org/csswg/css-text/#letter-spacing> [CSSTEXT],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{letter_spacing} = {
   css => 'letter-spacing',
   dom => 'letter_spacing',
-  key => 'letter_spacing',
-  parse => $length_keyword_parser,
-  allow_negative => 1,
-  keyword => {normal => 1},
-  initial => ['KEYWORD', 'normal'],
-  inherited => 1,
-  compute => $compute_length,
-};
-$Attr->{letter_spacing} = $Prop->{'letter-spacing'};
-$Key->{letter_spacing} = $Prop->{'letter-spacing'};
-
-$Prop->{'word-spacing'} = {
-  css => 'word-spacing',
-  dom => 'word_spacing',
-  key => 'word_spacing',
-  parse => $length_keyword_parser,
-  allow_negative => 1,
-  keyword => {normal => 1},
-  initial => ['KEYWORD', 'normal'],
-  inherited => 1,
-  compute => $compute_length,
-};
-$Attr->{word_spacing} = $Prop->{'word-spacing'};
-$Key->{word_spacing} = $Prop->{'word-spacing'};
-
-$Prop->{'-manakai-border-spacing-x'} = {
-  css => '-manakai-border-spacing-x',
-  dom => '_manakai_border_spacing_x',
-  key => 'border_spacing_x',
-  parse => $length_keyword_parser,
-  #allow_negative => 0,
-  #keyword => {},
-  serialize_multiple => sub {
-    my ($se, $st) = @_;
-    
-    my $x = $se->serialize_prop_value ($st, '-manakai-border-spacing-x');
-    my $y = $se->serialize_prop_value ($st, '-manakai-border-spacing-y');
-    my $xi = $se->serialize_prop_priority ($st, '-manakai-border-spacing-x');
-    my $yi = $se->serialize_prop_priority ($st, '-manakai-border-spacing-y');
-    if (length $x) {
-      if (length $y) {
-        if ($xi eq $yi) { 
-          if ($x eq $y) {
-            return {'border-spacing' => [$x, $xi]};
-          } else {
-            if ($x eq 'inherit' or $y eq 'inherit') {
-              return {'-manakai-border-spacing-x' => [$x, $xi],
-                      '-manakai-border-spacing-y' => [$y, $yi]};
-            } else {
-              return {'border-spacing' => [$x . ' ' . $y, $xi]};
-            }
-          }
-        } else {
-          return {'-manakai-border-spacing-x' => [$x, $xi],
-                  '-manakai-border-spacing-y' => [$y, $yi]};
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::LengthOrQuirkyLengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'normal') {
+          return ['KEYWORD', $value];
         }
-      } else {
-        return {'-manakai-border-spacing-x' => [$x, $xi]};
-      }
-    } else {
-      if (length $y) {
-        return {'-manakai-border-spacing-y' => [$y, $yi]};
-      } else {
-        return {};
       }
     }
-  },
+
+    $self->onerror->(type => 'CSS syntax error', text => q['letter-spacing'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
+  initial => ['KEYWORD', 'normal'],
+  inherited => 1,
+  compute => $compute_length,
+}; # letter-spacing
+
+## <http://dev.w3.org/csswg/css-text/#word-spacing> [CSSTEXT],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{word_spacing} = {
+  css => 'word-spacing',
+  dom => 'word_spacing',
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::LengthOrQuirkyLengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+        return ['PERCENTAGE', 0+$us->[0]->{number}];
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'normal') {
+          return ['KEYWORD', $value];
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => q['word-spacing'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
+  initial => ['KEYWORD', 'normal'],
+  inherited => 1,
+  compute => $compute_length,
+}; # word-spacing
+
+## [MANAKAICSS].
+$Key->{_webkit_border_horizontal_spacing} = {
+  css => '-webkit-border-horizontal-spacing',
+  dom => '_webkit_border_horizontal_spacing',
+  parse_longhand => $Web::CSS::Values::NNLengthParser,
   initial => ['DIMENSION', 0, 'px'],
   inherited => 1,
   compute => $compute_length,
-};
-$Attr->{_manakai_border_spacing_x} = $Prop->{'-manakai-border-spacing-x'};
-$Key->{border_spacing_x} = $Prop->{'-manakai-border-spacing-x'};
+}; # -webkit-border-horizontal-spacing
+$Prop->{'-manakai-border-spacing-x'} = $Key->{_webkit_border_horizontal_spacing};
+$Attr->{_manakai_border_spacing_x} = $Key->{_webkit_border_horizontal_spacing};
 
-$Prop->{'-manakai-border-spacing-y'} = {
-  css => '-manakai-border-spacing-y',
-  dom => '_manakai_border_spacing_y',
-  key => 'border_spacing_y',
-  parse => $length_keyword_parser,
-  #allow_negative => 0,
-  #keyword => {},
-  serialize_multiple => $Prop->{'-manakai-border-spacing-x'}
-      ->{serialize_multiple},
+## [MANAKAICSS].
+$Key->{_webkit_border_vertical_spacing} = {
+  css => '-webkit-border-vertical-spacing',
+  dom => '_webkit_border_vertical_spacing',
+  parse_longhand => $Web::CSS::Values::NNLengthParser,
   initial => ['DIMENSION', 0, 'px'],
   inherited => 1,
   compute => $compute_length,
-};
-$Attr->{_manakai_border_spacing_y} = $Prop->{'-manakai-border-spacing-y'};
-$Key->{border_spacing_y} = $Prop->{'-manakai-border-spacing-y'};
+}; # -webkit-border-vertical-spacing
+$Prop->{'-manakai-border-spacing-y'} = $Key->{_webkit_border_vertical_spacing};
+$Attr->{_manakai_border_spacing_y} = $Key->{_webkit_border_vertical_spacing};
 
-$Attr->{marker_offset} =
-$Key->{marker_offset} =
-$Prop->{'marker-offset'} = {
+## <http://www.w3.org/TR/1998/REC-CSS2-19980512/generate.html#markers>
+## [CSS20].
+$Key->{marker_offset} = {
   css => 'marker-offset',
   dom => 'marker_offset',
-  key => 'marker_offset',
-  parse => $length_keyword_parser,
-  allow_negative => 1,
-  keyword => {auto => 1},
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::LengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'auto') {
+          return ['KEYWORD', $value];
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => q['marker-offset'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
   compute => $compute_length,
-};
+}; # marker-offset
+
+# XXX---XXX
 
 $Prop->{'margin-top'} = {
   css => 'margin-top',
@@ -2624,6 +2558,10 @@ $Prop->{'border-style'} = {
 };
 $Attr->{border_style} = $Prop->{'border-style'};
 
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
+## [CSSBACKGROUNDS],
+## <http://quirks.spec.whatwg.org/#the-hashless-hex-color-quirk>
+## [QUIRKS].
 $Key->{border_color} = {
   css => 'border-color',
   dom => 'border_color',
@@ -3468,130 +3406,49 @@ $Prop->{padding} = {
 };
 $Attr->{padding} = $Prop->{padding};
 
-$Prop->{'border-spacing'} = {
+## <http://www.w3.org/TR/CSS21/tables.html#separated-borders> [CSS21],
+## [MANAKAICSS].
+$Key->{border_spacing} = {
   css => 'border-spacing',
   dom => 'border_spacing',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my %prop_value;
-    my $has_sign;
-    my $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      if ($length_unit->{$unit} and $value >= 0) {
-        $t = $tt->get_next_token;
-        $prop_value{'-manakai-border-spacing-x'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $prop_value{'-manakai-border-spacing-x'} = ['DIMENSION', $value, 'px'];
-      if ($value >= 0) {
-        $t = $tt->get_next_token;
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
-      if ($prop_value eq 'inherit') {
-        $t = $tt->get_next_token;
-        $prop_value{'-manakai-border-spacing-x'} = ['INHERIT'];
-        $prop_value{'-manakai-border-spacing-y'}
-            = $prop_value{'-manakai-border-spacing-x'};
-        return ($t, \%prop_value);
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
+  is_shorthand => 1,
+  longhand_subprops => [qw(_webkit_border_horizontal_spacing
+                           _webkit_border_vertical_spacing)],
+  parse_shorthand => sub {
+    my ($self, $def, $tokens) = @_;
+    $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
+    ## If <length> becomes to be able to include multiple component in
+    ## future, this need to be rewritten.
+    if (@$tokens == 3) {
+      my $v1 = $Web::CSS::Values::NNLengthParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      my $v2 = defined $v1 ? $Web::CSS::Values::NNLengthParser->($self, [$tokens->[1], _to_eof_token $tokens->[2]]) : undef;
+      return {} unless defined $v2;
+      return {_webkit_border_horizontal_spacing => $v1,
+              _webkit_border_vertical_spacing => $v2};
+    } elsif (@$tokens == 2) {
+      my $v1 = $Web::CSS::Values::NNLengthParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]);
+      return {} unless defined $v1;
+      return {_webkit_border_horizontal_spacing => $v1,
+              _webkit_border_vertical_spacing => $v1};
     } else {
-      $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => 'm',
-                 uri => $self->context->urlref,
-                 token => $t);
-      return ($t, undef);
+      $self->onerror->(type => 'CSS syntax error', text => q['border-spacing'],
+                       level => 'm',
+                       uri => $self->context->urlref,
+                       token => $tokens->[0]);
+      return {};
     }
-    $prop_value{'-manakai-border-spacing-y'}
-        = $prop_value{'-manakai-border-spacing-x'};
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    undef $has_sign;
-    $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      if ($length_unit->{$unit} and $value >= 0) {
-        $t = $tt->get_next_token;
-        $prop_value{'-manakai-border-spacing-y'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      $prop_value{'-manakai-border-spacing-y'} = ['DIMENSION', $value, 'px'];
-      if ($value >= 0) {
-        $t = $tt->get_next_token;
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
+  }, # parse_shorthand
+  serialize_shorthand => sub {
+    my ($se, $strings) = @_;
+    my $v1 = $strings->{_webkit_border_horizontal_spacing};
+    my $v2 = $strings->{_webkit_border_vertical_spacing};
+    if ($v1 eq $v2) {
+      return $v1;
     } else {
-      if ($has_sign) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
+      return "$v1 $v2";
     }
-
-    return ($t, \%prop_value);
-  },
-  serialize_multiple => $Prop->{'-manakai-border-spacing-x'}
-      ->{serialize_multiple},
-};
-$Attr->{border_spacing} = $Prop->{'border-spacing'};
+  }, # serialize_shorthand
+}; # border-spacing
 
 ## NOTE: See <http://suika.fam.cx/gate/2005/sw/background-position> for
 ## browser compatibility problems.

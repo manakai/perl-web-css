@@ -131,6 +131,8 @@ CSS Text <http://dev.w3.org/csswg/css-text/>.
 
 CSS Fonts <http://dev.w3.org/csswg/css-fonts/>.
 
+The '-webkit-xxx-large' keyword can be used as <absolute-size>.
+
 =item CSS21
 
 CSS 2.1 <http://www.w3.org/TR/CSS21/tables.html>.
@@ -138,6 +140,43 @@ CSS 2.1 <http://www.w3.org/TR/CSS21/tables.html>.
 =item CSS20
 
 CSS 2 <http://www.w3.org/TR/1998/REC-CSS2-19980512/>.
+
+=item MANAKAICSS
+
+manakai CSS Extensions
+<http://suika.suikawiki.org/~wakaba/wiki/sw/n/manakai%20CSS%20Extensions>.
+
+The '-webkit-border-horizontal-spacing' and
+'-webkit-border-vertical-spacing' properties are defined as follows:
+
+  Value:          <length>
+  Initial:        0
+  Applies to:     Same as 'border-spacing'
+  Inherited:      yes
+  Percentage:     N/A
+  Media:          Visual
+  Computed value: Absolute length
+
+The 'border-spacing' property is redefined as the shorthand of these
+two properties.  To serialize the 'border-spacing' property values,
+run following steps:
+
+  1. If one of '-webkit-border-horizontal-spacing' and
+     '-webkit-border-vertical-spacing' is missing, it is not
+     serializable.  Return null.
+
+  2. Otherwise, if serialization of
+     '-webkit-border-horizontal-spacing' and
+     '-webkit-border-vertical-spacing' are equal, return one of them.
+
+  3. Otherwise, if one of '-webkit-border-horizontal-spacing' and
+     '-webkit-border-vertical-spacing' is a CSS-wide keyword or
+     function, it is not serializable.  Return null.
+
+  4. Otherwise, return the result of invoking serialize a
+     whitespace-separated list with serializations of
+     '-webkit-border-horizontal-spacing' and
+     '-webkit-border-vertical-spacing',
 
 =back
 

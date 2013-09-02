@@ -58,6 +58,17 @@ supported.
 
 =back
 
+=head2 Width and height
+
+Whether keywords 'available', 'min-content', 'max-content', and
+'fit-content' are supported or not are controlled by:
+
+  $resolver->{prop_value}->{$key}->{$keyword} == 1
+
+... where $key is |width| (for 'width', 'min-width', and 'max-width'
+properties) or |height| (for 'height', 'min-height', and 'max-height'
+properties) and $keyword is the keyword, in lowercase, respectively.
+
 =head1 SPECIFICATIONS
 
 =over 4

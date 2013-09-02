@@ -276,6 +276,32 @@ our $NNLengthOrQuirkyLengthParser = sub {
   return undef;
 }; # $NNLengthOrQuirkyLengthParser
 
+## <length> | <quirky-length> | <percentage> | auto [CSSVALUES]
+## [QUIRKS] [CSSBOX] [CSSPOSITION].
+our $LengthPergentageAutoQuirkyParser = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2) {
+    if ($us->[0]->{type} == DIMENSION_TOKEN or
+        $us->[0]->{type} == NUMBER_TOKEN) {
+      return $LengthOrQuirkyLengthParser->($self, $us); # or undef
+    } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+      return ['PERCENTAGE', 0+$us->[0]->{number}];
+    } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+      my $value = $us->[0]->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($value eq 'auto') {
+        return ['KEYWORD', $value];
+      }
+    }
+  }
+
+  $self->onerror->(type => 'CSS syntax error', text => q[length],
+                   level => 'm',
+                   uri => $self->context->urlref,
+                   token => $us->[0]);
+  return undef;
+}; # $LengthPercentageAutoQuirkyParser
+
 # <ratio> [MQ]
 our $RatioParser = sub {
   my ($self, $us) = @_;

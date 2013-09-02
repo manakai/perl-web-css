@@ -85,6 +85,16 @@ CSS Diaplay <http://dev.w3.org/csswg/css-display/>.
 
 CSS Basic Box Model <http://dev.w3.org/csswg/css-box/>.
 
+In 'width', 'min-width', and 'max-width' properties, keywords
+'-moz-available', '-moz-fit-content', '-moz-min-content', and
+'-moz-max-content' MUST be replaced by corresponding keywords without
+"-moz-" prefix at parse time.
+
+In 'width', 'min-width', 'max-width', 'height', 'min-height', and
+'max-height' properties, keywords '-webkit-fit-content',
+'-webkit-min-content', and '-webkit-max-content' MUST be replaced by
+corresponding keywords without "-webkit-" prefix at parse time.
+
 =item CSSPOSITION
 
 CSS Positioned Layout <http://dev.w3.org/csswg/css-position/>.

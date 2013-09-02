@@ -1165,6 +1165,7 @@ $Key->{marker_offset} = {
 $Key->{margin_top} = {
   css => 'margin-top',
   dom => 'margin_top',
+  parse_longhand => $Web::CSS::Values::LengthPergentageAutoQuirkyParser,
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
@@ -1176,6 +1177,7 @@ $Key->{margin_top} = {
 $Key->{margin_bottom} = {
   css => 'margin-bottom',
   dom => 'margin_bottom',
+  parse_longhand => $Web::CSS::Values::LengthPergentageAutoQuirkyParser,
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
@@ -1187,6 +1189,7 @@ $Key->{margin_bottom} = {
 $Key->{margin_right} = {
   css => 'margin-right',
   dom => 'margin_right',
+  parse_longhand => $Web::CSS::Values::LengthPergentageAutoQuirkyParser,
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
@@ -1198,44 +1201,20 @@ $Key->{margin_right} = {
 $Key->{margin_left} = {
   css => 'margin-left',
   dom => 'margin_left',
+  parse_longhand => $Web::CSS::Values::LengthPergentageAutoQuirkyParser,
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
 }; # margin-left
 
-$Key->{$_}->{parse_longhand} = sub {
-  my ($self, $us) = @_;
-  if (@$us == 2) {
-    if ($us->[0]->{type} == DIMENSION_TOKEN or
-        $us->[0]->{type} == NUMBER_TOKEN) {
-      return $Web::CSS::Values::LengthOrQuirkyLengthParser->($self, $us); # or undef
-    } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
-      return ['PERCENTAGE', 0+$us->[0]->{number}];
-    } elsif ($us->[0]->{type} == IDENT_TOKEN) {
-      my $value = $us->[0]->{value};
-      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-      if ($value eq 'auto') {
-        return ['KEYWORD', $value];
-      }
-    }
-  }
-
-  $self->onerror->(type => 'CSS syntax error', text => q['margin-*'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $us->[0]);
-  return undef;
-} for qw(margin_top margin_right margin_bottom margin_left); # parse_longhand
-
-# XXX---XXX
-
-$Prop->{top} = {
+## <http://dev.w3.org/csswg/css-position/#box-offsets-trbl>
+## [CSSPOSITION],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{top} = {
   css => 'top',
   dom => 'top',
-  key => 'top',
-  parse => $Key->{margin_top}->{parse},
-  allow_negative => 1,
-  keyword => {auto => 1},
+  parse_longhand => $Web::CSS::Values::LengthPergentageAutoQuirkyParser,
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
   compute_multiple => sub {
@@ -1286,29 +1265,30 @@ $Prop->{top} = {
     $self->{computed_value}->{$eid}->{bottom}
         = $compute_length->($self, $element, 'bottom', $bottom_specified);
   },
-};
-$Attr->{top} = $Prop->{top};
-$Key->{top} = $Prop->{top};
+}; # top
 
-$Prop->{bottom} = {
+## <http://dev.w3.org/csswg/css-position/#box-offsets-trbl>
+## [CSSPOSITION],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{bottom} = {
   css => 'bottom',
   dom => 'bottom',
-  key => 'bottom',
-  allow_negative => 1,
+  parse_longhand => $Web::CSS::Values::LengthPergentageAutoQuirkyParser,
   keyword => {auto => 1},
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
-  compute_multiple => $Prop->{top}->{compute_multiple},
-};
-$Attr->{bottom} = $Prop->{bottom};
-$Key->{bottom} = $Prop->{bottom};
+  compute_multiple => $Key->{top}->{compute_multiple},
+}; # bottom
 
-$Prop->{left} = {
+## <http://dev.w3.org/csswg/css-position/#box-offsets-trbl>
+## [CSSPOSITION],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{left} = {
   css => 'left',
   dom => 'left',
-  key => 'left',
-  allow_negative => 1,
-  keyword => {auto => 1},
+  parse_longhand => $Web::CSS::Values::LengthPergentageAutoQuirkyParser,
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
   compute_multiple => sub {
@@ -1381,122 +1361,187 @@ $Prop->{left} = {
     $self->{computed_value}->{$eid}->{right}
         = $compute_length->($self, $element, 'right', $right_specified);
   },
-};
-$Attr->{left} = $Prop->{left};
-$Key->{left} = $Prop->{left};
+}; # left
 
-$Prop->{right} = {
+## <http://dev.w3.org/csswg/css-position/#box-offsets-trbl>
+## [CSSPOSITION],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{right} = {
   css => 'right',
   dom => 'right',
-  key => 'right',
-  allow_negative => 1,
-  keyword => {auto => 1},
+  parse_longhand => $Web::CSS::Values::LengthPergentageAutoQuirkyParser,
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
-  compute_multiple => $Prop->{left}->{compute_multiple},
-};
-$Attr->{right} = $Prop->{right};
-$Key->{right} = $Prop->{right};
+  compute_multiple => $Key->{left}->{compute_multiple},
+}; # right
 
-$Prop->{width} = {
+## <http://dev.w3.org/csswg/css-box/#the-width-and-height-properties>
+## [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{width} = {
   css => 'width',
   dom => 'width',
-  key => 'width',
-  #allow_negative => 0,
-  keyword => {
-    auto => 1,
-    
-    ## Firefox 3
-    '-moz-max-content' => 2, '-moz-min-content' => 2, 
-    '-moz-available' => 2, '-moz-fit-content' => 2,
-        ## NOTE: By "2", it represents that the parser must be configured
-        ## to allow these values.
+  keyword => { # For Web::CSS::MediaResolver
+    available => 1, 'fit-content' => 1, 'min-content' => 1, 'max-content' => 1,
   },
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
   compute => $compute_length,
-      ## NOTE: See <http://suika.fam.cx/gate/2005/sw/width> for
-      ## browser compatibility issues.
-};
-$Attr->{width} = $Prop->{width};
-$Key->{width} = $Prop->{width};
+}; # width
 
-$Prop->{'min-width'} = {
-  css => 'min-width',
-  dom => 'min_width',
-  key => 'min_width',
-  #allow_negative => 0,
-  keyword => {
-    ## Firefox 3
-    '-moz-max-content' => 2, '-moz-min-content' => 2, 
-    '-moz-available' => 2, '-moz-fit-content' => 2,
-  },
-  initial => ['DIMENSION', 0, 'px'],
-  #inherited => 0,
-  compute => $compute_length,
-};
-$Attr->{min_width} = $Prop->{'min-width'};
-$Key->{min_width} = $Prop->{'min-width'};
-
-$Prop->{'max-width'} = {
-  css => 'max-width',
-  dom => 'max_width',
-  key => 'max_width',
-  #allow_negative => 0,
-  keyword => {
-    none => 1,
-    
-    ## Firefox 3
-    '-moz-max-content' => 2, '-moz-min-content' => 2, 
-    '-moz-available' => 2, '-moz-fit-content' => 2,
-  },
-  initial => ['KEYWORD', 'none'],
-  #inherited => 0,
-  compute => $compute_length,
-};
-$Attr->{max_width} = $Prop->{'max-width'};
-$Key->{max_width} = $Prop->{'max-width'};
-
-$Prop->{height} = {
+## <http://dev.w3.org/csswg/css-box/#the-width-and-height-properties>
+## [CSSBOX],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{height} = {
   css => 'height',
   dom => 'height',
-  key => 'height',
-  #allow_negative => 0,
-  keyword => {auto => 1},
+  keyword => { # For Web::CSS::MediaResolver
+    available => 1, 'fit-content' => 1, 'min-content' => 1, 'max-content' => 1,
+  },
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
   compute => $compute_length,
-      ## NOTE: See <http://suika.fam.cx/gate/2005/sw/height> for
-      ## browser compatibility issues.
-};
-$Attr->{height} = $Prop->{height};
-$Key->{height} = $Prop->{height};
+}; # height
 
-$Prop->{'min-height'} = {
-  css => 'min-height',
-  dom => 'min_height',
-  key => 'min_height',
-  #allow_negative => 0,
-  #keyword => {},
+## <length> | <quirky-length> | available | min-content | max-content
+## | fit-content | auto [CSSBOX] [QUIRKS]
+for my $prop_name (qw(width height)) {
+  $Key->{$prop_name}->{parse_longhand} = sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::NNLengthOrQuirkyLengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+        if ($us->[0]->{number} >= 0) {
+          return ['PERCENTAGE', 0+$us->[0]->{number}];
+        }
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'auto') {
+          return ['KEYWORD', $value];
+        } elsif ({available => 1, 'min-content' => 1,
+                  'max-content' => 1, 'fit-content' => 1,
+                  '-webkit-min-content' => 1, '-webkit-max-content' => 1,
+                  '-webkit-fit-content' => 1,
+                  '-moz-available' => ($prop_name eq 'width'),
+                  '-moz-min-content' => ($prop_name eq 'width'),
+                  '-moz-max-content' => ($prop_name eq 'width'),
+                  '-moz-fit-content' => ($prop_name eq 'width')}->{$value}) {
+          if ($value =~ s/^-moz-// or $value =~ s/^-webkit-//) {
+            $self->onerror->(type => 'css:obsolete', # XXX
+                             text => $us->[0]->{value},
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $us->[0]);
+          }
+          if ($self->media_resolver->{prop_value}->{$prop_name}->{$value}) {
+            return ['KEYWORD', $value];
+          }
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => "'$prop_name'",
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  };
+} # width height
+
+## <http://dev.w3.org/csswg/css-box/#min-max> [CSSBOX].
+$Key->{min_width} = {
+  css => 'min-width',
+  dom => 'min_width',
   initial => ['DIMENSION', 0, 'px'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{min_height} = $Prop->{'min-height'};
-$Key->{min_height} = $Prop->{'min-height'};
+}; # min-width
 
-$Prop->{'max-height'} = {
-  css => 'max-height',
-  dom => 'max_height',
-  key => 'max_height',
-  #allow_negative => 0,
-  keyword => {none => 1},
+## <http://dev.w3.org/csswg/css-box/#min-max> [CSSBOX].
+$Key->{max_width} = {
+  css => 'max-width',
+  dom => 'max_width',
   initial => ['KEYWORD', 'none'],
   #inherited => 0,
   compute => $compute_length,
-};
-$Attr->{max_height} = $Prop->{'max-height'};
-$Key->{max_height} = $Prop->{'max-height'};
+}; # max-width
+
+## <http://dev.w3.org/csswg/css-box/#min-max> [CSSBOX].
+$Key->{min_height} = {
+  css => 'min-height',
+  dom => 'min_height',
+  initial => ['DIMENSION', 0, 'px'],
+  #inherited => 0,
+  compute => $compute_length,
+}; # min-height
+
+## <http://dev.w3.org/csswg/css-box/#min-max> [CSSBOX].
+$Key->{max_height} = {
+  css => 'max-height',
+  dom => 'max_height',
+  initial => ['KEYWORD', 'none'],
+  #inherited => 0,
+  compute => $compute_length,
+}; # max-height
+
+## <length> | available | min-content | max-content | fit-content |
+## none (max-* only) [CSSBOX]
+for my $prop_key (qw(min_width min_height max_width max_height)) {
+  my $allow_none = $prop_key =~ /^max_/;
+  my $pn = $prop_key;
+  $pn =~ s/^(?:min|max)_//;
+  $Key->{$prop_key}->{parse_longhand} = sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::NNLengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+        if ($us->[0]->{number} >= 0) {
+          return ['PERCENTAGE', 0+$us->[0]->{number}];
+        }
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($allow_none and $value eq 'none') {
+          return ['KEYWORD', $value];
+        } elsif ({available => 1, 'min-content' => 1,
+                  'max-content' => 1, 'fit-content' => 1,
+                  '-webkit-min-content' => 1, '-webkit-max-content' => 1,
+                  '-webkit-fit-content' => 1,
+                  '-moz-available' => ($pn eq 'width'),
+                  '-moz-min-content' => ($pn eq 'width'),
+                  '-moz-max-content' => ($pn eq 'width'),
+                  '-moz-fit-content' => ($pn eq 'width')}->{$value}) {
+          if ($value =~ s/^-moz-// or $value =~ s/^-webkit-//) {
+            $self->onerror->(type => 'css:obsolete', # XXX
+                             text => $us->[0]->{value},
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $us->[0]);
+          }
+          if ($self->media_resolver->{prop_value}->{$pn}->{$value}) {
+            return ['KEYWORD', $value];
+          }
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => "'$pn'",
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  };
+} # min-width min-height max-width max-height
+
+# XXX---XXX
 
 $Prop->{'line-height'} = {
   css => 'line-height',

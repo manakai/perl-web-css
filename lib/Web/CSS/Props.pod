@@ -46,6 +46,16 @@ serialize four edge values with 'border-top-color',
 'border-right-color', 'border-bottom-color', and 'border-left-color'
 values and return the result.
 
+To serialize the 'border-style' property value, follow the steps to
+serialize four edge values with 'border-top-style',
+'border-right-style', 'border-bottom-style', and 'border-left-style'
+values and return the result.
+
+To serialize the 'border-width' property value, follow the steps to
+serialize four edge values with 'border-top-width',
+'border-right-width', 'border-bottom-width', and 'border-left-width'
+values and return the result.
+
 To serialzie four edge values /top/, /right/, /bottom/, and /left/,
 follow these steps:
 
@@ -77,6 +87,53 @@ follow these steps:
      whitespace-separated list with values /top/, /right/, /bottom/,
      and /left/ and abort these steps.
 
+The 'background-position-x' property is defined as follows:
+
+  Name:           background-position-x
+  Value:          <length> | <percentage> | left | center | right
+  Initial:        0%
+  Applies to:     Same as 'background-position'
+  Inherited:      Same as 'background-position'
+  Percentages:    Same as 'background-position' (horizontal)
+  Media:          Same as 'background-position'
+  Computed value: Same as 'background-position' (horizontal)
+  Animatable:     Same as 'background-position' (horizontal)
+
+The 'background-position-y' property is defined as follows:
+
+  Name:           background-position-y
+  Value:          <length> | <percentage> | top | center | bottom
+  Initial:        0%
+  Applies to:     Same as 'background-position'
+  Inherited:      Same as 'background-position'
+  Percentages:    Same as 'background-position' (horizontal)
+  Media:          Same as 'background-position'
+  Computed value: Same as 'background-position' (horizontal)
+  Animatable:     Same as 'background-position' (horizontal)
+
+The 'background-position' property is redefined as a shorthand of
+'background-position-x' and 'background-position-y' properties, where
+the horizontal and vertical values are corresponding to them,
+respectively.  To serialize the 'background-position' property value,
+follow these steps:
+
+  1. If 'background-position-x' or 'background-position-y' property
+     value is missing, it is not serializable.  Return null.
+
+  2. Otherwise, if one of serializations of 'background-position-x'
+     and 'background-position-y' property values is CSS-wide keyword
+     or function:
+
+    1. If their values are equal, return one of them and abort these
+       steps.
+
+    2. Otherwise, it is not serializable.  Return null.
+
+  3. Otherwise, return the result of invoking serialize a
+     whitespace-separated list with serializations of
+     'background-position-x' and 'background-position-y' property
+     values.
+
 =item CSSDISPLAY
 
 CSS Diaplay <http://dev.w3.org/csswg/css-display/>.
@@ -94,6 +151,14 @@ In 'width', 'min-width', 'max-width', 'height', 'min-height', and
 'max-height' properties, keywords '-webkit-fit-content',
 '-webkit-min-content', and '-webkit-max-content' MUST be replaced by
 corresponding keywords without "-webkit-" prefix at parse time.
+
+To serialize the 'margin' property value, follow the steps to serialize
+four edge values with 'margin-top', 'margin-right', 'margin-bottom',
+and 'margin-left' values and return the result.
+
+To serialize the 'padding' property value, follow the steps to
+serialize four edge values with 'padding-top', 'padding-right',
+'padding-bottom', and 'padding-left' values and return the result.
 
 =item CSSPOSITION
 
@@ -133,6 +198,14 @@ CSS Counter Styles <http://dev.w3.org/csswg/css-counter-styles/>.
 
 CSS Basic User Interface <http://dev.w3.org/csswg/css-ui/>.
 
+=item CSSINLINE
+
+CSS Line Layout <http://dev.w3.org/csswg/css-inline/>.
+
+If the 'line-height' property value is a <number> token (with optional
+surrounding <whitespace> tokens), it MUST be interpreted as <number>
+(rather than <length>).
+
 =item CSSTEXT
 
 CSS Text <http://dev.w3.org/csswg/css-text/>.
@@ -160,12 +233,13 @@ The '-webkit-border-horizontal-spacing' and
 '-webkit-border-vertical-spacing' properties are defined as follows:
 
   Value:          <length>
-  Initial:        0
+  Initial:        0px
   Applies to:     Same as 'border-spacing'
-  Inherited:      yes
-  Percentage:     N/A
-  Media:          Visual
+  Inherited:      Same as 'border-spacing'
+  Percentage:     Same as 'border-spacing'
+  Media:          Same as 'border-spacing'
   Computed value: Absolute length
+  Animatable:     Same as 'border-spacing'
 
 The 'border-spacing' property is redefined as the shorthand of these
 two properties.  To serialize the 'border-spacing' property values,

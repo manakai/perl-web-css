@@ -10,6 +10,8 @@ XXX
 
 XXX
 
+If a property is supported, its initial value MUST be supported.
+
 If a supported property only accepts <integer>, <number>, <length>,
 and/or <percentage>, any possible value MUST be supported.  If a
 supported property only accepts the only keyword which is the initial
@@ -24,6 +26,12 @@ supported values MUST be flagged by:
 ... where $prop_name is CSS property name in lowercase and $value is
 the supported keyword.  The initial value of the property MUST be
 supported.
+
+If it supports the 'background-position-x' or 'background-position-y'
+property, any possible value MUST be supported.
+
+If it supports a property whose value is <line-width>, any possible
+value MUST be supported.
 
 =head2 <color>
 

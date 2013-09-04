@@ -276,6 +276,73 @@ our $NNLengthOrQuirkyLengthParser = sub {
   return undef;
 }; # $NNLengthOrQuirkyLengthParser
 
+## <length> | <quirky-length> | thin | medium | thick, non-negative -
+## [CSSVALUES],
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-width>
+## [CSSBACKGROUND],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+our $LineWidthQuirkyParser = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2) {
+    if ($us->[0]->{type} == DIMENSION_TOKEN) {
+      my $unit = $us->[0]->{value};
+      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($us->[0]->{number} >= 0 and $LengthUnits->{$unit}) {
+        return ['LENGTH', 0+$us->[0]->{number}, $unit];
+      }
+    } elsif ($us->[0]->{type} == NUMBER_TOKEN) {
+      if ($us->[0]->{number} == 0) {
+        return ['LENGTH', 0, 'px'];
+      } elsif ($us->[0]->{number} > 0 and $self->context->quirks) {
+        return ['LENGTH', 0+$us->[0]->{number}, 'px'];
+      }
+    } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+      my $value = $us->[0]->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($value eq 'thin' or $value eq 'medium' or
+          $value eq 'thick') {
+        return ['KEYWORD', $value];
+      }
+    }
+  }
+  $self->onerror->(type => 'css:value:not nnlength', # XXX
+                   level => 'm',
+                   token => $us->[0]);
+  return undef;
+}; # $LineWidthQuirkyParser
+
+## <length> | thin | medium | thick, non-negative - [CSSVALUES],
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-width>
+## [CSSBACKGROUND].
+our $LineWidthParser = sub {
+  my ($self, $us) = @_;
+  if (@$us == 2) {
+    if ($us->[0]->{type} == DIMENSION_TOKEN) {
+      my $unit = $us->[0]->{value};
+      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($us->[0]->{number} >= 0 and $LengthUnits->{$unit}) {
+        return ['LENGTH', 0+$us->[0]->{number}, $unit];
+      }
+    } elsif ($us->[0]->{type} == NUMBER_TOKEN) {
+      if ($us->[0]->{number} == 0) {
+        return ['LENGTH', 0, 'px'];
+      }
+    } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+      my $value = $us->[0]->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($value eq 'thin' or $value eq 'medium' or
+          $value eq 'thick') {
+        return ['KEYWORD', $value];
+      }
+    }
+  }
+  $self->onerror->(type => 'css:value:not nnlength', # XXX
+                   level => 'm',
+                   token => $us->[0]);
+  return undef;
+}; # $LineWidthParser
+
 ## <length> | <quirky-length> | <percentage> | auto [CSSVALUES]
 ## [QUIRKS] [CSSBOX] [CSSPOSITION].
 our $LengthPergentageAutoQuirkyParser = sub {
@@ -425,7 +492,7 @@ my $GetColorParser = sub {
         $vs = [grep { $_->{type} != S_TOKEN } @$vs];
 
         if ($func eq '-moz-rgba' or $func eq '-moz-hsla') {
-          $self->onerror->(type => 'css:obsolete', text => $func.'()',
+          $self->onerror->(type => 'css:obsolete', text => $func.'()', # XXX
                            level => 'm',
                            uri => $self->context->urlref,
                            token => $t->{name});

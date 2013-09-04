@@ -1541,145 +1541,135 @@ for my $prop_key (qw(min_width min_height max_width max_height)) {
   };
 } # min-width min-height max-width max-height
 
-# XXX---XXX
-
-$Prop->{'line-height'} = {
+## <http://dev.w3.org/csswg/css-inline/#InlineBoxHeight> [CSSINLINE].
+$Key->{line_height} = {
   css => 'line-height',
   dom => 'line_height',
-  key => 'line_height',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    ## NOTE: Similar to 'margin-top', but different handling
-    ## for unitless numbers.
-
-    my $has_sign;
-    my $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $sign = -1;
-      $has_sign = 1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      if ($length_unit->{$unit} and $value >= 0) {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['DIMENSION', $value, $unit]});
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      my $value = $t->{number} * $sign;
-      if ($value >= 0) {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['PERCENTAGE', $value]});
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN) {
-      my $value = $t->{number} * $sign;
-      if ($value >= 0) {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['NUMBER', $value]});
-      }
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($value eq 'normal') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['KEYWORD', $value]});        
-      } elsif ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
-      }
-    }
-    
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
-  initial => ['KEYWORD', 'normal'],
-  inherited => 1,
-  compute => $compute_length,
-};
-$Attr->{line_height} = $Prop->{'line-height'};
-$Key->{line_height} = $Prop->{'line-height'};
-
-$Prop->{'vertical-align'} = {
-  css => 'vertical-align',
-  dom => 'vertical_align',
-  key => 'vertical_align',
-  allow_negative => 1,
-  keyword => {
-    baseline => 1, sub => 1, super => 1, top => 1, 'text-top' => 1,
-    middle => 1, bottom => 1, 'text-bottom' => 1,
-  },
-  ## NOTE: Currently, we don't support option to select subset of keywords
-  ## supported by application (i.e. 
-  ## $parser->{prop_value}->{'line-height'->{$keyword}).  Should we support
-  ## it?
-  initial => ['KEYWORD', 'baseline'],
-  #inherited => 0,
-  compute => $compute_length,
-      ## NOTE: See <http://suika.fam.cx/gate/2005/sw/vertical-align> for
-      ## browser compatibility issues.
-};
-$Attr->{vertical_align} = $Prop->{'vertical-align'};
-$Key->{vertical_align} = $Prop->{'vertical-align'};
-
-$Prop->{'text-indent'} = {
-  css => 'text-indent',
-  dom => 'text_indent',
-  key => 'text_indent',
-  allow_negative => 1,
-  keyword => {},
-  initial => ['DIMENSION', 0, 'px'],
-  inherited => 1,
-  compute => $compute_length,
-};
-$Attr->{text_indent} = $Prop->{'text-indent'};
-$Key->{text_indent} = $Prop->{'text-indent'};
-
-$Prop->{'background-position-x'} = {
-  css => 'background-position-x',
-  dom => 'background_position_x',
-  key => 'background_position_x',
   parse_longhand => sub {
-    my ($self, $tokens) = @_;
-
-    # XXX
-
-    if (@$tokens == 2) {
-      if ($tokens->[0]->{type} == DIMENSION_TOKEN) {
-        my $unit = $tokens->[0]->{value};
-        $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-        if ($length_unit->{$unit}) {
-          return ['LENGTH', $tokens->[0]->{number}, $unit];
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN) {
+        return $Web::CSS::Values::NNLengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == NUMBER_TOKEN) {
+        if ($us->[0]->{number} >= 0) {
+          return ['NUMBER', 0+$us->[0]->{number}];
         }
-      } elsif ($tokens->[0]->{type} == PERCENTAGE_TOKEN) {
-        return ['PERCENTAGE', $tokens->[0]->{number}];
-      } elsif ($tokens->[0]->{type} == NUMBER_TOKEN and
-               $tokens->[0]->{number} == 0) {
-        return ['LENGTH', $tokens->[0]->{value}, 'px'];
-      } elsif ($tokens->[0]->{type} == IDENT_TOKEN) {
-        my $value = $tokens->[0]->{value};
-        $value =~ tr/A-Z/a-z/; ## ASCII case-insenstiive.
-        if ($Key->{background_position_x}->{keyword}->{$value} and
-            $self->context->{prop_value}->{'background-position-x'}->{$value}) {
+      } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+        if ($us->[0]->{number} >= 0) {
+          return ['PERCENTAGE', 0+$us->[0]->{number}];
+        }
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'normal' or $value eq 'none') {
           return ['KEYWORD', $value];
         }
       }
     }
 
-    $self->onerror->(type => "css:value:'background-position-x':syntax error", # XXX
+    $self->onerror->(type => 'CSS syntax error', text => q['line-height'],
                      level => 'm',
                      uri => $self->context->urlref,
-                     token => $tokens->[0]);
-  },
-  allow_negative => 1,
-  keyword => {left => 1, center => 1, right => 1},
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
+  initial => ['KEYWORD', 'normal'],
+  inherited => 1,
+  compute => $compute_length,
+}; # line-height
+
+## <http://dev.w3.org/csswg/css-inline/#vertical-align-prop>
+## [CSSINLINE].
+$Key->{vertical_align} = {
+  css => 'vertical-align',
+  dom => 'vertical_align',
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::LengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+        return ['PERCENTAGE', 0+$us->[0]->{number}];
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ({
+          baseline => 1, sub => 1, super => 1, top => 1, 'text-top' => 1,
+          middle => 1, bottom => 1, 'text-bottom' => 1,
+          auto => 1, central => 1,
+        }->{$value}) {
+          return ['KEYWORD', $value];
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => q['vertical-align'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
+  initial => ['KEYWORD', 'baseline'],
+  #inherited => 0,
+  compute => $compute_length,
+}; # vertical-align
+
+## <http://dev.w3.org/csswg/css-text/#text-indent> [CSSTEXT].
+$Key->{text_indent} = {
+  css => 'text-indent',
+  dom => 'text_indent',
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::LengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+        return ['PERCENTAGE', 0+$us->[0]->{number}];
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => q['text-indent'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
+  initial => ['DIMENSION', 0, 'px'],
+  inherited => 1,
+  compute => $compute_length,
+}; # text-indent
+
+## [CSSBACKGROUNDS].
+$Key->{background_position_x} = {
+  css => 'background-position-x',
+  dom => 'background_position_x',
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::LengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+        return ['PERCENTAGE', 0+$us->[0]->{number}];
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'left' or $value eq 'right' or
+            $value eq 'center') {
+          return ['KEYWORD', $value];
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error',
+                     text => q['background-position-x'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   initial => ['PERCENTAGE', 0],
   #inherited => 0,
   compute => sub {
@@ -1698,24 +1688,41 @@ $Prop->{'background-position-x'} = {
       return $compute_length->(@_);
     }
   },
-  serialize_multiple => $Key->{background_color}->{serialize_multiple},
-};
-$Attr->{background_position_x} = $Prop->{'background-position-x'};
-$Key->{background_position_x} = $Prop->{'background-position-x'};
+}; # background-position-x
 
-$Prop->{'background-position-y'} = {
+## [CSSBACKGROUNDS].
+$Key->{background_position_y} = {
   css => 'background-position-y',
   dom => 'background_position_y',
-  key => 'background_position_y',
-  allow_negative => 1,
-  keyword => {top => 1, center => 1, bottom => 1},
-  serialize_multiple => $Key->{background_color}->{serialize_multiple},
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == DIMENSION_TOKEN or
+          $us->[0]->{type} == NUMBER_TOKEN) {
+        return $Web::CSS::Values::LengthParser->($self, $us); # or undef
+      } elsif ($us->[0]->{type} == PERCENTAGE_TOKEN) {
+        return ['PERCENTAGE', 0+$us->[0]->{number}];
+      } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'top' or $value eq 'bottom' or
+            $value eq 'center') {
+          return ['KEYWORD', $value];
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error',
+                     text => q['background-position-y'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   initial => ['PERCENTAGE', 0],
   #inherited => 0,
-  compute => $Prop->{'background-position-x'}->{compute},
-};
-$Attr->{background_position_y} = $Prop->{'background-position-y'};
-$Key->{background_position_y} = $Prop->{'background-position-y'};
+  compute => $Key->{background_position_x}->{compute},
+}; # background-position-y
 
 ## <http://dev.w3.org/csswg/css-box/#the-padding-properties> [CSSBOX],
 ## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
@@ -1781,13 +1788,14 @@ $Key->{$_}->{parse_longhand} = sub {
   return undef;
 } for qw(padding_top padding_right padding_bottom padding_left); # parse_longhand
 
-$Prop->{'border-top-width'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-width>
+## [CSSBACKGROUND],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{border_top_width} = {
   css => 'border-top-width',
   dom => 'border_top_width',
-  key => 'border_top_width',
-  #allow_negative => 0,
-  keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
+  parse_longhand => $Web::CSS::Values::LineWidthQuirkyParser,
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => sub {
@@ -1817,71 +1825,58 @@ $Prop->{'border-top-width'} = {
     }
     return $value;
   },
-  ## NOTE: CSS3 will allow <percentage> as an option in <border-width>.
-  ## Opera 9 has already implemented it.
-};
-$Attr->{border_top_width} = $Prop->{'border-top-width'};
-$Key->{border_top_width} = $Prop->{'border-top-width'};
+}; # border-top-width
 
-$Prop->{'border-right-width'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-width>
+## [CSSBACKGROUND],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{border_right_width} = {
   css => 'border-right-width',
   dom => 'border_right_width',
-  key => 'border_right_width',
-  parse => $Prop->{'border-top-width'}->{parse},
-  #allow_negative => 0,
-  keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
+  parse_longhand => $Web::CSS::Values::LineWidthQuirkyParser,
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
-  compute => $Prop->{'border-top-width'}->{compute},
-};
-$Attr->{border_right_width} = $Prop->{'border-right-width'};
-$Key->{border_right_width} = $Prop->{'border-right-width'};
+  compute => $Key->{border_top_width}->{compute},
+}; # border-right-width
 
-$Prop->{'border-bottom-width'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-width>
+## [CSSBACKGROUND],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{border_bottom_width} = {
   css => 'border-bottom-width',
   dom => 'border_bottom_width',
-  key => 'border_bottom_width',
-  parse => $Prop->{'border-top-width'}->{parse},
-  #allow_negative => 0,
-  keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
+  parse_longhand => $Web::CSS::Values::LineWidthQuirkyParser,
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
-  compute => $Prop->{'border-top-width'}->{compute},
-};
-$Attr->{border_bottom_width} = $Prop->{'border-bottom-width'};
-$Key->{border_bottom_width} = $Prop->{'border-bottom-width'};
+  compute => $Key->{border_top_width}->{compute},
+}; # border-bottom-width
 
-$Prop->{'border-left-width'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-width>
+## [CSSBACKGROUND],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{border_left_width} = {
   css => 'border-left-width',
   dom => 'border_left_width',
-  key => 'border_left_width',
-  parse => $Prop->{'border-top-width'}->{parse},
-  #allow_negative => 0,
-  keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
+  parse_longhand => $Web::CSS::Values::LineWidthQuirkyParser,
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
-  compute => $Prop->{'border-top-width'}->{compute},
-};
-$Attr->{border_left_width} = $Prop->{'border-left-width'};
-$Key->{border_left_width} = $Prop->{'border-left-width'};
+  compute => $Key->{border_top_width}->{compute},
+}; # border-left-width
 
-$Prop->{'outline-width'} = {
+## <http://dev.w3.org/csswg/css-ui/#outline-width> [CSSUI].
+$Key->{outline_width} = {
   css => 'outline-width',
   dom => 'outline_width',
-  key => 'outline_width',
-  parse => $Prop->{'border-top-width'}->{parse},
-  #allow_negative => 0,
-  keyword => {thin => 1, medium => 1, thick => 1},
-  serialize_multiple => $Key->{outline_color}->{serialize_multiple},
+  parse_longhand => $Web::CSS::Values::LineWidthParser,
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
-  compute => $Prop->{'border-top-width'}->{compute},
-};
-$Attr->{outline_width} = $Prop->{'outline-width'};
-$Key->{outline_width} = $Prop->{'outline-width'};
+  compute => $Key->{border_top_width}->{compute},
+}; # outline-width
+
+# XXX---XXX
 
 $Prop->{'font-weight'} = {
   css => 'font-weight',
@@ -2931,8 +2926,8 @@ $Key->{border_spacing} = {
   }, # serialize_shorthand
 }; # border-spacing
 
-## NOTE: See <http://suika.fam.cx/gate/2005/sw/background-position> for
-## browser compatibility problems.
+## <http://dev.w3.org/csswg/css-backgrounds/#the-background-position>
+## [CSSBACKGROUNDS].
 $Key->{background_position} = {
   css => 'background-position',
   dom => 'background_position',
@@ -2940,155 +2935,150 @@ $Key->{background_position} = {
   longhand_subprops => [qw(background_position_x background_position_y)],
   parse_shorthand => sub {
     my ($self, $def, $tokens) = @_;
-    
-    my $prop_name = $def->{css};
-    my %prop_value;
-
-    my $t = shift @$tokens;
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $unit = $t->{value};
-      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-      if ($length_unit->{$unit}) {
-        $prop_value{background_position_x} = ['LENGTH', $t->{number}, $unit];
-        $prop_value{background_position_y} = ['PERCENTAGE', 50];
-        $t = shift @$tokens;
+    $tokens = [grep { not $_->{type} == S_TOKEN } @$tokens];
+    if (@$tokens == 2) {
+      my $v1 = $Key->{background_position_x}->{parse_longhand}->($self, $tokens); # or undef
+      if (defined $v1) {
+        if ($v1->[0] eq 'KEYWORD' and
+            ($v1->[1] eq 'top' or $v1->[1] eq 'bottom')) {
+          return {background_position_x => ['PERCENTAGE', 50],
+                  background_position_y => $v1};
+        } else {
+          return {background_position_x => $v1,
+                  background_position_y => ['PERCENTAGE', 50]};
+        }
       } else {
-        $self->onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                         level => 'm',
-                         uri => $self->context->urlref,
-                         token => $t);
         return undef;
       }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      $prop_value{background_position_x} = ['PERCENTAGE', $t->{number}];
-      $prop_value{background_position_y} = ['PERCENTAGE', 50];
-      $t = shift @$tokens;
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      $prop_value{background_position_x} = ['LENGTH', $t->{number}, 'px'];
-      $prop_value{background_position_y} = ['PERCENTAGE', 50];
-      $t = shift @$tokens;
-    } elsif ($t->{type} == IDENT_TOKEN) {
-      my $prop_value = $t->{value};
-      $prop_value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-      if ($prop_value eq 'left' or $prop_value eq 'right') {
-        $prop_value{background_position_x} = ['KEYWORD', $prop_value];
-        $prop_value{background_position_y} = ['KEYWORD', 'center'];
-        $t = shift @$tokens;
-      } elsif ($prop_value eq 'center') {
-        $prop_value{background_position_x} = ['KEYWORD', $prop_value];
-        $t = shift @$tokens;
-        $t = shift @$tokens while $t->{type} == S_TOKEN;
-
-        if ($t->{type} == IDENT_TOKEN) {
-          my $prop_value = $t->{value};
-          $prop_value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-          if ($prop_value eq 'left' or $prop_value eq 'right') {
-            $prop_value{background_position_y}
-                = $prop_value{background_position_x};
-            $prop_value{background_position_x} = ['KEYWORD', $prop_value];
-            $t = shift @$tokens;
-            unless ($t->{type} == EOF_TOKEN) {
-              $self->onerror->(type => 'CSS syntax error',
-                               text => qq['$prop_name'],
-                               level => 'm',
-                               uri => $self->context->urlref,
-                               token => $t);
-              return undef;
-            }
-            return \%prop_value;
-          }
+    } elsif (@$tokens == 3) {
+      my $v1 = do {
+        if ($tokens->[0]->{type} == DIMENSION_TOKEN or
+            $tokens->[0]->{type} == NUMBER_TOKEN) {
+          $Web::CSS::Values::LengthParser->($self, [$tokens->[0], _to_eof_token $tokens->[1]]); # or undef
+        } elsif ($tokens->[0]->{type} == PERCENTAGE_TOKEN) {
+          ['PERCENTAGE', 0+$tokens->[0]->{number}];
+        } elsif ($tokens->[0]->{type} == IDENT_TOKEN) {
+          my $value = $tokens->[0]->{value};
+          $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+          ['KEYWORD', $value];
         } else {
-          $prop_value{background_position_y} = ['KEYWORD', 'center'];
-        }
-      } elsif ($prop_value eq 'top' or $prop_value eq 'bottom') {
-        $prop_value{background_position_y} = ['KEYWORD', $prop_value];
-        $t = shift @$tokens;
-        $t = shift @$tokens while $t->{type} == S_TOKEN;
-
-        if ($t->{type} == IDENT_TOKEN) {
-          my $prop_value = $t->{value};
-          $prop_value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-          if ({left => 1, center => 1, right => 1}->{$prop_value}) {
-            $prop_value{background_position_x} = ['KEYWORD', $prop_value];
-            $t = shift @$tokens;
-            unless ($t->{type} == EOF_TOKEN) {
-              $self->onerror->(type => 'CSS syntax error',
-                               text => qq['$prop_name'],
-                               level => 'm',
-                               uri => $self->context->urlref,
-                               token => $t);
-              return undef;
-            }
-            return \%prop_value;
-          }
-        }
-        $prop_value{background_position_x} = ['KEYWORD', 'center'];
-        unless ($t->{type} == EOF_TOKEN) {
           $self->onerror->(type => 'CSS syntax error',
-                           text => qq['$prop_name'],
+                           text => q[position],
                            level => 'm',
                            uri => $self->context->urlref,
-                           token => $t);
-          return undef;
+                           token => $tokens->[0]);
+          undef;
         }
-        return \%prop_value;
-      } else {
-        $self->onerror->(type => 'CSS syntax error',
-                         text => qq['$prop_name'],
-                         level => 'm',
-                         uri => $self->context->urlref,
-                         token => $t);
-        return undef;
-      }
-    } else {
-      $self->onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
-      return undef;
+      };
+      my $v2 = defined $v1 ? do {
+        if ($tokens->[1]->{type} == DIMENSION_TOKEN or
+            $tokens->[1]->{type} == NUMBER_TOKEN) {
+          $Web::CSS::Values::LengthParser->($self, [$tokens->[1], $tokens->[2]]); # or undef
+        } elsif ($tokens->[1]->{type} == PERCENTAGE_TOKEN) {
+          ['PERCENTAGE', 0+$tokens->[1]->{number}];
+        } elsif ($tokens->[1]->{type} == IDENT_TOKEN) {
+          my $value = $tokens->[1]->{value};
+          $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+          ['KEYWORD', $value];
+        } else {
+          $self->onerror->(type => 'CSS syntax error',
+                           text => q[position],
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $tokens->[1]);
+          undef;
+        }
+      } : undef;
+      return undef unless defined $v2;
+      
+      if ($v1->[0] eq 'KEYWORD') {
+        if ($v1->[1] eq 'left' or $v1->[1] eq 'right') {
+          if ($v2->[0] eq 'KEYWORD') {
+            if ($v2->[1] eq 'top' or $v2->[1] eq 'bottom' or
+                $v2->[1] eq 'center') {
+              #
+            } else {
+              $self->onerror->(type => 'CSS syntax error',
+                               text => q[position],
+                               level => 'm',
+                               uri => $self->context->urlref,
+                               token => $tokens->[1]);
+              return undef;
+            }
+          }
+          return {background_position_x => $v1,
+                  background_position_y => $v2};
+        } elsif ($v1->[1] eq 'top' or $v1->[1] eq 'bottom') {
+          if ($v2->[0] eq 'KEYWORD') {
+            if ($v2->[1] eq 'left' or $v2->[1] eq 'right' or
+                $v2->[1] eq 'center') {
+              #
+            } else {
+              $self->onerror->(type => 'CSS syntax error',
+                               text => q[position],
+                               level => 'm',
+                               uri => $self->context->urlref,
+                               token => $tokens->[1]);
+              return undef;
+            }
+          }
+          return {background_position_x => $v2,
+                  background_position_y => $v1};
+        } elsif ($v1->[1] eq 'center') {
+          if ($v2->[0] eq 'KEYWORD') {
+            if ($v2->[1] eq 'left' or $v2->[1] eq 'right' or
+                $v2->[1] eq 'center') {
+              return {background_position_x => $v2,
+                      background_position_y => $v1};
+            } elsif ($v2->[1] eq 'top' or $v2->[1] eq 'bottom') {
+              return {background_position_x => $v2,
+                      background_position_y => $v1};
+            } else {
+              $self->onerror->(type => 'CSS syntax error',
+                               text => q[position],
+                               level => 'm',
+                               uri => $self->context->urlref,
+                               token => $tokens->[1]);
+              return undef;
+            }
+          }
+          return {background_position_x => $v1,
+                  background_position_y => $v2};
+        } else { # $v1 KEYWORD
+          $self->onerror->(type => 'CSS syntax error',
+                           text => q[position],
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $tokens->[0]);
+          return undef;
+        } # $v1 KEYWORD
+      } else { # $v1
+        if ($v2->[0] eq 'KEYWORD') {
+          if ($v2->[1] eq 'top' or $v2->[1] eq 'bottom' or
+              $v2->[1] eq 'center') {
+            return {background_position_x => $v1,
+                    background_position_y => $v2};
+          } else {
+            $self->onerror->(type => 'CSS syntax error',
+                             text => q[position],
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $tokens->[1]);
+            return undef;
+          }
+        } else { # $v2
+          return {background_position_x => $v1,
+                  background_position_y => $v2};
+        } # $v2
+      } # $v1
     }
-
-    $t = shift @$tokens while $t->{type} == S_TOKEN;
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $unit = $t->{value};
-      $unit =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-      if ($length_unit->{$unit}) {
-        $prop_value{background_position_y} = ['LENGTH', $t->{number}, $unit];
-        $t = shift @$tokens;
-      } else {
-        $self->onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                         level => 'm',
-                         uri => $self->context->urlref,
-                         token => $t);
-        return undef;
-      }
-    } elsif ($t->{type} == PERCENTAGE_TOKEN) {
-      $prop_value{background_position_y} = ['PERCENTAGE', $t->{number}];
-      $t = shift @$tokens;
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      $prop_value{background_position_y} = ['LENGTH', $t->{number}, 'px'];
-      $t = shift @$tokens;
-    } elsif ($t->{type} == IDENT_TOKEN) {
-      my $value = $t->{value};
-      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-      if ({top => 1, center => 1, bottom => 1}->{$value}) {
-        $prop_value{'background-position-y'} = ['KEYWORD', $value];
-        $t = shift @$tokens;
-      }
-    }
-
-    unless ($t->{type} == EOF_TOKEN) {
-      $self->onerror->(type => 'CSS syntax error',
-                       text => qq['$prop_name'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
-      return undef;
-    }
-    return \%prop_value;
+    
+    $self->onerror->(type => 'CSS syntax error',
+                     text => q[position],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $tokens->[0]);
+    return undef;
   }, # parse_shorthand
   serialize_shorthand => sub {
     my ($se, $strings) = @_;
@@ -3534,290 +3524,19 @@ $Prop->{font} = {
 };
 $Attr->{font} = $Prop->{font};
 
-$Prop->{'border-width'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-width>
+## [CSSBACKGROUND],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{border_width} = {
   css => 'border-width',
   dom => 'border_width',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my %prop_value;
-
-    my $has_sign;
-    my $sign = 1;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      if ($length_unit->{$unit} and $value >= 0) {
-        $prop_value{'border-top-width'} = ['DIMENSION', $value, $unit];
-        $t = $tt->get_next_token;
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      if ($value >= 0) {
-        $prop_value{'border-top-width'} = ['DIMENSION', $value, 'px'];
-        $t = $tt->get_next_token;
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
-      if ({thin => 1, medium => 1, thick => 1}->{$prop_value}) {
-        $t = $tt->get_next_token;
-        $prop_value{'border-top-width'} = ['KEYWORD', $prop_value];
-      } elsif ($prop_value eq 'inherit') {
-        $t = $tt->get_next_token;
-        $prop_value{'border-top-width'} = ['INHERIT'];
-        $prop_value{'border-right-width'} = $prop_value{'border-top-width'};
-        $prop_value{'border-bottom-width'} = $prop_value{'border-top-width'};
-        $prop_value{'border-left-width'} = $prop_value{'border-right-width'};
-        return ($t, \%prop_value);
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } else {
-      $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => 'm',
-                 uri => $self->context->urlref,
-                 token => $t);
-      return ($t, undef);
-    }
-    $prop_value{'border-right-width'} = $prop_value{'border-top-width'};
-    $prop_value{'border-bottom-width'} = $prop_value{'border-top-width'};
-    $prop_value{'border-left-width'} = $prop_value{'border-right-width'};
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = 1;
-    } else {
-      undef $has_sign;
-      $sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      if ($length_unit->{$unit} and $value >= 0) {
-        $t = $tt->get_next_token;
-        $prop_value{'border-right-width'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      if ($value >= 0) {
-        $t = $tt->get_next_token;
-        $prop_value{'border-right-width'} = ['DIMENSION', $value, 'px'];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case
-      if ({thin => 1, medium => 1, thick => 1}->{$prop_value}) {
-        $prop_value{'border-right-width'} = ['KEYWORD', $prop_value];
-        $t = $tt->get_next_token;
-      }
-    } else {
-      if ($has_sign) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
-    }
-    $prop_value{'border-left-width'} = $prop_value{'border-right-width'};
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = 1;
-    } else {
-      undef $has_sign;
-      $sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      if ($length_unit->{$unit} and $value >= 0) {
-        $t = $tt->get_next_token;
-        $prop_value{'border-bottom-width'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      if ($value >= 0) {
-        $t = $tt->get_next_token;
-        $prop_value{'border-bottom-width'} = ['DIMENSION', $value, 'px'];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case
-      if ({thin => 1, medium => 1, thick => 1}->{$prop_value}) {
-        $prop_value{'border-bottom-width'} = ['KEYWORD', $prop_value];
-        $t = $tt->get_next_token;
-      }
-    } else {
-      if ($has_sign) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
-    }
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    if ($t->{type} == MINUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = -1;
-    } elsif ($t->{type} == PLUS_TOKEN) {
-      $t = $tt->get_next_token;
-      $has_sign = 1;
-      $sign = 1;
-    } else {
-      undef $has_sign;
-      $sign = 1;
-    }
-
-    if ($t->{type} == DIMENSION_TOKEN) {
-      my $value = $t->{number} * $sign;
-      my $unit = lc $t->{value}; ## TODO: case
-      if ($length_unit->{$unit} and $value >= 0) {
-        $t = $tt->get_next_token;
-        $prop_value{'border-left-width'} = ['DIMENSION', $value, $unit];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif ($t->{type} == NUMBER_TOKEN and
-             ($self->context->quirks or $t->{number} == 0)) {
-      my $value = $t->{number} * $sign;
-      if ($value >= 0) {
-        $t = $tt->get_next_token;
-        $prop_value{'border-left-width'} = ['DIMENSION', $value, 'px'];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case
-      if ({thin => 1, medium => 1, thick => 1}->{$prop_value}) {
-        $prop_value{'border-left-width'} = ['KEYWORD', $prop_value];
-        $t = $tt->get_next_token;
-      }
-    } else {
-      if ($has_sign) {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      return ($t, \%prop_value);
-    }
-
-    return ($t, \%prop_value);
-  },
-  serialize_shorthand => sub {
-    my ($se, $st) = @_;
-
-    my @v;
-    push @v, $se->serialize_prop_value ($st, 'border-top-width');
-    my $i = $se->serialize_prop_priority ($st, 'border-top-width');
-    return {} unless length $v[-1];
-    push @v, $se->serialize_prop_value ($st, 'border-right-width');
-    return {} unless length $v[-1];
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-right-width');
-    push @v, $se->serialize_prop_value ($st, 'border-bottom-width');
-    return {} unless length $v[-1];
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-bottom-width');
-    push @v, $se->serialize_prop_value ($st, 'border-left-width');
-    return {} unless length $v[-1];
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-left-width');
-
-    my $v = 0;
-    for (0..3) {
-      $v++ if $v[$_] eq 'inherit';
-    }
-    if ($v == 4) {
-      return {'border-width' => ['inherit', $i]};
-    } elsif ($v) {
-      return {};
-    }
-
-    pop @v if $v[1] eq $v[3];
-    pop @v if $v[0] eq $v[2];
-    pop @v if $v[0] eq $v[1];
-    return {'border-width' => [(join ' ', @v), $i]};
-  },
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
-};
-$Attr->{border_width} = $Prop->{'border-width'};
+  is_shorthand => 1,
+  longhand_subprops => [qw(border_top_width border_right_width
+                           border_bottom_width border_left_width)],
+}; # border-width
+$Key->{border_width}->{parse_shorthand} = $GetBoxShorthandParser->($Key->{border_width});
+$Key->{border_width}->{serialize_shorthand} = $GetBoxShorthandSerializer->($Key->{border_width});
 
 $Prop->{'list-style'} = {
   css => 'list-style',

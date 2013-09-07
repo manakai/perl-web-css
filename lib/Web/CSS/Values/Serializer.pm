@@ -94,10 +94,18 @@ my $ValueSerializer = {
     ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>.
     return 'url(' . _string ($_[0]->[1]) . ')';
   },
+  CURSORURL => sub {
+    ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>.
+    return 'url(' . _string ($_[0]->[1]) . ') ' .
+        (_number $_[0]->[3]) . ' ' . (_number $_[0]->[4]);
+  },
   RATIO => sub {
     ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>
     ## + [MQ] + Serializer.pod.
     return _number ($_[0]->[1]) . '/' . _number ($_[0]->[2]);
+  },
+  LIST => sub {
+    return join ', ', map { __PACKAGE__->serialize_value ($_) } @{$_[0]}[1..$#{$_[0]}];
   },
 
 ## COUNTER
@@ -120,10 +128,6 @@ my $ValueSerializer = {
 ##   XXX
 ## CONTENT
 ##   XXX
-## FONT
-##   XXX
-## CURSOR
-##   XXX
 ## MARKS
 ##   XXX
 ## SIZE
@@ -140,16 +144,8 @@ sub serialize_value ($$) {
   my ($self, $value) = @_;
   return ($ValueSerializer->{$value->[0]} || sub { die "Serializer for |$value->[0]| not implemented" })->($value);
 
-  if ($value->[0] eq 'WEIGHT') {
-    ## TODO: What we currently do for 'font-weight' is different from
-    ## any browser for lighter/bolder cases.  We need to fix this, but
-    ## how?
-    return $value->[1]; ## TODO: big or small number cases?
-  } elsif ($value->[0] eq 'PAGE') {
+  if ($value->[0] eq 'PAGE') {
     return $value->[1];
-  } elsif ($value->[0] eq 'URI') {
-    ## NOTE: This is what browsers do.
-    return 'url('.$value->[1].')';
   } elsif ($value->[0] eq 'DECORATION') {
     my @v = ();
     push @v, 'underline' if $value->[1];
@@ -208,28 +204,6 @@ sub serialize_value ($$) {
           . $value->[4]->[1].$value->[4]->[2] . ')';
   } elsif ($value->[0] eq 'SETCOUNTER' or $value->[0] eq 'ADDCOUNTER') {
     return join ' ', map {$_->[0], $_->[1]} @$value[1..$#$value];
-  } elsif ($value->[0] eq 'FONT') {
-    return join ', ', map {
-      if ($_->[0] eq 'STRING') {
-        '"'.$_->[1].'"'; ## NOTE: This is what Firefox does.
-      } elsif ($_->[0] eq 'KEYWORD') {
-        $_->[1]; ## NOTE: This is what Firefox does.
-      } else {
-        ## NOTE: This should be an error.
-        '""';
-      }
-    } @$value[1..$#$value];
-  } elsif ($value->[0] eq 'CURSOR') {
-    return join ', ', map {
-      if ($_->[0] eq 'URI') {
-        'url('.$_->[1].')'; ## NOTE: This is what Firefox does.
-      } elsif ($_->[0] eq 'KEYWORD') {
-        $_->[1];
-      } else {
-        ## NOTE: This should be an error.
-        '""';
-      }
-    } @$value[1..$#$value];
   } elsif ($value->[0] eq 'MARKS') {
     if ($value->[1]) {
       if ($value->[2]) {

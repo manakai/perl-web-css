@@ -33,6 +33,12 @@ property, any possible value MUST be supported.
 If it supports a property whose value is <line-width>, any possible
 value MUST be supported.
 
+If it supports a property which allows either <url> or 'none', any
+possible value MUST be supported.
+
+If it supports the 'font-family' property, it MUST support any
+possible value.
+
 =head2 <color>
 
 If <color> is supported, it MUST support RGB colors (internally

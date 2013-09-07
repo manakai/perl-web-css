@@ -16,6 +16,11 @@ use Web::CSS::Colors;
 ## URL - URL
 ##   1: URL as Perl character string
 ##   2: Base URL as Perl character string, or |undef| if already resolved
+## CURSORURL - Cursor URL and hotspot
+##   1: Same as |URL|
+##   2: Same as |URL|
+##   3: X-coordinate as Perl number
+##   4: Y-coordinate as Perl number
 ## NUMBER - Number (including integer)
 ##   1: Value as Perl number
 ## PERCENTAGE - Number in percentage
@@ -43,6 +48,8 @@ use Web::CSS::Colors;
 ##   2: Green as Perl number [0-255]
 ##   3: Blue as Perl number [0-255]
 ##   4: Alpha as Perl number [0-1]
+## LIST - List
+##   1..: Values
 ## COUNTER
 ##   XXX
 ## COUNTERS
@@ -63,10 +70,6 @@ use Web::CSS::Colors;
 ##   XXX
 ## CONTENT
 ##   XXX
-## FONT
-##   XXX
-## CURSOR
-##   XXX
 ## MARKS
 ##   XXX
 ## SIZE
@@ -77,6 +80,10 @@ use Web::CSS::Colors;
 ## <http://dev.w3.org/csswg/css-cascade/#defaulting-keywords>.  See
 ## also |Web::CSS::Parser|.
 our $CSSWidePattern = qr/\A(?:inherit|initial|unset)\z/;
+our $CSSWideKeywords = {
+  inherit => 1, initial => 1, unset => 1,
+  '-moz-initial' => 1,
+};
 # XXX toggle
 
 our $GetKeywordParser = sub ($;$) {

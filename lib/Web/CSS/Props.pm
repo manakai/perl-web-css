@@ -2180,171 +2180,105 @@ $Key->{outline_style} = {
   compute => $compute_as_specified,
 }; # outline-style
 
-# XXX--XXX
-
-my $generic_font_keywords = {
-  serif => 1, 'sans-serif' => 1, cursive => 1,
-  fantasy => 1, monospace => 1, '-manakai-default' => 1,
-  '-manakai-caption' => 1, '-manakai-icon' => 1,
-  '-manakai-menu' => 1, '-manakai-message-box' => 1, 
-  '-manakai-small-caption' => 1, '-manakai-status-bar' => 1,
-};
-## NOTE: "All five generic font families are defined to exist in all CSS
-## implementations (they need not necessarily map to five distinct actual
-## fonts)." [CSS 2.1].
-## NOTE: "If no font with the indicated characteristics exists on a given
-## platform, the user agent should either intelligently substitute (e.g., a
-## smaller version of the 'caption' font might be used for the 'small-caption'
-## font), or substitute a user agent default font." [CSS 2.1].
-
-$Prop->{'font-family'} = {
+## <http://dev.w3.org/csswg/css-fonts/#font-family-prop> [CSSFONTS].
+$Key->{font_family} = {
   css => 'font-family',
   dom => 'font_family',
-  key => 'font_family',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
+  parse_longhand => sub {
+    my ($self, $us) = @_;
 
-    ## NOTE: See <http://suika.fam.cx/gate/2005/sw/font-family> for
-    ## how chaotic browsers are!
-
-    ## NOTE: Opera 9 allows NUMBER and DIMENSION as part of 
-    ## <font-family>, while Firefox 2 does not.
-
-    my @prop_value;
-
-    my $font_name = '';
-    my $may_be_generic = 1;
-    my $may_be_inherit = ($prop_name ne 'font');
-    my $has_s = 0;
-    F: {
+    my $result = ['LIST'];
+    my $t = shift @$us;
+    {
+      $t = shift @$us while $t->{type} == S_TOKEN;
+      
       if ($t->{type} == IDENT_TOKEN) {
-        undef $may_be_inherit if $has_s or length $font_name;
-        undef $may_be_generic if $has_s or length $font_name;
-        $font_name .= ' ' if $has_s;
-        $font_name .= $t->{value};
-        undef $has_s;
-        $t = $tt->get_next_token;
-      } elsif ($t->{type} == STRING_TOKEN) {
-        $font_name .= ' ' if $has_s;
-        $font_name .= $t->{value};
-        undef $may_be_inherit;
-        undef $may_be_generic;
-        undef $has_s;
-        $t = $tt->get_next_token;
-      } elsif ($t->{type} == COMMA_TOKEN) { ## TODO: case
-        if ($may_be_generic and $generic_font_keywords->{lc $font_name}) {
-          push @prop_value, ['KEYWORD', $font_name];
-        } elsif (not $may_be_generic or length $font_name) {
-          push @prop_value, ["STRING", $font_name];
-        }
-        undef $may_be_inherit;
-        $may_be_generic = 1;
-        undef $has_s;
-        $font_name = '';
-        $t = $tt->get_next_token;
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      } elsif ($t->{type} == S_TOKEN) {
-        $has_s = 1;
-        $t = $tt->get_next_token;
-      } else {
-        if ($may_be_generic and $generic_font_keywords->{lc $font_name}) {
-          push @prop_value, ['KEYWORD', $font_name]; ## TODO: case
-        } elsif (not $may_be_generic or length $font_name) {
-          push @prop_value, ['STRING', $font_name];
+        my $value = $t->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ({serif => 1, 'sans-serif' => 1, cursive => 1,
+             fantasy => 1, monospace => 1,
+             '-manakai-default' => 1}->{$value}) {
+          my $values = [$t->{value}];
+          $t = shift @$us;
+          $t = shift @$us while $t->{type} == S_TOKEN;
+          while ($t->{type} == IDENT_TOKEN) {
+            push @$values, $t->{value};
+            $t = shift @$us;
+            $t = shift @$us while $t->{type} == S_TOKEN;
+          }
+          if (@$values == 1) {
+            push @$result, ['KEYWORD', $value];
+          } else {
+            push @$result, ['STRING', join ' ', @$values];
+          }
+        } elsif ($Web::CSS::Values::CSSWideKeywords->{$value} or
+                 $value eq 'default') {
+          last;
         } else {
-          $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
+          my $values = [$t->{value}];
+          $t = shift @$us;
+          $t = shift @$us while $t->{type} == S_TOKEN;
+          while ($t->{type} == IDENT_TOKEN) {
+            push @$values, $t->{value};
+            $t = shift @$us;
+            $t = shift @$us while $t->{type} == S_TOKEN;
+          }
+          push @$result, ['STRING', join ' ', @$values];
+        }
+        if ($t->{type} == COMMA_TOKEN) {
+          $t = shift @$us;
+          $t = shift @$us while $t->{type} == S_TOKEN;
+          redo;
+        } elsif ($t->{type} == EOF_TOKEN) {
+          return $result;
+        } else {
+          last;
+        }
+      } elsif ($t->{type} == STRING_TOKEN) {
+        push @$result, ['STRING', $t->{value}];
+
+        $t = shift @$us;
+        $t = shift @$us while $t->{type} == S_TOKEN;
+        if ($t->{type} == COMMA_TOKEN) {
+          $t = shift @$us;
+          $t = shift @$us while $t->{type} == S_TOKEN;
+          redo;
+        } elsif ($t->{type} == EOF_TOKEN) {
+          return $result;
+        } else {
+          last;
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => q['font-family'],
                      level => 'm',
                      uri => $self->context->urlref,
-                     token => $t);
-          return ($t, undef);
-        }
-        last F;
-      }
-      redo F;
-    } # F
-
-    if ($may_be_inherit and
-        @prop_value == 1 and
-        $prop_value[0]->[0] eq 'STRING' and
-        lc $prop_value[0]->[1] eq 'inherit') { ## TODO: case
-      return ($t, {$prop_name => ['INHERIT']});
-    } else {
-      unshift @prop_value, 'FONT';
-      return ($t, {$prop_name => \@prop_value});
-    }
-  },
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   initial => ['FONT', ['KEYWORD', '-manakai-default']],
   inherited => 1,
   compute => $compute_as_specified,
-};
-$Attr->{font_family} = $Prop->{'font-family'};
-$Key->{font_family} = $Prop->{'font-family'};
+}; # font-family
 
-$Prop->{cursor} = {
+## <http://dev.w3.org/csswg/css-ui/#cursor> [CSSUI].
+$Key->{cursor} = {
   css => 'cursor',
   dom => 'cursor',
-  key => 'cursor',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    ## NOTE: See <http://suika.fam.cx/gate/2005/sw/cursor> for browser
-    ## compatibility issues.
-
-    my @prop_value = ('CURSOR');
-
-    F: {
-      if ($t->{type} == IDENT_TOKEN) {
-        my $v = lc $t->{value}; ## TODO: case
-        if ($Prop->{$prop_name}->{keyword}->{$v}) {
-          push @prop_value, ['KEYWORD', $v];
-          $t = $tt->get_next_token;
-          last F;
-        } elsif ($v eq 'hand' and
-                 $Prop->{$prop_name}->{keyword}->{pointer}) {
-          ## TODO: add test
-          $onerror->(type => 'CSS cursor hand',
-                     level => 'm', # not valid <'cursor'>
-                     uri => $self->context->urlref,
-                     token => $t);
-          push @prop_value, ['KEYWORD', 'pointer'];
-          $t = $tt->get_next_token;
-          last F;
-        } elsif ($v eq 'inherit' and @prop_value == 1) {
-          $t = $tt->get_next_token;
-          return ($t, {$prop_name => ['INHERIT']});
-        } else {
-          $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => 'm',
-                     uri => $self->context->urlref,
-                     token => $t);
-          return ($t, undef);
-        }
-      } elsif ($t->{type} == URI_TOKEN) {
-        push @prop_value, ['URI', $t->{value}, $self->context->base_urlref];
-        $t = $tt->get_next_token;
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      if ($t->{type} == COMMA_TOKEN) {
-        $t = $tt->get_next_token;
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        redo F;
-      }
-    } # F
-
-    return ($t, {$prop_name => \@prop_value});
-  },
   keyword => {
     auto => 1, crosshair => 1, default => 1, pointer => 1, move => 1,
-    'e-resize' => 1, 'ne-resize' => 1, 'nw-resize' => 1, 'n-resize' => 1,
+    'e-resize' => 1, 'ne-resize' => 1, 'nw-resize' => 1,
     'n-resize' => 1, 'se-resize' => 1, 'sw-resize' => 1, 's-resize' => 1,
     'w-resize' => 1, text => 1, wait => 1, help => 1, progress => 1,
+    none => 1, 'context-menu' => 1, cell => 1, 'vertical-text' => 1,
+    alias => 1, copy => 1, 'no-drop' => 1, 'not-allowed' => 1,
+    'ew-resize' => 1, 'ns-resize' => 1, 'nesw-resize' => 1,
+    'nwse-resize' => 1, 'col-resize' => 1, 'row-resize' => 1,
+    'all-scroll' => 1, 'zoom-in' => 1, 'zoom-out' => 1,
+    grab => 1, grabbing => 1,
+    # hand -moz-grab -webkit-grab -moz-grabbing -webkit-grabbing
+    # -moz-zoom-in -webkit-zoom-in -moz-zoom-out -webkit-zoom-out
   },
   initial => ['CURSOR', ['KEYWORD', 'auto']],
   inherited => 1,
@@ -2372,9 +2306,81 @@ $Prop->{cursor} = {
 
     return $specified_value;
   },
-};
-$Attr->{cursor} = $Prop->{cursor};
-$Key->{cursor} = $Prop->{cursor};
+}; # cursor
+$Key->{cursor}->{parse_longhand} = sub {
+  my $def = $_[0];
+  return sub {
+    my ($self, $us) = @_;
+
+    my $result = ['LIST'];
+    my $t = shift @$us;
+    {
+      if ($t->{type} == URI_TOKEN) {
+        my $value = ['URL', $t->{value}, $self->context->base_urlref];
+        $t = shift @$us;
+        $t = shift @$us while $t->{type} == S_TOKEN;
+        if ($t->{type} == NUMBER_TOKEN) {
+          $value->[0] = 'CURSORURL';
+          $value->[3] = 0+$t->{number};
+          $t = shift @$us;
+          $t = shift @$us while $t->{type} == S_TOKEN;
+          if ($t->{type} == NUMBER_TOKEN) {
+            $value->[4] = 0+$t->{number};
+            $t = shift @$us;
+            $t = shift @$us while $t->{type} == S_TOKEN;
+            if ($t->{type} == COMMA_TOKEN) {
+              $t = shift @$us;
+              $t = shift @$us while $t->{type} == S_TOKEN;
+              push @$result, $value;
+              redo;
+            }
+          }
+        } elsif ($t->{type} == COMMA_TOKEN) {
+          $t = shift @$us;
+          $t = shift @$us while $t->{type} == S_TOKEN;
+          push @$result, $value;
+          redo;
+        }
+      } elsif ($t->{type} == IDENT_TOKEN) {
+        my $value = $t->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        my $replaced = {
+          hand => 'pointer',
+          '-moz-grab' => 'grab',
+          '-webkit-grab' => 'grab',
+          '-moz-grabbing' => 'grabbing',
+          '-webkit-grabbing' => 'grabbing',
+          '-moz-zoom-in' => 'zoom-in',
+          '-webkit-zoom-in' => 'zoom-in',
+          '-moz-zoom-out' => 'zoom-out',
+          '-webkit-zoom-out' => 'zoom-out',
+        }->{$value} || $value;
+        if ($def->{keyword}->{$replaced} and
+            $self->media_resolver->{prop_value}->{cursor}->{$replaced}) {
+          if ($value ne $replaced) {
+            $self->onerror->(type => 'css:obsolete', # XXX
+                             text => $t->{value},
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+          }
+          push @$result, ['KEYWORD', $replaced];
+          $t = shift @$us;
+          $t = shift @$us while $t->{type} == S_TOKEN;
+          if ($t->{type} == EOF_TOKEN) {
+            return $result;
+          }
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => q['cursor'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $t);
+    return undef;
+  };
+}->($Key->{cursor}); # parse_longhand
 
 ## <http://dev.w3.org/csswg/css-backgrounds/#the-border-style>
 ## [CSSBACKGROUNDS].
@@ -2401,6 +2407,8 @@ $Key->{border_color} = {
 }; # border-color
 $Key->{border_color}->{parse_shorthand} = $GetBoxShorthandParser->($Key->{border_color});
 $Key->{border_color}->{serialize_shorthand} = $GetBoxShorthandSerializer->($Key->{border_color});
+
+# XXX---XXX
 
 $Prop->{'border-top'} = {
   css => 'border-top',

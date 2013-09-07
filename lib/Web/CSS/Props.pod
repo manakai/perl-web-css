@@ -198,6 +198,16 @@ CSS Counter Styles <http://dev.w3.org/csswg/css-counter-styles/>.
 
 CSS Basic User Interface <http://dev.w3.org/csswg/css-ui/>.
 
+The vendor prefix of '-moz-grab', '-webkit-grab', '-moz-grabbing',
+'-webkit-grabbing', '-moz-zoom-in', '-webkit-zoom-in',
+'-moz-zoom-out', and '-webkit-zoom-out' MUST be dropped at parse time.
+
+The 'hand' keyword in the 'cursor' property MUST be replaced by
+'pointer' at parse time.
+
+Keywords 'grab' and 'grabbing' MUST be allowed as a keyword in the
+'cursor' property.
+
 =item CSSINLINE
 
 CSS Line Layout <http://dev.w3.org/csswg/css-inline/>.
@@ -219,6 +229,9 @@ The '-webkit-xxx-large' keyword can be used as <absolute-size>.
 For the 'font-weight' property, number keywords ('100' ... '900') in
 the grammer represent <integer> tokens whose value is equal to one of
 them.
+
+A CSS-wide keyword or the keyword 'default' can't be used as the first
+token of <family-name>.
 
 =item SVG
 
@@ -275,8 +288,10 @@ run following steps:
 =head1 OBSOLETE FEATURES
 
 Support for following feature has been removed: Keywords
-'-moz-pre-wrap', '-moz-use-text-color', '-o-pre-wrap', and
-'-webkit-marquee', and property '-moz-opacity'.
+'-moz-pre-wrap', '-moz-use-text-color', '-o-pre-wrap',
+'-webkit-marquee', '-manakai-caption', '-manakai-icon',
+'-manakai-menu', '-manakai-message-box'.  '-manakai-small-caption',
+and '-manakai-status-bar', and property '-moz-opacity'.
 
 =head1 SEE ALSO
 

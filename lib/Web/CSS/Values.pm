@@ -14,7 +14,8 @@ use Web::CSS::Colors;
 ## STRING - String
 ##   1: Value as Perl character string
 ## URL - URL
-##   1: URL as Perl character string, resolved if possible
+##   1: URL as Perl character string
+##   2: Base URL as Perl character string, or |undef| if already resolved
 ## NUMBER - Number (including integer)
 ##   1: Value as Perl number
 ## PERCENTAGE - Number in percentage
@@ -665,6 +666,29 @@ my $GetColorParser = sub {
 }; # $GetColorParser
 our $ColorOrQuirkyColorParser = $GetColorParser->(allow_quirky_color => 1);
 our $OutlineColorParser = $GetColorParser->(is_outline_color => 1);
+
+## <url> | none [CSSVALUES] [CSSLISTS].
+our $URLOrNoneParser = sub {
+  my ($self, $us) = @_;
+
+  if (@$us == 2) {
+    if ($us->[0]->{type} == URI_TOKEN) {
+      return ['URL', $us->[0]->{value}, $self->context->base_urlref];
+    } elsif ($us->[0]->{type} == IDENT_TOKEN) {
+      my $value = $us->[0]->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($value eq 'none') {
+        return ['KEYWORD', $value];
+      }
+    }
+  }
+
+  $self->onerror->(type => 'css:url:syntax error', # XXX
+                   level => 'm',
+                   uri => $self->context->urlref,
+                   token => $us->[0]);
+  return undef;
+}; # $URLOrNoneParser
 
 1;
 

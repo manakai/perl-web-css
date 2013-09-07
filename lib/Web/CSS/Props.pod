@@ -216,6 +216,14 @@ CSS Fonts <http://dev.w3.org/csswg/css-fonts/>.
 
 The '-webkit-xxx-large' keyword can be used as <absolute-size>.
 
+For the 'font-weight' property, number keywords ('100' ... '900') in
+the grammer represent <integer> tokens whose value is equal to one of
+them.
+
+=item SVG
+
+SVG <https://svgwg.org/svg2-draft/text.html>.
+
 =item CSS21
 
 CSS 2.1 <http://www.w3.org/TR/CSS21/tables.html>.

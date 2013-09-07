@@ -1876,48 +1876,35 @@ $Key->{outline_width} = {
   compute => $Key->{border_top_width}->{compute},
 }; # outline-width
 
-# XXX---XXX
-
-$Prop->{'font-weight'} = {
+## <http://dev.w3.org/csswg/css-fonts/#font-weight-prop> [CSSFONTS].
+$Key->{font_weight} = {
   css => 'font-weight',
   dom => 'font_weight',
-  key => 'font_weight',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my $has_sign;
-    if ($t->{type} == PLUS_TOKEN) {
-      $has_sign = 1;
-      $t = $tt->get_next_token;
-    }
-
-    if ($t->{type} == NUMBER_TOKEN) {
-      ## ISSUE: See <http://suika.fam.cx/gate/2005/sw/font-weight> for
-      ## browser compatibility issue.
-      my $value = $t->{number} + 0;
-      $t = $tt->get_next_token;
-      if ($value % 100 == 0 and 100 <= $value and $value <= 900) {
-        return ($t, {$prop_name => ['WEIGHT', $value, 0]});
-      }
-    } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ({
-           normal => 1, bold => 1, bolder => 1, lighter => 1,
-          }->{$value}) {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['KEYWORD', $value]});
-      } elsif ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'normal' or
+            $value eq 'bold' or
+            $value eq 'bolder' or
+            $value eq 'lighter') {
+          return ['KEYWORD', $value];
+        }
+      } elsif ($us->[0]->{type} == NUMBER_TOKEN) {
+        if ($us->[0]->{number} =~ /\A\+?0*[1-9]00\z/) {
+          return ['NUMBER', 0+$us->[0]->{number}];
+        }
       }
     }
-    
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
+
+    $self->onerror->(type => 'CSS syntax error', text => q['font-weight'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   initial => ['KEYWORD', 'normal'],
   inherited => 1,
   compute => sub {
@@ -1953,47 +1940,7 @@ $Prop->{'font-weight'} = {
 
     return $specified_value;
   },
-};
-$Attr->{font_weight} = $Prop->{'font-weight'};
-$Key->{font_weight} = $Prop->{'font-weight'};
-
-my $uri_or_none_parser = sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    if ($t->{type} == URI_TOKEN) {
-      my $value = $t->{value};
-      $t = $tt->get_next_token;
-      return ($t, {$prop_name => ['URI', $value, $self->context->base_urlref]});
-    } elsif ($t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($value eq 'none') {
-        ## NOTE: |none| is the default value and therefore it must be
-        ## supported anyway.
-        return ($t, {$prop_name => ["KEYWORD", 'none']});
-      } elsif ($value eq 'inherit') {
-        return ($t, {$prop_name => ['INHERIT']});
-      }
-    ## NOTE: None of Firefox2, WinIE6, and Opera9 support this case.
-    #} elsif ($t->{type} == URI_INVALID_TOKEN) {
-    #  my $value = $t->{value};
-    #  $t = $tt->get_next_token;
-    #  if ($t->{type} == EOF_TOKEN) {
-    #    $onerror->(type => 'uri not closed',
-    #               level => 'm',
-    #               uri => $self->context->urlref,
-    #               token => $t);
-    #    
-    #    return ($t, {$prop_name => ['URI', $value, $self->context->base_urlref]});
-    #  }
-    }
-    
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-}; # $uri_or_none_parser
+}; # font-weight
 
 my $compute_uri_or_none = sub {
     my ($self, $element, $prop_name, $specified_value) = @_;
@@ -2010,37 +1957,33 @@ my $compute_uri_or_none = sub {
     return $specified_value;
 }; # $compute_uri_or_none
 
-$Prop->{'list-style-image'} = {
+## <http://dev.w3.org/csswg/css-lists/#marker-content> [CSSLISTS].
+$Key->{list_style_image} = {
   css => 'list-style-image',
   dom => 'list_style_image',
-  key => 'list_style_image',
-  parse => $uri_or_none_parser,
+  parse_longhand => $Web::CSS::Values::URLOrNoneParser,
   initial => ['KEYWORD', 'none'],
   inherited => 1,
   compute => $compute_uri_or_none,
-};
-$Attr->{list_style_image} = $Prop->{'list-style-image'};
-$Key->{list_style_image} = $Prop->{'list-style-image'};
+}; # list-style-image
 
-$Prop->{'background-image'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-background-image>
+## [CSSLISTS].
+$Key->{background_image} = {
   css => 'background-image',
   dom => 'background_image',
-  key => 'background_image',
-  parse => $uri_or_none_parser,
-  serialize_multiple => $Key->{background_color}->{serialize_multiple},
+  parse_longhand => $Web::CSS::Values::URLOrNoneParser,
   initial => ['KEYWORD', 'none'],
   #inherited => 0,
   compute => $compute_uri_or_none,
-};
-$Attr->{background_image} = $Prop->{'background-image'};
-$Key->{background_image} = $Prop->{'background-image'};
+}; # background-image
 
-$Attr->{font_stretch} =
-$Key->{font_stretch} =
-$Prop->{'font-stretch'} = {
+## <http://dev.w3.org/csswg/css-fonts/#font-stretch-prop> [CSSFONTS],
+## <http://www.w3.org/TR/1998/REC-CSS2/fonts.html#propdef-font-stretch>
+## [CSS20].
+$Key->{font_stretch} = {
   css => 'font-stretch',
   dom => 'font_stretch',
-  key => 'font_stretch',
   keyword => {
     qw/normal 1 wider 1 narrower 1 ultra-condensed 1 extra-condensed 1
        condensed 1 semi-condensed 1 semi-expanded 1 expanded 1 
@@ -2101,20 +2044,20 @@ $Prop->{'font-stretch'} = {
 
     return $specified_value;
   },
-};
+}; # font-stretch
 
-$Attr->{writing_mode} =
-$Key->{writing_mode} =
-$Prop->{'writing-mode'} = {
+## <http://dev.w3.org/csswg/css-writing-modes/#writing-mode>
+## [CSSWRITINGMODES].
+$Key->{writing_mode} = {
   css => 'writing-mode',
   dom => 'writing_mode',
-  key => 'writing_mode',
   keyword => {
+    'horizontal-tb' => 1, 'vertical-rl' => 1, 'vertical-lr' => 1,
     'lr' => 1, 'lr-tb' => 1,
     'rl' => 1, 'rl-tb' => 1,
     'tb' => 1, 'tb-rl' => 1,
   },
-  initial => ['KEYWORD', 'lr-tb'],
+  initial => ['KEYWORD', 'horizontal-tb'],
   inherited => 1,
   compute => sub {
     my ($self, $element, $prop_name, $specified_value) = @_;
@@ -2133,28 +2076,26 @@ $Prop->{'writing-mode'} = {
 
     return $specified_value;
   },
-};
+}; # writing-mode
+$Prop->{'-ms-writing-mode'} = $Key->{writing_mode};
 
-$Attr->{text_anchor} =
-$Key->{text_anchor} =
-$Prop->{'text-anchor'} = {
+## <https://svgwg.org/svg2-draft/text.html#TextAnchorProperty> [SVG].
+$Key->{text_anchor} = {
   css => 'text-anchor',
-  dom => 'text_anchor', ## TODO: manakai extension.  Documentation.
-  key => 'text_anchor',
+  dom => 'text_anchor',
   keyword => {
     start => 1, middle => 1, end => 1,
   },
   initial => ['KEYWORD', 'start'],
   inherited => 1,
   compute => $compute_as_specified,
-};
+}; # text-anchor
 
-$Attr->{dominant_baseline} =
-$Key->{dominant_baseline} =
-$Prop->{'dominant-baseline'} = {
+## <https://svgwg.org/svg2-draft/text.html#DominantBaselineProperty>
+## [SVG].
+$Key->{dominant_baseline} = {
   css => 'dominant-baseline',
-  dom => 'dominant_baseline', ## TODO: manakai extension.  Documentation.
-  key => 'dominant_baseline',
+  dom => 'dominant_baseline',
   keyword => {
     qw/auto 1 use-script 1 no-change 1 reset-size 1 ideographic 1 alphabetic 1
        hanging 1 mathematical 1 central 1 middle 1 text-after-edge 1
@@ -2163,14 +2104,13 @@ $Prop->{'dominant-baseline'} = {
   initial => ['KEYWORD', 'auto'],
   inherited => 0,
   compute => $compute_as_specified,
-};
+}; # dominant-baseline
 
-$Attr->{alignment_baseline} =
-$Key->{alignment_baseline} =
-$Prop->{'alignment-baseline'} = {
+## <https://svgwg.org/svg2-draft/text.html#AlignmentBaselineProperty>
+## [SVG].
+$Key->{alignment_baseline} = {
   css => 'alignment-baseline',
-  dom => 'alignment_baseline', ## TODO: manakai extension.  Documentation.
-  key => 'alignment_baseline',
+  dom => 'alignment_baseline',
   keyword => {
     qw/auto 1 baseline 1 before-edge 1 text-before-edge 1 middle 1 central 1
        after-edge 1 text-after-edge 1 ideographic 1 alphabetic 1 hanging 1
@@ -2179,78 +2119,68 @@ $Prop->{'alignment-baseline'} = {
   initial => ['KEYWORD', 'auto'],
   inherited => 0,
   compute => $compute_as_specified,
-};
+}; # alignment-baseline
 
 my $border_style_keyword = {
   none => 1, hidden => 1, dotted => 1, dashed => 1, solid => 1,
   double => 1, groove => 1, ridge => 1, inset => 1, outset => 1,
 };
 
-$Prop->{'border-top-style'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-style>
+## [CSSBACKGROUNDS].
+$Key->{border_top_style} = {
   css => 'border-top-style',
   dom => 'border_top_style',
-  key => 'border_top_style',
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{border_top_style} = $Prop->{'border-top-style'};
-$Key->{border_top_style} = $Prop->{'border-top-style'};
+}; # border-top-style
 
-$Prop->{'border-right-style'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-style>
+## [CSSBACKGROUNDS].
+$Key->{border_right_style} = {
   css => 'border-right-style',
   dom => 'border_right_style',
-  key => 'border_right_style',
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{border_right_style} = $Prop->{'border-right-style'};
-$Key->{border_right_style} = $Prop->{'border-right-style'};
+}; # border-right-style
 
-$Prop->{'border-bottom-style'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-style>
+## [CSSBACKGROUNDS].
+$Key->{border_bottom_style} = {
   css => 'border-bottom-style',
   dom => 'border_bottom_style',
-  key => 'border_bottom_style',
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{border_bottom_style} = $Prop->{'border-bottom-style'};
-$Key->{border_bottom_style} = $Prop->{'border-bottom-style'};
+}; # border-bottom-style
 
-$Prop->{'border-left-style'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-style>
+## [CSSBACKGROUNDS].
+$Key->{border_left_style} = {
   css => 'border-left-style',
   dom => 'border_left_style',
-  key => 'border_left_style',
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
   keyword => $border_style_keyword,
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{border_left_style} = $Prop->{'border-left-style'};
-$Key->{border_left_style} = $Prop->{'border-left-style'};
+}; # border-left-style
 
-$Prop->{'outline-style'} = {
+## <http://dev.w3.org/csswg/css-ui/#outline-style> [CSSUI].
+$Key->{outline_style} = {
   css => 'outline-style',
   dom => 'outline_style',
-  key => 'outline_style',
-  serialize_multiple => $Key->{outline_color}->{serialize_multiple},
-  keyword => {%$border_style_keyword},
+  keyword => {%$border_style_keyword, auto => 1, hidden => 0},
   initial => ['KEYWORD', 'none'],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{outline_style} = $Prop->{'outline-style'};
-$Key->{outline_style} = $Prop->{'outline-style'};
-delete $Prop->{'outline-style'}->{keyword}->{hidden};
+}; # outline-style
+
+# XXX--XXX
 
 my $generic_font_keywords = {
   serif => 1, 'sans-serif' => 1, cursive => 1,
@@ -2446,129 +2376,17 @@ $Prop->{cursor} = {
 $Attr->{cursor} = $Prop->{cursor};
 $Key->{cursor} = $Prop->{cursor};
 
-$Prop->{'border-style'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-style>
+## [CSSBACKGROUNDS].
+$Key->{border_style} = {
   css => 'border-style',
   dom => 'border_style',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my %prop_value;
-    if ($t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
-      $t = $tt->get_next_token;
-      if ($border_style_keyword->{$prop_value} and
-          $self->{prop_value}->{'border-top-style'}->{$prop_value}) {
-        $prop_value{'border-top-style'} = ["KEYWORD", $prop_value];
-      } elsif ($prop_value eq 'inherit') {
-        $prop_value{'border-top-style'} = ["INHERIT"];
-        $prop_value{'border-right-style'} = $prop_value{'border-top-style'};
-        $prop_value{'border-bottom-style'} = $prop_value{'border-top-style'};
-        $prop_value{'border-left-style'} = $prop_value{'border-right-style'};
-        return ($t, \%prop_value);
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      $prop_value{'border-right-style'} = $prop_value{'border-top-style'};
-      $prop_value{'border-bottom-style'} = $prop_value{'border-top-style'};
-      $prop_value{'border-left-style'} = $prop_value{'border-right-style'};
-    } else {
-      $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => 'm',
-                 uri => $self->context->urlref,
-                 token => $t);
-      return ($t, undef);
-    }
-
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    if ($t->{type} == IDENT_TOKEN) {
-      my $prop_value = lc $t->{value}; ## TODO: case folding
-      $t = $tt->get_next_token;
-      if ($border_style_keyword->{$prop_value} and
-          $self->{prop_value}->{'border-right-style'}->{$prop_value}) {
-        $prop_value{'border-right-style'} = ["KEYWORD", $prop_value];
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-      $prop_value{'border-left-style'} = $prop_value{'border-right-style'};
-
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      if ($t->{type} == IDENT_TOKEN) {
-        my $prop_value = lc $t->{value}; ## TODO: case folding
-        $t = $tt->get_next_token;
-        if ($border_style_keyword->{$prop_value} and
-            $self->{prop_value}->{'border-bottom-style'}->{$prop_value}) {
-          $prop_value{'border-bottom-style'} = ["KEYWORD", $prop_value];
-        } else {
-          $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => 'm',
-                     uri => $self->context->urlref,
-                     token => $t);
-          return ($t, undef);
-        }
-        
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ($t->{type} == IDENT_TOKEN) {
-          my $prop_value = lc $t->{value}; ## TODO: case folding
-          $t = $tt->get_next_token;
-          if ($border_style_keyword->{$prop_value} and
-              $self->{prop_value}->{'border-left-style'}->{$prop_value}) {
-            $prop_value{'border-left-style'} = ["KEYWORD", $prop_value];
-          } else {
-            $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
-            return ($t, undef);
-          }
-        }
-      }
-    }        
-
-    return ($t, \%prop_value);
-  },
-  serialize_shorthand => sub {
-    my ($se, $st) = @_;
-
-    my @v;
-    push @v, $se->serialize_prop_value ($st, 'border-top-style');
-    my $i = $se->serialize_prop_priority ($st, 'border-top-style');
-    return {} unless length $v[-1];
-    push @v, $se->serialize_prop_value ($st, 'border-right-style');
-    return {} unless length $v[-1];
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-right-style');
-    push @v, $se->serialize_prop_value ($st, 'border-bottom-style');
-    return {} unless length $v[-1];
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-bottom-style');
-    push @v, $se->serialize_prop_value ($st, 'border-left-style');
-    return {} unless length $v[-1];
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-left-style');
-
-    my $v = 0;
-    for (0..3) {
-      $v++ if $v[$_] eq 'inherit';
-    }
-    if ($v == 4) {
-      return {'border-style' => ['inherit', $i]};
-    } elsif ($v) {
-      return {};
-    }
-
-    pop @v if $v[1] eq $v[3];
-    pop @v if $v[0] eq $v[2];
-    pop @v if $v[0] eq $v[1];
-    return {'border-style' => [(join ' ', @v), $i]};
-  },
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
-};
-$Attr->{border_style} = $Prop->{'border-style'};
+  is_shorthand => 1,
+  longhand_subprops => [qw(border_top_style border_right_style
+                           border_bottom_style border_left_style)],
+}; # border-style
+$Key->{border_style}->{parse_shorthand} = $GetBoxShorthandParser->($Key->{border_style});
+$Key->{border_style}->{serialize_shorthand} = $GetBoxShorthandSerializer->($Key->{border_style});
 
 ## <http://dev.w3.org/csswg/css-backgrounds/#the-border-color>
 ## [CSSBACKGROUNDS],

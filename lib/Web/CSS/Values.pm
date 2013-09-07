@@ -671,6 +671,7 @@ my $GetColorParser = sub {
     }
   };
 }; # $GetColorParser
+our $ColorParser = $GetColorParser->();
 our $ColorOrQuirkyColorParser = $GetColorParser->(allow_quirky_color => 1);
 our $OutlineColorParser = $GetColorParser->(is_outline_color => 1);
 

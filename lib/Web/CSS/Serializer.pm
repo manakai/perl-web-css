@@ -83,15 +83,15 @@ sub serialize_prop_decls ($$) {
 
   ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-declaration-block>.
 
-  for my $key (@{$style->{prop_keys}}) {
-    next if $done{$key};
+  DECL: for my $key (@{$style->{prop_keys}}) {
+    next DECL if $done{$key};
     my $def = $Web::CSS::Props::Key->{$key};
-    my $short_key = $def->{shorthand_prop};
-    if (defined $short_key) {
+    SHORTHAND: for my $short_key (@{$def->{shorthand_keys} || []}) {
       my $short_def = $Web::CSS::Props::Key->{$short_key};
       my $has_important;
       my $has_non_important;
       for (@{$short_def->{longhand_subprops}}) {
+        next SHORTHAND if $done{$_};
         if ($style->{prop_importants}->{$_}) {
           $has_important = 1;
         } else {
@@ -104,18 +104,16 @@ sub serialize_prop_decls ($$) {
           push @decl, $short_def->{css} . ': ' . $short_value .
               ($has_important ? ' !important' : '') . ';';
           $done{$_} = 1 for @{$short_def->{longhand_subprops}};
-          next;
+          next DECL;
         }
-        # XXX 'background' > 'background-position' > 'background-position-*'
-        # XXX 'border' > 'border-{top|...}' / 'border-{style|...}' > ...
       }
-    }
+    } # $short_key
     
     my $value = $self->serialize_value ($style->{prop_values}->{$key});
     push @decl, $def->{css} . ': ' . $value
         . ($style->{prop_importants}->{$key} ? ' !important' : '') . ';';
     $done{$key} = 1;
-  }
+  } # DECL
 
   return join ' ', @decl;
 } # serialize_prop_decls

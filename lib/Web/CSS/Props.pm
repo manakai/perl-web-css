@@ -1,8 +1,8 @@
 package Web::CSS::Props;
 use strict;
 use warnings;
-our $VERSION = '6.0';
-use Web::CSS::Tokenizer;
+our $VERSION = '7.0';
+use Web::CSS::Builder;
 use Web::CSS::Colors;
 use Web::CSS::Values;
 
@@ -14,7 +14,8 @@ use Web::CSS::Values;
 ##     is_shorthand        Whether it is a shorthand property
 ##     longhand_subprops   List of keys of longhand sub-properties,
 ##                         in canonical order
-##     shorthand_prop      Reference to the shorthand property
+##     shorthand_keys      Reference to the shorthand properties,
+##                         in preferred order [CSSOM]
 ##     parse_longhand      Longhand property value parser
 ##     parse_shorthand     Shorthand property parser
 ##     keyword             Available keywords (key = lowercased, value = 1)
@@ -170,6 +171,7 @@ $Key->{border_top_color} = {
   css => 'border-top-color',
   dom => 'border_top_color',
   parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
+  shorthand_keys => [qw(border border_color border_top)],
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
@@ -183,6 +185,7 @@ $Key->{border_right_color} = {
   css => 'border-right-color',
   dom => 'border_right_color',
   parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
+  shorthand_keys => [qw(border border_color border_right)],
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
@@ -196,6 +199,7 @@ $Key->{border_bottom_color} = {
   css => 'border-bottom-color',
   dom => 'border_bottom_color',
   parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
+  shorthand_keys => [qw(border border_color border_bottom)],
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
@@ -209,6 +213,7 @@ $Key->{border_left_color} = {
   css => 'border-left-color',
   dom => 'border_left_color',
   parse_longhand => $Web::CSS::Values::ColorOrQuirkyColorParser,
+  shorthand_keys => [qw(border border_color border_left)],
   initial => ['KEYWORD', 'currentcolor'],
   #inherited => 0,
   compute => $Key->{color}->{compute},
@@ -1796,6 +1801,7 @@ $Key->{border_top_width} = {
   css => 'border-top-width',
   dom => 'border_top_width',
   parse_longhand => $Web::CSS::Values::LineWidthQuirkyParser,
+  shorthand_keys => [qw(border border_width border_top)],
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => sub {
@@ -1835,6 +1841,7 @@ $Key->{border_right_width} = {
   css => 'border-right-width',
   dom => 'border_right_width',
   parse_longhand => $Web::CSS::Values::LineWidthQuirkyParser,
+  shorthand_keys => [qw(border border_width border_right)],
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => $Key->{border_top_width}->{compute},
@@ -1848,6 +1855,7 @@ $Key->{border_bottom_width} = {
   css => 'border-bottom-width',
   dom => 'border_bottom_width',
   parse_longhand => $Web::CSS::Values::LineWidthQuirkyParser,
+  shorthand_keys => [qw(border border_width border_bottom)],
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => $Key->{border_top_width}->{compute},
@@ -1861,6 +1869,7 @@ $Key->{border_left_width} = {
   css => 'border-left-width',
   dom => 'border_left_width',
   parse_longhand => $Web::CSS::Values::LineWidthQuirkyParser,
+  shorthand_keys => [qw(border border_width border_left)],
   initial => ['KEYWORD', 'medium'],
   #inherited => 0,
   compute => $Key->{border_top_width}->{compute},
@@ -2132,6 +2141,7 @@ $Key->{border_top_style} = {
   css => 'border-top-style',
   dom => 'border_top_style',
   keyword => $border_style_keyword,
+  shorthand_keys => [qw(border border_style border_top)],
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
@@ -2143,6 +2153,7 @@ $Key->{border_right_style} = {
   css => 'border-right-style',
   dom => 'border_right_style',
   keyword => $border_style_keyword,
+  shorthand_keys => [qw(border border_style border_right)],
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
@@ -2154,6 +2165,7 @@ $Key->{border_bottom_style} = {
   css => 'border-bottom-style',
   dom => 'border_bottom_style',
   keyword => $border_style_keyword,
+  shorthand_keys => [qw(border border_style border_bottom)],
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
@@ -2165,6 +2177,7 @@ $Key->{border_left_style} = {
   css => 'border-left-style',
   dom => 'border_left_style',
   keyword => $border_style_keyword,
+  shorthand_keys => [qw(border border_style border_left)],
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
@@ -2408,280 +2421,177 @@ $Key->{border_color} = {
 $Key->{border_color}->{parse_shorthand} = $GetBoxShorthandParser->($Key->{border_color});
 $Key->{border_color}->{serialize_shorthand} = $GetBoxShorthandSerializer->($Key->{border_color});
 
-# XXX---XXX
-
-$Prop->{'border-top'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-shorthands>
+## [CSSBACKGROUNDS].
+$Key->{border_top} = {
   css => 'border-top',
   dom => 'border_top',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
+  is_shorthand => 1,
+  longhand_subprops => [qw(border_top_width border_top_style
+                           border_top_color)],
+}; # border-top
 
-    ## TODO: Need to be rewritten.
-
-    my %prop_value;
-    my $pv;
-    ## NOTE: Since $onerror is disabled for three invocations below,
-    ## some informative warning messages (if they are added someday) will not
-    ## be reported.
-    ($t, $pv) = $Web::CSS::Values::GetColorParser->()->($self, $prop_name.'-color', $tt, $t, sub {});
-    if (defined $pv) {
-      if ($pv->{$prop_name.'-color'}->[0] eq 'INHERIT') {
-        return ($t, {$prop_name.'-color' => ['INHERIT'],
-                     $prop_name.'-style' => ['INHERIT'],
-                     $prop_name.'-width' => ['INHERIT']});
-      } else {
-        $prop_value{$prop_name.'-color'} = $pv->{$prop_name.'-color'};
-      }
-    } else {
-      ($t, $pv) = $Prop->{'border-top-width'}->{parse}
-          ->($self, $prop_name.'-width', $tt, $t, sub {});
-      if (defined $pv) {
-        $prop_value{$prop_name.'-width'} = $pv->{$prop_name.'-width'};
-      } else {
-        ($t, $pv) = $Prop->{'border-top-style'}->{parse}
-            ->($self, $prop_name.'-style', $tt, $t, sub {});
-        if (defined $pv) {
-          $prop_value{$prop_name.'-style'} = $pv->{$prop_name.'-style'};
-        } else {
-          $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => 'm',
-                     uri => $self->context->urlref,
-                     token => $t);
-          return ($t, undef);
-        }
-      }
-    }
-
-    for (1..2) {
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      if ($t->{type} == IDENT_TOKEN) {
-        my $prop_value = lc $t->{value}; ## TODO: case
-        if ($border_style_keyword->{$prop_value} and
-            $self->{prop_value}->{'border-top-style'}->{$prop_value} and
-            not defined $prop_value{$prop_name.'-style'}) {
-          $prop_value{$prop_name.'-style'} = ['KEYWORD', $prop_value];
-          $t = $tt->get_next_token;
-          next;
-        } elsif ({thin => 1, medium => 1, thick => 1}->{$prop_value} and
-                 not defined $prop_value{$prop_name.'-width'}) {
-          $prop_value{$prop_name.'-width'} = ['KEYWORD', $prop_value];
-          $t = $tt->get_next_token;
-          next;
-        }
-      }
-
-      undef $pv;
-      ($t, $pv) = $Web::CSS::Values::GetColorParser->()->($self, $prop_name.'-color', $tt, $t, $onerror)
-          if not defined $prop_value{$prop_name.'-color'} and
-              {
-                IDENT_TOKEN, 1,
-                HASH_TOKEN, 1, NUMBER_TOKEN, 1, DIMENSION_TOKEN, 1,
-                FUNCTION_TOKEN, 1,
-              }->{$t->{type}};
-      if (defined $pv) {
-        if ($pv->{$prop_name.'-color'}->[0] eq 'INHERIT') {
-          $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => 'm',
-                     uri => $self->context->urlref,
-                     token => $t);
-        } else {
-          $prop_value{$prop_name.'-color'} = $pv->{$prop_name.'-color'};
-        }
-      } else {
-        undef $pv;
-        ($t, $pv) = $Prop->{'border-top-width'}->{parse}
-            ->($self, $prop_name.'-width',
-               $tt, $t, $onerror)
-            if not defined $prop_value{$prop_name.'-width'} and
-                {
-                  DIMENSION_TOKEN, 1,
-                  NUMBER_TOKEN, 1,
-                  IDENT_TOKEN, 1,
-                  MINUS_TOKEN, 1,
-                }->{$t->{type}};
-        if (defined $pv) {
-          if ($pv->{$prop_name.'-width'}->[0] eq 'INHERIT') {
-            $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
-          } else {
-            $prop_value{$prop_name.'-width'} = $pv->{$prop_name.'-width'};
-          }
-        } else {
-          last;
-        }
-      }    
-    }
-
-    $prop_value{$prop_name.'-color'}
-        ||= $Prop->{$prop_name.'-color'}->{initial};
-    $prop_value{$prop_name.'-width'}
-        ||= $Prop->{$prop_name.'-width'}->{initial};
-    $prop_value{$prop_name.'-style'}
-        ||= $Prop->{$prop_name.'-style'}->{initial};
-    
-    return ($t, \%prop_value);
-  },
-  serialize_shorthand => sub {
-    my ($se, $st) = @_;
-
-    my $w = $se->serialize_prop_value ($st, 'border-top-width');
-    return {} unless length $w;
-    my $i = $se->serialize_prop_priority ($st, 'border-top-width');
-    my $s = $se->serialize_prop_value ($st, 'border-top-style');
-    return {} unless length $s;
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-top-style');
-    my $c = $se->serialize_prop_value ($st, 'border-top-color');
-    return {} unless length $c;
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-top-color');
-
-    my $v = 0;
-    $v++ if $w eq 'inherit';
-    $v++ if $s eq 'inherit';
-    $v++ if $c eq 'inherit';
-    if ($v == 3) {
-      return {'border-top' => ['inherit', $i]};
-    } elsif ($v) {
-      return {};
-    }
-
-    return {'border-top' => [$w . ' ' . $s . ' ' . $c, $i]};
-  },
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
-};
-$Attr->{border_top} = $Prop->{'border-top'};
-
-$Prop->{'border-right'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-shorthands>
+## [CSSBACKGROUNDS].
+$Key->{border_right} = {
   css => 'border-right',
   dom => 'border_right',
-  parse => $Prop->{'border-top'}->{parse},
-  serialize_shorthand => sub {
-    my ($se, $st) = @_;
+  is_shorthand => 1,
+  longhand_subprops => [qw(border_right_width border_right_style
+                           border_right_color)],
+}; # border-right
 
-    my $w = $se->serialize_prop_value ($st, 'border-right-width');
-    return {} unless length $w;
-    my $i = $se->serialize_prop_priority ($st, 'border-right-width');
-    my $s = $se->serialize_prop_value ($st, 'border-right-style');
-    return {} unless length $s;
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-right-style');
-    my $c = $se->serialize_prop_value ($st, 'border-right-color');
-    return {} unless length $c;
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-right-color');
-
-    my $v = 0;
-    $v++ if $w eq 'inherit';
-    $v++ if $s eq 'inherit';
-    $v++ if $c eq 'inherit';
-    if ($v == 3) {
-      return {'border-right' => ['inherit', $i]};
-    } elsif ($v) {
-      return {};
-    }
-
-    return {'border-right' => [$w . ' ' . $s . ' ' . $c, $i]};
-  },
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
-};
-$Attr->{border_right} = $Prop->{'border-right'};
-
-$Prop->{'border-bottom'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-shorthands>
+## [CSSBACKGROUNDS].
+$Key->{border_bottom} = {
   css => 'border-bottom',
   dom => 'border_bottom',
-  parse => $Prop->{'border-top'}->{parse},
-  serialize_shorthand => sub {
-    my ($se, $st) = @_;
+  is_shorthand => 1,
+  longhand_subprops => [qw(border_bottom_width border_bottom_style
+                           border_bottom_color)],
+}; # border-bottom
 
-    my $w = $se->serialize_prop_value ($st, 'border-bottom-width');
-    return {} unless length $w;
-    my $i = $se->serialize_prop_priority ($st, 'border-bottom-width');
-    my $s = $se->serialize_prop_value ($st, 'border-bottom-style');
-    return {} unless length $s;
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-bottom-style');
-    my $c = $se->serialize_prop_value ($st, 'border-bottom-color');
-    return {} unless length $c;
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-bottom-color');
-
-    my $v = 0;
-    $v++ if $w eq 'inherit';
-    $v++ if $s eq 'inherit';
-    $v++ if $c eq 'inherit';
-    if ($v == 3) {
-      return {'border-bottom' => ['inherit', $i]};
-    } elsif ($v) {
-      return {};
-    }
-
-    return {'border-bottom' => [$w . ' ' . $s . ' ' . $c, $i]};
-  },
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
-};
-$Attr->{border_bottom} = $Prop->{'border-bottom'};
-
-$Prop->{'border-left'} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-shorthands>
+## [CSSBACKGROUNDS].
+$Key->{border_left} = {
   css => 'border-left',
   dom => 'border_left',
-  parse => $Prop->{'border-top'}->{parse},
-  serialize_shorthand => sub {
-    my ($se, $st) = @_;
+  is_shorthand => 1,
+  longhand_subprops => [qw(border_left_width border_left_style
+                           border_left_color)],
+}; # border-left
 
-    my $w = $se->serialize_prop_value ($st, 'border-left-width');
-    return {} unless length $w;
-    my $i = $se->serialize_prop_priority ($st, 'border-left-width');
-    my $s = $se->serialize_prop_value ($st, 'border-left-style');
-    return {} unless length $s;
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-left-style');
-    my $c = $se->serialize_prop_value ($st, 'border-left-color');
-    return {} unless length $c;
-    return {} unless $i eq $se->serialize_prop_priority ($st, 'border-left-color');
-
-    my $v = 0;
-    $v++ if $w eq 'inherit';
-    $v++ if $s eq 'inherit';
-    $v++ if $c eq 'inherit';
-    if ($v == 3) {
-      return {'border-left' => ['inherit', $i]};
-    } elsif ($v) {
-      return {};
-    }
-
-    return {'border-left' => [$w . ' ' . $s . ' ' . $c, $i]};
-  },
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
-};
-$Attr->{border_left} = $Prop->{'border-left'};
-
-$Prop->{outline} = {
+## <http://dev.w3.org/csswg/css-ui/#outline> [CSSUI].
+$Key->{outline} = {
   css => 'outline',
   dom => 'outline',
-  parse => $Prop->{'border-top'}->{parse}, # XXX 'outline-color'
-  serialize_multiple => $Key->{outline_color}->{serialize_multiple},
-};
-$Attr->{outline} = $Prop->{outline};
+  is_shorthand => 1,
+  longhand_subprops => [qw(outline_width outline_style outline_color)],
+}; # outline
 
-$Prop->{border} = {
+## <http://dev.w3.org/csswg/css-backgrounds/#the-border-shorthands>
+## [CSSBACKGROUNDS].
+$Key->{border} = {
   css => 'border',
   dom => 'border',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-    my $prop_value;
-    ($t, $prop_value) = $Prop->{'border-top'}->{parse}
-        ->($self, 'border-top', $tt, $t, $onerror);
-    return ($t, undef) unless defined $prop_value;
-    
-    for (qw/border-right border-bottom border-left/) {
-      $prop_value->{$_.'-color'} = $prop_value->{'border-top-color'}
-          if defined $prop_value->{'border-top-color'};
-      $prop_value->{$_.'-style'} = $prop_value->{'border-top-style'}
-          if defined $prop_value->{'border-top-style'};
-      $prop_value->{$_.'-width'} = $prop_value->{'border-top-width'}
-          if defined $prop_value->{'border-top-width'};
+  is_shorthand => 1,
+  longhand_subprops => [qw(border_top_color border_right_color
+                           border_bottom_color border_left_color
+                           border_top_width border_right_width
+                           border_bottom_width border_left_width
+                           border_top_style border_right_style
+                           border_bottom_style border_left_style
+                           )], # XXX border-image-*
+}; # border
+
+for (
+  ['border_top', ['border_top_width'], ['border_top_style'],
+   ['border_top_color']],
+  ['border_right', ['border_right_width'], ['border_right_style'],
+   ['border_right_color']],
+  ['border_bottom', ['border_bottom_width'], ['border_bottom_style'],
+   ['border_bottom_color']],
+  ['border_left', ['border_left_width'], ['border_left_style'],
+   ['border_left_color']],
+  ['border',
+   ['border_top_width', 'border_right_width',
+    'border_bottom_width', 'border_left_width'],
+   ['border_top_style', 'border_right_style',
+    'border_bottom_style', 'border_left_style'],
+   ['border_top_color', 'border_right_color',
+    'border_bottom_color', 'border_left_color']],
+  ['outline', ['outline_width'], ['outline_style'], ['outline_color']],
+) {
+  my ($prop_key, $width_keys, $style_keys, $color_keys) = @$_;
+  my $prop_name = $Key->{$prop_key}->{css};
+  $Key->{$prop_key}->{parse_shorthand} = sub {
+    my ($self, $def, $tokens) = @_;
+    my $t = shift @$tokens;
+
+    my $width;
+    my $style;
+    my $color;
+
+    {
+      if ($t->{type} == IDENT_TOKEN) {
+        my $value = $t->{value};
+        $value =~ tr/A-Z/a-z/;
+        if ($value eq 'hidden' and $prop_name eq 'outline') {
+          last;
+        } elsif ($value eq 'auto' and $prop_name eq 'outline') {
+          last if defined $style;
+          $style = ['KEYWORD', $value];
+        } elsif ($border_style_keyword->{$value}) {
+          last if defined $style;
+          $style = ['KEYWORD', $value];
+        } elsif ($value eq 'thin' or $value eq 'thick' or $value eq 'medium') {
+          last if defined $width;
+          $width = ['KEYWORD', $value];
+        } else {
+          last if defined $color;
+          $color = $Web::CSS::Values::ColorParser->($self, [$t, _to_eof_token $tokens->[0]]);
+          return undef unless defined $color;
+        }
+      } elsif ($t->{type} == DIMENSION_TOKEN or
+               $t->{type} == NUMBER_TOKEN) {
+        last if defined $width;
+        $width = $Web::CSS::Values::LineWidthParser->($self, [$t, _to_eof_token $tokens->[0]]);
+        return undef unless defined $width;
+      } elsif ($t->{type} == HASH_TOKEN or
+               $t->{type} == FUNCTION_CONSTRUCT) {
+        last if defined $color;
+        $color = $Web::CSS::Values::ColorParser->($self, [$t, _to_eof_token $tokens->[0]]);
+        return undef unless defined $color;
+      }
+
+      $t = shift @$tokens;
+      $t = shift @$tokens while $t->{type} == S_TOKEN;
+      if ($t->{type} == EOF_TOKEN) {
+        return {(map { $_ => $width || $Key->{$_}->{initial} } @$width_keys),
+                (map { $_ => $style || $Key->{$_}->{initial} } @$style_keys),
+                (map { $_ => $color || $Key->{$_}->{initial} } @$color_keys)};
+        # XXX 'border-image'
+      }
+      redo;
     }
-    return ($t, $prop_value);
-  },
-  serialize_multiple => $Key->{border_top_color}->{serialize_multiple},
-};
-$Attr->{border} = $Prop->{border};
+
+    $self->onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $t);
+    return undef;
+  }; # parse_shorthand
+
+  $Key->{$prop_key}->{serialize_shorthand} = sub {
+    my ($se, $strings) = @_;
+
+    if (@$style_keys == 4) {
+      return undef
+          if $strings->{$width_keys->[0]} ne $strings->{$width_keys->[1]} or
+             $strings->{$width_keys->[0]} ne $strings->{$width_keys->[2]} or
+             $strings->{$width_keys->[0]} ne $strings->{$width_keys->[3]};
+      return undef
+          if $strings->{$style_keys->[0]} ne $strings->{$style_keys->[1]} or
+             $strings->{$style_keys->[0]} ne $strings->{$style_keys->[2]} or
+             $strings->{$style_keys->[0]} ne $strings->{$style_keys->[3]};
+      return undef
+          if $strings->{$color_keys->[0]} ne $strings->{$color_keys->[1]} or
+             $strings->{$color_keys->[0]} ne $strings->{$color_keys->[2]} or
+             $strings->{$color_keys->[0]} ne $strings->{$color_keys->[3]};
+    }
+
+    my $color = $strings->{$color_keys->[0]};
+    if (($color eq 'currentcolor' and $prop_name ne 'outline') or
+        ($color eq '-manakai-invert-or-currentcolor' and $prop_name eq 'outline')) {
+      return $strings->{$width_keys->[0]} . ' ' .
+             $strings->{$style_keys->[0]};
+    } else {
+      return $strings->{$width_keys->[0]} . ' ' .
+             $strings->{$style_keys->[0]} . ' ' .
+             $color;
+    }
+  }; # serialize_shorthand
+}
 
 ## <http://dev.w3.org/csswg/css-box/#the-margin-properties> [CSSBOX],
 ## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
@@ -2911,6 +2821,8 @@ $Key->{background_position} = {
     return $strings->{background_position_x} . ' ' .$strings->{background_position_y};
   }, # serialize_shorthand
 }; # background-position
+
+# XXX---XXX
 
 $Prop->{background} = {
   css => 'background',
@@ -4266,7 +4178,7 @@ for my $key (keys %$Key) {
     $def->{parse_longhand} = $Web::CSS::Values::GetKeywordParser->($def->{keyword}, $def->{css});
   }
   for (@{$def->{longhand_subprops} or []}) {
-    $Key->{$_}->{shorthand_prop} ||= $key;
+    $Key->{$_}->{shorthand_keys} ||= [$key];
   }
 } # $key
 

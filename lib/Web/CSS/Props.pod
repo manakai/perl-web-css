@@ -56,6 +56,29 @@ serialize four edge values with 'border-top-width',
 'border-right-width', 'border-bottom-width', and 'border-left-width'
 values and return the result.
 
+To serialize 'border', 'border-top', 'border-right', 'border-bottom',
+'border-left', or 'outline' property value, follow these steps:
+
+  1. If one of <line-width>, <line-style>, and <color> values is
+     missing, it can't be serialized.  Return null and abort these
+     steps.
+
+  2. Otherwise, if one of these values are CSS-wide keyword or
+     function:
+
+    1. If they are equal, return one of them and abort these steps.
+
+    2. Otherwise, it can't be serialized.  Abort these steps.
+
+  3. Otherwise, if <color> is the initial value of the corresponding
+     longhand property, return the result of invoking serialize a
+     whitespace-separated list with serializations of <line-width> and
+     <line-style> values.
+
+  4. Otherwise, return the result of invoking serialize a
+     whitespace-separated list with serializations of <line-width>,
+     <line-style>, and <color> values.
+
 To serialzie four edge values /top/, /right/, /bottom/, and /left/,
 follow these steps:
 

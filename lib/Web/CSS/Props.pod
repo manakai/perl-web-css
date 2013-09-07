@@ -157,6 +157,13 @@ follow these steps:
      'background-position-x' and 'background-position-y' property
      values.
 
+The canonical order of the longhand sub-properties for the
+'background' property is: 'background-image', 'background-repeat',
+'background-attachment', 'background-position-x'
+'background-position_y', and then 'background-color'.  For the purpose
+of serialization of the 'background' property value, they have no
+initial value.
+
 =item CSSDISPLAY
 
 CSS Diaplay <http://dev.w3.org/csswg/css-display/>.

@@ -597,6 +597,7 @@ $Key->{font_style} = {
   dom => 'font_style',
   keyword => {
     normal => 1, italic => 1, oblique => 1,
+    '-moz-use-system-font' => 1,
   },
   initial => ["KEYWORD", 'normal'],
   inherited => 1,
@@ -609,6 +610,7 @@ $Key->{font_variant} = {
   dom => 'font_variant',
   keyword => {
     normal => 1, 'small-caps' => 1,
+    '-moz-use-system-font' => 1,
   },
   initial => ["KEYWORD", 'normal'],
   inherited => 1,
@@ -752,7 +754,7 @@ $Key->{font_size_adjust} = {
       } elsif ($us->[0]->{type} == IDENT_TOKEN) {
         my $value = $us->[0]->{value};
         $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-        if ($value eq 'none') {
+        if ($value eq 'none' or $value eq '-moz-use-system-font') {
           return ['KEYWORD', $value];
         }
       }
@@ -907,6 +909,8 @@ $Key->{font_size} = {
 
           # <relative-size>
           larger => 1, smaller => 1,
+
+          '-moz-use-system-font' => 1,
         }->{$value}) {
           return ['KEYWORD', $value];
         } elsif ($value eq '-manakai-xxx-large') {
@@ -1566,7 +1570,8 @@ $Key->{line_height} = {
       } elsif ($us->[0]->{type} == IDENT_TOKEN) {
         my $value = $us->[0]->{value};
         $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
-        if ($value eq 'normal' or $value eq 'none') {
+        if ($value eq 'normal' or $value eq 'none' or
+            $value eq '-moz-use-system-font') {
           return ['KEYWORD', $value];
         }
       }
@@ -1900,7 +1905,8 @@ $Key->{font_weight} = {
         if ($value eq 'normal' or
             $value eq 'bold' or
             $value eq 'bolder' or
-            $value eq 'lighter') {
+            $value eq 'lighter' or
+            $value eq '-moz-use-system-font') {
           return ['KEYWORD', $value];
         }
       } elsif ($us->[0]->{type} == NUMBER_TOKEN) {
@@ -1999,6 +2005,7 @@ $Key->{font_stretch} = {
     qw/normal 1 wider 1 narrower 1 ultra-condensed 1 extra-condensed 1
        condensed 1 semi-condensed 1 semi-expanded 1 expanded 1 
        extra-expanded 1 ultra-expanded 1/,
+    '-moz-use-system-font' => 1,
   },
   initial => ["KEYWORD", 'normal'],
   inherited => 1,
@@ -2212,7 +2219,8 @@ $Key->{font_family} = {
         $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
         if ({serif => 1, 'sans-serif' => 1, cursive => 1,
              fantasy => 1, monospace => 1,
-             '-manakai-default' => 1}->{$value}) {
+             '-manakai-default' => 1,
+             '-moz-use-system-font' => 1}->{$value}) {
           my $values = [$t->{value}];
           $t = shift @$us;
           $t = shift @$us while $t->{type} == S_TOKEN;
@@ -2941,198 +2949,235 @@ $Key->{background} = {
   }, # serialize_shorthand
 }; # background
 
-# XXX---XXX
+## [CSSFONTS].
+$Key->{_x_system_font} = {
+  css => '-x-system-font',
+  dom => '_x_system_font',
+  keyword => {caption => 1, icon => 1, menu => 1,
+              'message-box' => 1, 'small-caption' => 1,
+              'status-bar' => 1,
+              none => 1},
+  initial => ['KEYWORD', 'none'],
+  inherited => 1,
+  compute => sub {  },
+}; # -x-system-font
 
-$Prop->{font} = {
+## <http://dev.w3.org/csswg/css-fonts/#font-prop> [CSSFONTS].
+$Key->{font} = {
   css => 'font',
   dom => 'font',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
+  is_shorthand => 1,
+  longhand_subprops => [qw(font_style font_variant font_weight
+                           font_stretch font_size line_height font_family
+                           _x_system_font font_size_adjust)],
+                # XXX font_kerning font_language_override
+  parse_shorthand => sub {
+    my ($self, $def, $tokens) = @_;
+    my $t = shift @$tokens;
+    $t = shift @$tokens while $t->{type} == S_TOKEN;
 
-    my %prop_value;
-
-    A: for (1..3) {
-      if ($t->{type} == IDENT_TOKEN) {
-        my $value = lc $t->{value}; ## TODO: case
-        if ($value eq 'normal') {
-          $t = $tt->get_next_token;
-        } elsif ($Prop->{'font-style'}->{keyword}->{$value} and
-                 $self->{prop_value}->{'font-style'}->{$value} and
-                 not defined $prop_value{'font-style'}) {
-          $prop_value{'font-style'} = ['KEYWORD', $value];
-          $t = $tt->get_next_token;
-        } elsif ($Prop->{'font-variant'}->{keyword}->{$value} and
-                 $self->{prop_value}->{'font-variant'}->{$value} and
-                 not defined $prop_value{'font-variant'}) {
-          $prop_value{'font-variant'} = ['KEYWORD', $value];
-          $t = $tt->get_next_token;
-        } elsif ({normal => 1, bold => 1,
-                  bolder => 1, lighter => 1}->{$value} and
-                 not defined $prop_value{'font-weight'}) {
-          $prop_value{'font-weight'} = ['KEYWORD', $value];
-          $t = $tt->get_next_token;
-        } elsif ($value eq 'inherit' and 0 == keys %prop_value) {
-          $t = $tt->get_next_token;
-          return ($t, {'font-style' => ['INHERIT'],
-                       'font-variant' => ['INHERIT'],
-                       'font-weight' => ['INHERIT'],
-                       'font-size' => ['INHERIT'],
-                       'font-size-adjust' => ['INHERIT'],
-                       'font-stretch' => ['INHERIT'],
-                       'line-height' => ['INHERIT'],
-                       'font-family' => ['INHERIT']});
-        } elsif ({
-                  caption => 1, icon => 1, menu => 1, 
-                  'message-box' => 1, 'small-caption' => 1, 'status-bar' => 1,
-                 }->{$value} and 0 == keys %prop_value) {
-          $t = $tt->get_next_token;
-          return ($t, $self->media_resolver->get_system_font ($value, {
-            'font-style' => $Prop->{'font-style'}->{initial},
-            'font-variant' => $Prop->{'font-variant'}->{initial},
-            'font-weight' => $Prop->{'font-weight'}->{initial},
-            'font-size' => $Prop->{'font-size'}->{initial},
-            'font-size-adjust' => $Prop->{'font-size-adjust'}->{initial},
-            'font-stretch' => $Prop->{'font-stretch'}->{initial},
-            'line-height' => $Prop->{'line-height'}->{initial},
-            'font-family' => ['FONT', ['KEYWORD', '-manakai-'.$value]],
-          }));
+    if ($t->{type} == IDENT_TOKEN) {
+      my $value = $t->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($Key->{_x_system_font}->{keyword}->{$value} and $value ne 'none') {
+        $t = shift @$tokens;
+        $t = shift @$tokens while $t->{type} == S_TOKEN;
+        if ($t->{type} == EOF_TOKEN) {
+          my $use_system_font = ['KEYWORD', '-moz-use-system-font'];
+          return {font_style => $use_system_font,
+                  font_variant => $use_system_font,
+                  font_weight => $use_system_font,
+                  font_stretch => $use_system_font,
+                  font_size => $use_system_font,
+                  line_height => $use_system_font,
+                  font_family => $use_system_font,
+                  font_size_adjust => $use_system_font,
+                  _x_system_font => ['KEYWORD', $value]};
         } else {
-          if (keys %prop_value) {
-            last A;
-          } else {
-            $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
+          $self->onerror->(type => 'CSS syntax error', text => q['font'],
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $t);
+          return undef;
+        }
+      }
+    }
+
+    my $style;
+    my $variant;
+    my $weight;
+    my $stretch;
+    my $max_normal = 4;
+    {
+      if ($t->{type} == IDENT_TOKEN) {
+        my $value = $t->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'normal') {
+          if ($max_normal <= 0) { # 'font-style'/'font-variant'/'font-weight'/'font-stretch'
+            $self->onerror->(type => 'CSS syntax error', text => q['font'],
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+            return undef;
+          }
+          $max_normal--;
+        } elsif ($value eq '-moz-use-system-font') {
+          $self->onerror->(type => 'CSS syntax error', text => q['font'],
+                           level => 'm',
+                           uri => $self->context->urlref,
+                           token => $t);
+          return undef;
+        } elsif ($Key->{font_style}->{keyword}->{$value} and
+                 $self->media_resolver->{prop_value}->{'font-style'}->{$value}) {
+          if (defined $style) {
+            $self->onerror->(type => 'CSS syntax error', text => q['font'],
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+            return undef;
+          }
+          $style = ['KEYWORD', $value];
+          $max_normal--;
+        } elsif ($value eq 'small-caps' and
+                 $self->media_resolver->{prop_value}->{'font-variant'}->{$value}) {
+          if (defined $variant) {
+            $self->onerror->(type => 'CSS syntax error', text => q['font'],
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+            return undef;
+          }
+          $variant = ['KEYWORD', $value];
+          $max_normal--;
+        } elsif ($value eq 'bold' or $value eq 'bolder' or $value eq 'lighter') {
+          if (defined $weight) {
+            $self->onerror->(type => 'CSS syntax error', text => q['font'],
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+            return undef;
+          }
+          $weight = ['KEYWORD', $value];
+          $max_normal--;
+        } elsif ($Key->{font_stretch}->{keyword}->{$value} and
+                 $self->media_resolver->{prop_value}->{'font-stretch'}->{$value}) {
+          if (defined $stretch) {
+            $self->onerror->(type => 'CSS syntax error', text => q['font'],
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+            return undef;
+          }
+          $stretch = ['KEYWORD', $value];
+          $max_normal--;
+        } else {
+          last;
+        }
+      } elsif ($t->{type} == NUMBER_TOKEN) {
+        if ($t->{number} =~ /\A\+?0*[1-9]00\z/) {
+          if (defined $weight) {
+            $self->onerror->(type => 'CSS syntax error', text => q['font'],
+                             level => 'm',
+                             uri => $self->context->urlref,
+                             token => $t);
+            return undef;
+          }
+          $weight = ['NUMBER', 0+$t->{number}];
+          $max_normal--;
+        } else {
+          last;
+        }
+      } else {
+        last;
+      }
+      $t = shift @$tokens;
+      $t = shift @$tokens while $t->{type} == S_TOKEN;
+      redo;
+    }
+    
+    if ($t->{type} == NUMBER_TOKEN and $t->{number} != 0) { # <quriky-length> not allowed
+      $self->onerror->(type => 'css:value:not nnlength',
                        level => 'm',
                        uri => $self->context->urlref,
                        token => $t);
-            return ($t, undef);
-          }
-        }
-      } elsif ($t->{type} == NUMBER_TOKEN) {
-        if ({100 => 1, 200 => 1, 300 => 1, 400 => 1, 500 => 1,
-             600 => 1, 700 => 1, 800 => 1, 900 => 1}->{$t->{number}}) {
-          $prop_value{'font-weight'} = ['WEIGHT', $t->{number}, 0];
-          $t = $tt->get_next_token;
-        } else {
-          last A;
-        }
-      } elsif ($t->{type} == PLUS_TOKEN) {
-        $t = $tt->get_next_token;
-        if ($t->{type} == NUMBER_TOKEN) {
-          if ({100 => 1, 200 => 1, 300 => 1, 400 => 1, 500 => 1,
-               600 => 1, 700 => 1, 800 => 1, 900 => 1}->{$t->{number}}) {
-            $prop_value{'font-weight'} = ['WEIGHT', $t->{number}, 0];
-            $t = $tt->get_next_token;
-          } else {
-            ## NOTE: <'font-size'> or invalid
-            last A;
-          }
-        } elsif ($t->{type} == DIMENSION_TOKEN or
-                 $t->{type} == PERCENTAGE_TOKEN) {
-          ## NOTE: <'font-size'> or invalid
-          last A;
-        } else {
-          $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => 'm',
-                     uri => $self->context->urlref,
-                     token => $t);
-          return ($t, undef);
-        }
-      } else {
-        last A;
-      }
-
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    } # A
-    
-    for (qw/font-style font-variant font-weight/) {
-      $prop_value{$_} = $Prop->{$_}->{initial} unless defined $prop_value{$_};
+      return undef;
     }
-      
-    ($t, my $pv) = $Prop->{'font-size'}->{parse}
-        ->($self, 'font', $tt, $t, $onerror);
-    return ($t, undef) unless defined $pv;
-    if ($pv->{font}->[0] eq 'INHERIT') {
-      $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                 level => 'm',
-                 uri => $self->context->urlref,
-                 token => $t);
-      return ($t, undef);
-    }
-    $prop_value{'font-size'} = $pv->{font};
+    my $size = $Key->{font_size}->{parse_longhand}->($self, [$t, _to_eof_token $tokens->[0]]);
+    return undef unless defined $size;
+    $t = shift @$tokens;
+    $t = shift @$tokens while $t->{type} == S_TOKEN;
 
-    $t = $tt->get_next_token while $t->{type} == S_TOKEN;
+    my $height;
     if ($t->{type} == DELIM_TOKEN and $t->{value} eq '/') {
-      $t = $tt->get_next_token;
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      ($t, my $pv) = $Prop->{'line-height'}->{parse}
-          ->($self, 'font', $tt, $t, $onerror);
-      return ($t, undef) unless defined $pv;
-      if ($pv->{font}->[0] eq 'INHERIT') {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
+      $t = shift @$tokens;
+      $t = shift @$tokens while $t->{type} == S_TOKEN;
+      if ($t->{type} == IDENT_TOKEN and
+          $t->{value} =~ /\A-[Mm][Oo][Zz]-[Uu][Ss][Ee]-[Ss][Yy][Ss][Tt][Ee][Mm]-[Ff][Oo][Nn][Tt]\z/) {
+        $self->onerror->(type => 'CSS syntax error', text => q['font'],
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         token => $t);
+        return undef;
       }
-      $prop_value{'line-height'} = $pv->{font};
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    } else {
-      $prop_value{'line-height'} = $Prop->{'line-height'}->{initial};
+      $height = $Key->{line_height}->{parse_longhand}->($self, [$t, _to_eof_token $tokens->[0]]);
+      return undef unless defined $height;
+      $t = shift @$tokens;
+      $t = shift @$tokens while $t->{type} == S_TOKEN;
     }
 
-    undef $pv;
-    ($t, $pv) = $Prop->{'font-family'}->{parse}
-        ->($self, 'font', $tt, $t, $onerror);
-    return ($t, undef) unless defined $pv;
-    $prop_value{'font-family'} = $pv->{font};
-
-    $prop_value{'font-size-adjust'} = $Prop->{'font-size-adjust'}->{initial};
-    $prop_value{'font-stretch'} = $Prop->{'font-stretch'}->{initial};
-
-    return ($t, \%prop_value);
-  },
+    unshift @$tokens, $t;
+    my $family = $Key->{font_family}->{parse_longhand}->($self, $tokens);
+    return undef unless defined $family;
+    
+    return {font_style => $style || $Key->{font_style}->{initial},
+            font_variant => $variant || $Key->{font_variant}->{initial},
+            font_weight => $weight || $Key->{font_weight}->{initial},
+            font_stretch => $stretch || $Key->{font_stretch}->{initial},
+            font_size => $size || $Key->{font_size}->{initial},
+            line_height => $height || $Key->{line_height}->{initial},
+            font_family => $family || $Key->{font_family}->{initial},
+            font_size_adjust => $Key->{font_size_adjust}->{initial},
+            _x_system_font => $Key->{_x_system_font}->{initial}};
+  }, # parse_shorthand
   serialize_shorthand => sub {
-    my ($se, $st) = @_;
-    
-    my $style = $se->serialize_prop_value ($st, 'font-style');
-    my $i = $se->serialize_prop_priority ($st, 'font-style');
-    return {} unless length $style;
-    my $variant = $se->serialize_prop_value ($st, 'font-variant');
-    return {} unless length $variant;
-    return {} if $i ne $se->serialize_prop_priority ($st, 'font-variant');
-    my $weight = $se->serialize_prop_value ($st, 'font-weight');
-    return {} unless length $weight;
-    return {} if $i ne $se->serialize_prop_priority ($st, 'font-weight');
-    my $size = $se->serialize_prop_value ($st, 'font-size');
-    return {} unless length $size;
-    return {} if $i ne $se->serialize_prop_priority ($st, 'font-size');
-    my $height = $se->serialize_prop_value ($st, 'line-height');
-    return {} unless length $height;
-    return {} if $i ne $se->serialize_prop_priority ($st, 'line-height');
-    my $family = $se->serialize_prop_value ($st, 'font-family');
-    return {} unless length $family;
-    return {} if $i ne $se->serialize_prop_priority ($st, 'font-family');
+    my ($se, $strings) = @_;
 
-    my $v = 0;
-    for ($style, $variant, $weight, $size, $height, $family) {
-      $v++ if $_ eq 'inherit';
+    unless ($strings->{_x_system_font} eq 'none') {
+      for (qw(font_style font_variant font_weight font_stretch
+              font_size line_height font_family font_size_adjust)) {
+        return undef unless $strings->{$_} eq '-moz-use-system-font';
+      }
+      return $strings->{_x_system_font};
     }
-    if ($v == 6) {
-      return {font => ['inherit', $i]};
-    } elsif ($v) {
-      return {};
+
+    return undef unless $strings->{font_size_adjust} eq 'none';
+    return undef unless $strings->{font_variant} eq 'normal' or
+                        $strings->{font_variant} eq 'small-caps';
+    for (qw(font_style font_variant font_weight font_stretch
+            font_size line_height font_family font_size_adjust
+            _x_system_font)) {
+      return undef if $strings->{$_} eq '-moz-use-system-font';
     }
+
+    my @result;
+
+    push @result, $strings->{font_style}
+        unless $strings->{font_style} eq 'normal';
+    push @result, $strings->{font_variant}
+        unless $strings->{font_variant} eq 'normal';
+    push @result, $strings->{font_weight}
+        unless $strings->{font_weight} eq 'normal';
+    push @result, $strings->{font_stretch}
+        unless $strings->{font_stretch} eq 'normal';
+    push @result, $strings->{font_size};
+    if ($strings->{line_height} ne 'normal') {
+      $result[-1] .= '/' . $strings->{line_height};
+    }
+    push @result, $strings->{font_family};
     
-    my @v;
-    push @v, $style unless $style eq 'normal';
-    push @v, $variant unless $variant eq 'normal';
-    push @v, $weight unless $weight eq 'normal';
-    push @v, $size.($height eq 'normal' ? '' : '/'.$height);
-    push @v, $family;
-    return {font => [(join ' ', @v), $i]};
-  },
-};
-$Attr->{font} = $Prop->{font};
+    return join ' ', @result;
+  }, # serialize_shorthand
+}; # font
 
 ## <http://dev.w3.org/csswg/css-backgrounds/#the-border-width>
 ## [CSSBACKGROUND],
@@ -3147,6 +3192,8 @@ $Key->{border_width} = {
 }; # border-width
 $Key->{border_width}->{parse_shorthand} = $GetBoxShorthandParser->($Key->{border_width});
 $Key->{border_width}->{serialize_shorthand} = $GetBoxShorthandSerializer->($Key->{border_width});
+
+# XXX---XXX
 
 $Prop->{'list-style'} = {
   css => 'list-style',

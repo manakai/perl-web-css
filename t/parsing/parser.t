@@ -206,6 +206,7 @@ BEGIN {
     text-align text-anchor text-decoration text-indent text-transform
     top unicode-bidi vertical-align visibility white-space width widows
     word-spacing writing-mode z-index
+    -x-system-font
   /;
   @shorthand = qw/
     background background-position

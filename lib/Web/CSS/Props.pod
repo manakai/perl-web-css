@@ -263,6 +263,34 @@ them.
 A CSS-wide keyword or the keyword 'default' can't be used as the first
 token of <family-name>.
 
+Each longhand sub-property of the 'font' property MUST also allow the
+keyword '-moz-use-system-font' as the value.
+
+The '-x-system-font' property is defined as follows:
+
+  Name:           -x-system-font
+  Value:          none | caption | icon | menu | message-box |
+                  small-caption | status-bar
+  Initial:        none
+  Applies to:     Same as 'font'
+  Inherited:      Same as 'font'
+  Percentages:    Same as 'font'
+  Media:          Same as 'font'
+  Computed value: Same as 'font'
+  Animatable:     Same as 'font'
+
+The '-x-system-font' property is a longhand sub-property of the 'font'
+property.  If the 'font' property's value is a system font keyword, it
+MUST be interpreted as setting the '-x-system-font' property to that
+value and the other sub-properties to '-moz-use-system-font'.
+Otherwise, the 'font' property MUST be interpreted as setting
+'-x-system-font' property to 'none'.
+
+The canonical order of the longhand sub-properties for the 'font'
+property is: 'font-style', 'font-variant', 'font-weight',
+'font-stretch', 'font-size', 'line-height', 'font-family',
+'-x-system-font', and then 'font-size-adjust'.
+
 =item SVG
 
 SVG <https://svgwg.org/svg2-draft/text.html>.

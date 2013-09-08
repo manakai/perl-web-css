@@ -3193,475 +3193,336 @@ $Key->{border_width} = {
 $Key->{border_width}->{parse_shorthand} = $GetBoxShorthandParser->($Key->{border_width});
 $Key->{border_width}->{serialize_shorthand} = $GetBoxShorthandSerializer->($Key->{border_width});
 
-# XXX---XXX
-
-$Prop->{'list-style'} = {
+## <http://dev.w3.org/csswg/css-lists/#list-style-property>
+## [CSSLISTS].
+$Key->{list_style} = {
   css => 'list-style',
   dom => 'list_style',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
+  is_shorthand => 1,
+  longhand_subprops => [qw(list_style_type list_style_position
+                           list_style_image)],
+  parse_shorthand => sub {
+    my ($self, $def, $tokens) = @_;
+    my $t = shift @$tokens;
 
-    my %prop_value;
-    my $none = 0;
-
-    F: for my $f (1..3) {
+    my $type;
+    my $pos;
+    my $image;
+    my $max_none = 2;
+    my $none_count = 0;
+    {
       if ($t->{type} == IDENT_TOKEN) {
-        my $prop_value = lc $t->{value}; ## TODO: case folding
-        $t = $tt->get_next_token;
-
-        if ($prop_value eq 'none') {
-          $none++;
-        } elsif ($Prop->{'list-style-type'}->{keyword}->{$prop_value}) {
-          if (exists $prop_value{'list-style-type'}) {
-            $onerror->(type => 'CSS duplication', text => "'list-style-type'",
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
-            return ($t, undef);
-          } else {
-            $prop_value{'list-style-type'} = ['KEYWORD', $prop_value];
-          }
-        } elsif ($Prop->{'list-style-position'}->{keyword}->{$prop_value}) {
-          if (exists $prop_value{'list-style-position'}) {
-            $onerror->(type => 'CSS duplication',
-                       text => "'list-style-position'",
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
-            return ($t, undef);
-          }
-
-          $prop_value{'list-style-position'} = ['KEYWORD', $prop_value];
-        } elsif ($f == 1 and $prop_value eq 'inherit') {
-          $prop_value{'list-style-type'} = ["INHERIT"];
-          $prop_value{'list-style-position'} = ["INHERIT"];
-          $prop_value{'list-style-image'} = ["INHERIT"];
-          last F;
+        my $value = $t->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'inside' or $value eq 'outside') {
+          last if defined $pos;
+          $pos = ['KEYWORD', $value];
+        } elsif ($value eq 'none') {
+          last if $max_none <= 0;
+          $max_none--;
+          $none_count++;
         } else {
-          if ($f == 1) {
-            $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
-            return ($t, undef);
-          } else {
-            last F;
-          }
+          last if defined $type;
+          $type = $Key->{list_style_type}->{parse_longhand}->($self, [$t, _to_eof_token $tokens->[0]]);
+          return undef unless defined $type;
+          $max_none--;
         }
       } elsif ($t->{type} == URI_TOKEN) {
-        if (exists $prop_value{'list-style-image'}) {
-          $onerror->(type => 'CSS duplication', text => "'list-style-image'",
-                     uri => $self->context->urlref,
-                     level => 'm',
-                     token => $t);
-          return ($t, undef);
-        }
-        
-        $prop_value{'list-style-image'}
-            = ['URI', $t->{value}, $self->context->base_urlref];
-        $t = $tt->get_next_token;
+        last if defined $image;
+        $image = ['URL', $t->{value}, $self->context->base_urlref];
+        $max_none--;
       } else {
-        if ($f == 1) {
-          $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                     level => 'm',
-                     uri => $self->context->urlref,
-                     token => $t);
-          return ($t, undef);
-        } else {
-          last F;
-        }
+        last if defined $type;
+        $type = $Key->{list_style_type}->{parse_longhand}->($self, [$t, _to_eof_token $tokens->[0]]);
+        return undef unless defined $type;
+        $max_none--;
       }
+      $t = shift @$tokens;
+      $t = shift @$tokens while $t->{type} == S_TOKEN;
 
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-    } # F
-    ## NOTE: No browser support |list-style: url(xxx|{EOF}.
-
-    if ($none == 1) {
-      if (exists $prop_value{'list-style-type'}) {
-        if (exists $prop_value{'list-style-image'}) {
-          $onerror->(type => 'CSS duplication', text => "'list-style-image'",
-                     uri => $self->context->urlref,
-                     level => 'm',
-                     token => $t);
-          return ($t, undef);
-        } else {
-          $prop_value{'list-style-image'} = ['KEYWORD', 'none'];
-        }
-      } else {
-        $prop_value{'list-style-type'} = ['KEYWORD', 'none'];
-        $prop_value{'list-style-image'} = ['KEYWORD', 'none']
-            unless exists $prop_value{'list-style-image'};
+      if ($t->{type} == EOF_TOKEN) {
+        $type = ['KEYWORD', 'none'] if not defined $type and $none_count;
+        return {list_style_type => $type || $Key->{list_style_type}->{initial},
+                list_style_position => $pos || $Key->{list_style_position}->{initial},
+                list_style_image => $image || $Key->{list_style_image}->{initial}};
       }
-    } elsif ($none == 2) {
-      if (exists $prop_value{'list-style-type'}) {
-        $onerror->(type => 'CSS duplication', text => "'list-style-type'",
-                   uri => $self->context->urlref,
-                   level => 'm',
-                   token => $t);
-        return ($t, undef);
-      }
-      if (exists $prop_value{'list-style-image'}) {
-        $onerror->(type => 'CSS duplication', text => "'list-style-image'",
-                   uri => $self->context->urlref,
-                   level => 'm',
-                   token => $t);
-        return ($t, undef);
-      }
-      
-      $prop_value{'list-style-type'} = ['KEYWORD', 'none'];
-      $prop_value{'list-style-image'} = ['KEYWORD', 'none'];
-    } elsif ($none == 3) {
-      $onerror->(type => 'CSS duplication', text => "'list-style-type'",
-                 uri => $self->context->urlref,
-                 level => 'm',
-                 token => $t);
-      return ($t, undef);
+      redo;
     }
 
-    for (qw/list-style-type list-style-position list-style-image/) {
-      $prop_value{$_} = $Prop->{$_}->{initial} unless exists $prop_value{$_};
-    }
-
-    return ($t, \%prop_value);
-  },
-  ## NOTE: We don't merge longhands in |css_text| serialization,
-  ## since no browser does.
+    $self->onerror->(type => 'CSS syntax error', text => q['list-style'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $t);
+    return undef;
+  }, # parse_shorthand
   serialize_shorthand => sub {
-    my ($se, $st) = @_;
+    my ($se, $strings) = @_;
+    return join ' ',
+        $strings->{list_style_type},
+        $strings->{list_style_position},
+        $strings->{list_style_image};
+  }, # serialize_shorthand
+}; # list-style
 
-    ## NOTE: Don't omit any value even if it is the initial value,
-    ## since WinIE is buggy.
-    
-    my $type = $se->serialize_prop_value ($st, 'list-style-type');
-    return {} unless length $type;
-    my $type_i = $se->serialize_prop_priority ($st, 'list-style-type');
-    my $image = $se->serialize_prop_value ($st, 'list-style-image');
-    return {} unless length $image;
-    my $image_i = $se->serialize_prop_priority ($st, 'list-style-image');
-    return {} unless $type_i eq $image_i;
-    my $position = $se->serialize_prop_value ($st, 'list-style-position');
-    return {} unless length $position;
-    my $position_i = $se->serialize_prop_priority ($st, 'list-style-position');
-    return {} unless $type_i eq $position_i;
-
-    return {'list-style' => [$type . ' ' . $image . ' ' . $position, $type_i]};
-  },
-};
-$Attr->{list_style} = $Prop->{'list-style'};
-
-## NOTE: Future version of the implementation will change the way to
-## store the parsed value to support CSS 3 properties.
-$Prop->{'text-decoration'} = {
+## <http://dev.w3.org/csswg/css-text-decor/#text-decoration-property>
+## [CSSTEXTDECOR].
+$Key->{text_decoration} = {
   css => 'text-decoration',
   dom => 'text_decoration',
-  key => 'text_decoration',
-  keyword => {none => 1, underline => 1, overline => 1,
-              'line-through' => 1, blink => 1},
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my $value = ['DECORATION']; # , underline, overline, line-through, blink
-
-    if ($t->{type} == IDENT_TOKEN) {
-      my $v = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($v eq 'inherit') {
-        return ($t, {$prop_name => ['INHERIT']});
-      } elsif ($v eq 'none') {
-        return ($t, {$prop_name => $value});
-      } elsif ($v eq 'underline' and
-               $self->{prop_value}->{$prop_name}->{$v}) {
-        $value->[1] = 1;
-      } elsif ($v eq 'overline' and
-               $self->{prop_value}->{$prop_name}->{$v}) {
-        $value->[2] = 1;
-      } elsif ($v eq 'line-through' and
-               $self->{prop_value}->{$prop_name}->{$v}) {
-        $value->[3] = 1;
-      } elsif ($v eq 'blink' and
-               $self->{prop_value}->{$prop_name}->{$v}) {
-        $value->[4] = 1;
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    }
-
-    F: {
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      last F unless $t->{type} == IDENT_TOKEN;
-
-      my $v = lc $t->{value}; ## TODO: case
-      $t = $tt->get_next_token;
-      if ($v eq 'underline' and
-          $self->{prop_value}->{$prop_name}->{$v}) {
-        $value->[1] = 1;
-      } elsif ($v eq 'overline' and
-               $self->{prop_value}->{$prop_name}->{$v}) {
-        $value->[1] = 2;
-      } elsif ($v eq 'line-through' and
-               $self->{prop_value}->{$prop_name}->{$v}) {
-        $value->[1] = 3;
-      } elsif ($v eq 'blink' and
-               $self->{prop_value}->{$prop_name}->{$v}) {
-        $value->[1] = 4;
-      } else {
-        last F;
-      }
-
-      redo F;
-    } # F
-
-    return ($t, {$prop_name => $value});
+  keyword => { # For MediaResolver
+    underline => 1, overline => 1, 'line-through' => 1, blink => 1,
   },
   initial => ["KEYWORD", "none"],
   #inherited => 0,
   compute => $compute_as_specified,
-};
-$Attr->{text_decoration} = $Prop->{'text-decoration'};
-$Key->{text_decoration} = $Prop->{'text-decoration'};
-
-$Attr->{quotes} =
-$Key->{quotes} =
-$Prop->{quotes} = {
-  css => 'quotes',
-  dom => 'quotes',
-  key => 'quotes',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    my @v;
-    A: {
-      if ($t->{type} == STRING_TOKEN) {
-        my $open = $t->{value};
-        $t = $tt->get_next_token;
-
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ($t->{type} == STRING_TOKEN) {
-          push @v, [$open, $t->{value}];
-          $t = $tt->get_next_token;
-        } else {
-          last A;
+}; # text-decoration
+$Key->{text_decoration}->{parse_longhand} = sub {
+  my $def = $_[0];
+  return sub {
+    my ($self, $us) = @_;
+    my $t = shift @$us;
+    if ($t->{type} == IDENT_TOKEN) {
+      my $value = $t->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($value eq 'none') {
+        $t = shift @$us;
+        if ($t->{type} == EOF_TOKEN) {
+          return ['KEYWORD', $value];
         }
-      } elsif (not @v and $t->{type} == IDENT_TOKEN) {
-        my $value = lc $t->{value}; ## TODO: case
-        if ($value eq 'none' or $value eq '-manakai-default') {
-          $t = $tt->get_next_token;
-          return ($t, {$prop_name => ['KEYWORD', $value]});
-        } elsif ($value eq 'inherit') {
-          $t = $tt->get_next_token;
-          return ($t, {$prop_name => ['INHERIT']});
-        } else {
-          last A;
+      } elsif ($def->{keyword}->{$value} and
+               $self->media_resolver->{prop_value}->{'text-decoration'}->{$value}) {
+        my $set = {};
+        $set->{$value} = 1;
+        $t = shift @$us;
+        $t = shift @$us while $t->{type} == S_TOKEN;
+        while ($t->{type} == IDENT_TOKEN) {
+          my $value = $t->{value};
+          $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+          if ($def->{keyword}->{$value} and
+              $self->media_resolver->{prop_value}->{'text-decoration'}->{$value}) {
+            last if $set->{$value};
+            $set->{$value} = 1;
+            $t = shift @$us;
+            $t = shift @$us while $t->{type} == S_TOKEN;
+          } else {
+            last;
+          }
         }
-      } else {
-        if (@v) {
-          return ($t, {$prop_name => ['QUOTES', \@v]});
-        } else {
-          last A;
+        if ($t->{type} == EOF_TOKEN) {
+          return ['KEYWORDSET', $set];
         }
       }
-
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      redo A;
     }
-    
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
+
+    $self->onerror->(type => 'CSS syntax error', text => q['text-decoration'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $t);
+    return undef;
+  }; # parse_longhand
+}->($Key->{text_decoration});
+
+## <http://www.w3.org/TR/CSS21/generate.html#quotes-specify> [CSS21].
+$Key->{quotes} = {
+  css => 'quotes',
+  dom => 'quotes',
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    my $t = shift @$us;
+    if ($t->{type} == IDENT_TOKEN) {
+      my $value = $t->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($value eq 'none' or $value eq '-manakai-default') {
+        $t = shift @$us;
+        if ($t->{type} == EOF_TOKEN) {
+          return ['KEYWORD', $value];
+        }
+      }
+    } else {
+      my @pair;
+      while ($t->{type} == STRING_TOKEN) {
+        my $s1 = $t->{value};
+        $t = shift @$us;
+        $t = shift @$us while $t->{type} == S_TOKEN;
+        if ($t->{type} == STRING_TOKEN) {
+          push @pair, [$s1, $t->{value}];
+          $t = shift @$us;
+          $t = shift @$us while $t->{type} == S_TOKEN;
+          if ($t->{type} == EOF_TOKEN) {
+            return ['QUOTES', @pair];
+          }
+        } else {
+          last;
+        }
+      }
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => q['quotes'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $t);
+    return undef;
+  }, # parse_longhand
   initial => ['KEYWORD', '-manakai-default'],
   inherited => 1,
   compute => $compute_as_specified,
-};
+}; # quotes
 
-$Attr->{content} =
-$Key->{content} =
-$Prop->{content} = {
+## <http://www.w3.org/TR/CSS21/generate.html#content> [CSS21],
+## <http://dev.w3.org/csswg/css-values/#custom-idents>,
+## <http://dev.w3.org/csswg/css-values/#attr-notation> [CSSVALUES],
+## <http://dev.w3.org/csswg/css-lists/#counter-functions> [CSSLISTS].
+$Key->{content} = {
   css => 'content',
   dom => 'content',
-  key => 'content',
-  ## NOTE: See <http://suika.fam.cx/gate/2005/sw/content>.
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    my $t = shift @$us;
     if ($t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
+      my $value = $t->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
       if ($value eq 'normal' or $value eq 'none') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['KEYWORD', $value]});
-      } elsif ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
+        $t = shift @$us;
+        if ($t->{type} == EOF_TOKEN) {
+          return ['KEYWORD', $value];
+        }
+        $self->onerror->(type => 'CSS syntax error', text => q['content'],
+                         level => 'm',
+                         uri => $self->context->urlref,
+                         token => $t);
+        return undef;
       }
     }
-    
-    my @v;
-    A: {
+
+    my @result;
+    {
       if ($t->{type} == IDENT_TOKEN) {
-        my $value = lc $t->{value}; ## TODO: case
-        if ({qw/open-quote 1 close-quote 1
-                no-open-quote 1 no-close-quote 1/}->{$value} and
-            $self->{prop}->{quotes}) {
-          push @v, ['KEYWORD', $value];
-          $t = $tt->get_next_token;
+        my $value = $t->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ({'open-quote' => 1, 'close-quote' => 1,
+             'no-open-quote' => 1, 'no-close-quote' => 1}->{$value}) {
+          push @result, ['KEYWORD', $value];
         } else {
-          last A;
+          last;
         }
       } elsif ($t->{type} == STRING_TOKEN) {
-        push @v, ['STRING', $t->{value}];
-        $t = $tt->get_next_token;
+        push @result, ['STRING', $t->{value}];
       } elsif ($t->{type} == URI_TOKEN) {
-        push @v, ['URI', $t->{value}, $self->context->base_urlref];
-        $t = $tt->get_next_token;
-      } elsif ($t->{type} == FUNCTION_TOKEN) {
-        my $name = lc $t->{value}; ## TODO: case
+        push @result, ['URL', $t->{value}, $self->context->base_urlref];
+      } elsif ($t->{type} == FUNCTION_CONSTRUCT) {
+        my $name = $t->{name}->{value};
+        $name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
         if ($name eq 'attr') {
-          $t = $tt->get_next_token;
-          $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-          if ($t->{type} == IDENT_TOKEN) {
-            my $t_pfx;
-            my $t_ln = $t;
-            $t = $tt->get_next_token;
-            if ($t->{type} == VBAR_TOKEN) {
-              $t = $tt->get_next_token;
-              if ($t->{type} == IDENT_TOKEN) {
-                $t_pfx = $t_ln;
-                $t_ln = $t;
-                $t = $tt->get_next_token;
-              } else {
-                last A;
-              }
+          my $tokens = [grep { $_->{type} != S_TOKEN } @{$t->{value}}];
+          if (@$tokens == 1 and $tokens->[0]->{type} == IDENT_TOKEN) {
+            push @result, ['ATTR', undef, undef, $tokens->[0]->{value}, 'string', undef];
+          } elsif (@$tokens == 2 and
+                   $tokens->[0]->{type} == VBAR_TOKEN and
+                   $tokens->[1]->{type} == IDENT_TOKEN) {
+            push @result, ['ATTR', '', undef, $tokens->[1]->{value}, 'string', undef];
+          } elsif (@$tokens == 3 and
+                   $tokens->[0]->{type} == IDENT_TOKEN and
+                   $tokens->[1]->{type} == VBAR_TOKEN and
+                   $tokens->[2]->{type} == IDENT_TOKEN) {
+            my $url = $self->context->get_url_by_prefix ($tokens->[0]->{value});
+            unless (defined $url) {
+              $self->onerror->(type => 'namespace prefix:not declared',
+                               level => 'm',
+                               uri => $self->context->urlref,
+                               token => $tokens->[0],
+                               value => $tokens->[0]->{value});
+              return undef;
             }
-            
-            $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-            if ($t->{type} == RPAREN_TOKEN) {
-              if (defined $t_pfx) {
-                my $pfx = $t_pfx->{value};
-                my $uri = $self->context->get_url_by_prefix ($pfx);
-                unless (defined $uri) {
-                  $self->{onerror}->(type => 'namespace prefix:not declared',
-                                     level => 'm',
-                                     uri => $self->context->urlref,
-                                     token => $t_pfx,
-                                     value => $pfx);
-                  return ($t, undef);
-                }
-                undef $uri unless length $uri;
-                push @v, ['ATTR', $uri, $t_ln->{value}];
-              } else {
-                push @v, ['ATTR', undef, $t_ln->{value}];
-              }
-              $t = $tt->get_next_token;
-            } else {
-              last A;
-            }
-          } elsif ($t->{type} == VBAR_TOKEN) {
-            $t = $tt->get_next_token;
-            my $t_ln;
-            if ($t->{type} == IDENT_TOKEN) {
-              $t_ln = $t;
-              $t = $tt->get_next_token;
-            } else {
-              last A;
-            }
-            
-            $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-            if ($t->{type} == RPAREN_TOKEN) {
-              push @v, ['ATTR', undef, $t_ln->{value}];
-              $t = $tt->get_next_token;
-            } else {
-              last A;
-            }
+            push @result, ['ATTR', $url, $tokens->[0]->{value}, $tokens->[2]->{value}, 'string', undef];
           } else {
-            last A;
+            last;
           }
-        } elsif (($name eq 'counter' or $name eq 'counters') and
-                 $self->{prop}->{'counter-reset'}) {
-          $t = $tt->get_next_token;
-          $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-          if ($t->{type} == IDENT_TOKEN) {
-            my $t_id = $t;
-            my $t_str;
-            my $type;
-            $t = $tt->get_next_token;
-            $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-            if ($t->{type} == COMMA_TOKEN) {
-              $t = $tt->get_next_token;
-              $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-              if ($name eq 'counters' and $t->{type} == STRING_TOKEN) {
-                $t_str = $t;
-                $t = $tt->get_next_token;
-                $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-                if ($t->{type} == COMMA_TOKEN) {
-                  $t = $tt->get_next_token;
-                  $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-                  if ($t->{type} == IDENT_TOKEN) {
-                    $type = lc $t->{value}; ## TODO: value
-                    if ($Prop->{'list-style-type'}->{keyword}->{$type}) {
-                      $t = $tt->get_next_token;
-                    } else {
-                      last A;
-                    }
-                  } else {
-                    last A;
-                  }
-                }
-              } elsif ($name eq 'counter' and $t->{type} == IDENT_TOKEN) {
-                $type = lc $t->{value}; ## TODO: value
-                if ($Prop->{'list-style-type'}->{keyword}->{$type}) {
-                  $t = $tt->get_next_token;
-                } else {
-                  last A;
-                }
-              } else {
-                last A;
-              }
-            } elsif ($name eq 'counters') {
-              last A;
-            }
-            $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-            if ($t->{type} == RPAREN_TOKEN) {
-              push @v, [uc $name, ## |COUNTER| or |COUNTERS|
-                        $t_id->{value},
-                        defined $t_str ? $t_str->{value} : undef,
-                        defined $type ? $type : 'decimal'];
-              $t = $tt->get_next_token;
+        } elsif ($name eq 'counter') {
+          my $tokens = [grep { $_->{type} != S_TOKEN } @{$t->{value}},
+                        {type => EOF_TOKEN,
+                         line => $t->{end_line},
+                         column => $t->{end_column}}];
+          my $u = shift @$tokens;
+          if ($u->{type} == IDENT_TOKEN) {
+            my $name = $u->{value};
+            $u = shift @$tokens;
+            if ($u->{type} == COMMA_TOKEN) {
+              my $type = $Key->{list_style_type}->{parse_longhand}->($self, $tokens);
+              return undef unless defined $type;
+              push @result, ['COUNTER', $name, $type];
+            } elsif ($u->{type} == EOF_TOKEN) {
+              push @result, ['COUNTER', $name, ['KEYWORD', 'decimal']];
             } else {
-              last A;
+              $t = $u;
+              last;
             }
           } else {
-            last A;
+            $t = $u;
+            last;
+          }
+        } elsif ($name eq 'counters') {
+          my $tokens = [grep { $_->{type} != S_TOKEN } @{$t->{value}},
+                        {type => EOF_TOKEN,
+                         line => $t->{end_line},
+                         column => $t->{end_column}}];
+          my $u = shift @$tokens;
+          if ($u->{type} == IDENT_TOKEN) {
+            my $name = $u->{value};
+            $u = shift @$tokens;
+            if ($u->{type} == COMMA_TOKEN) {
+              $u = shift @$tokens;
+              if ($u->{type} == STRING_TOKEN) {
+                my $sep = $u->{value};
+                $u = shift @$tokens;
+                if ($u->{type} == COMMA_TOKEN) {
+                  my $type = $Key->{list_style_type}->{parse_longhand}->($self, $tokens);
+                  return undef unless defined $type;
+                  push @result, ['COUNTERS', $name, $sep, $type];
+                } elsif ($u->{type} == EOF_TOKEN) {
+                  push @result, ['COUNTERS', $name, $sep, ['KEYWORD', 'decimal']];
+                } else {
+                  $t = $u;
+                  last;
+                }
+              } else {
+                $t = $u;
+                last;
+              }
+            } else {
+              $t = $u;
+              last;
+            }
+          } else {
+            $t = $u;
+            last;
           }
         } else {
-          last A;
+          last;
         }
       } else {
-        unshift @v, 'CONTENT';
-        return ($t, {$prop_name => \@v});
+        last;
       }
+      $t = shift @$us;
+      $t = shift @$us while $t->{type} == S_TOKEN;
 
-      $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      redo A;
-    } # A
+      if ($t->{type} == EOF_TOKEN) {
+        return ['SEQ', @result];
+      }
+      redo;
+    }
 
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
+    $self->onerror->(type => 'CSS syntax error', text => q['content'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $t);
+    return undef;
+  }, # parse_longhand
   initial => ['KEYWORD', 'normal'],
   #inherited => 0,
   compute => $compute_as_specified,
-      ## NOTE: This is what Opera 9 does, except for 'normal' -> 'none'.
-      ## TODO: 'normal' -> 'none' for ::before and ::after [CSS 2.1]
-};
+}; # content
+
+# XXX---XXX
 
 $Attr->{counter_reset} =
 $Key->{counter_reset} =

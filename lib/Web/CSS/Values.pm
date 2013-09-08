@@ -48,27 +48,34 @@ use Web::CSS::Colors;
 ##   2: Green as Perl number [0-255]
 ##   3: Blue as Perl number [0-255]
 ##   4: Alpha as Perl number [0-1]
-## LIST - List
+## LIST - List, serialized as comma-separated string
 ##   1..: Values
-## COUNTER
-##   XXX
-## COUNTERS
-##   XXX
+## SEQ - Sequence, serialized as space-separated string
+##   1..: Values
+## KEYWORDSET - Set of keywords, serialized as space-separated string
+##   1: Hashref, keys are lowercased keywords and values are true values
+## QUOTES - Quotation mark pairs
+##   1..: Arrayref of open and close quotes, as Perl character strings
+## ATTR - Content attribute value reference
+##   1: Namespace URL ('' for null namespace)
+##   2: Namespace prefix (undef for empty prefix, '' for default namespace)
+##   3: Local name
+##   4: <type-or-unit> as Perl character string
+##   5: <fallback> as value
+## COUNTER - counter()
+##   1: Counter name as Perl character string
+##   2: <list-style-type> as value
+## COUNTERS - counters()
+##   1: Counter name as Perl character string
+##   2: Separator string as Perl character string
+##   3: <list-style-type> as value
 ## SETCOUNTER
 ##   XXX
 ## ADDCOUNTER
 ##   XXX
 ## RECT
 ##   XXX
-## WEIGHT
-##   XXX
 ## PAGE
-##   XXX
-## DECORATION
-##   XXX
-## QUOTES
-##   XXX
-## CONTENT
 ##   XXX
 ## MARKS
 ##   XXX

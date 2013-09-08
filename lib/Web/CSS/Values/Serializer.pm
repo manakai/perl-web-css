@@ -61,6 +61,13 @@ sub _ident ($) {
   return $s;
 } # _ident
 
+my $KeywordSetOrder = {
+  blink => 1,
+  underline => 2,
+  overline => 3,
+  'line-through' => 4,
+};
+
 my $ValueSerializer = {
   KEYWORD => sub {
     ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>.
@@ -107,26 +114,42 @@ my $ValueSerializer = {
   LIST => sub {
     return join ', ', map { __PACKAGE__->serialize_value ($_) } @{$_[0]}[1..$#{$_[0]}];
   },
+  SEQ => sub {
+    return join ' ', map { __PACKAGE__->serialize_value ($_) } @{$_[0]}[1..$#{$_[0]}];
+  },
+  KEYWORDSET => sub {
+    return join ' ', map { $_->[0] } sort { $a->[1] <=> $b->[1] } map { [$_, $KeywordSetOrder->{$_}] } keys %{$_[0]->[1]};
+  },
+  QUOTES => sub {
+    return join ' ', map { (_string $_->[0]), (_string $_->[1]) } @{$_[0]}[1..$#{$_[0]}];
+  },
+  ATTR => sub {
+    my $r = '';
+    if (defined $_->[2]) { # namespace prefix
+      if (length $_->[2]) {
+        $r .= (_ident $_->[2]) . '|';
+      } # or default namespace
+    } elsif (defined $_->[1] and $_->[1] eq '') { # nsurl
+      $r .= '|';
+    }
+    $r .= _ident $_->[3]; # local name
+    # XXX <type-or-unit>, <fallback>
+    return "attr($r)";
+  },
+  COUNTER => sub {
+    return 'counter(' . (_ident $_->[1]) . ', ' . __PACKAGE__->serialize_value ($_->[2]) . ')';
+  },
+  COUNTERS => sub {
+    return 'counters(' . (_ident $_->[1]) . ', ' . (_string $_->[2]) . ', ' . __PACKAGE__->serialize_value ($_->[3]) . ')';
+  },
 
-## COUNTER
-##   XXX
-## COUNTERS
-##   XXX
 ## SETCOUNTER
 ##   XXX
 ## ADDCOUNTER
 ##   XXX
 ## RECT
 ##   XXX
-## WEIGHT
-##   XXX
 ## PAGE
-##   XXX
-## DECORATION
-##   XXX
-## QUOTES
-##   XXX
-## CONTENT
 ##   XXX
 ## MARKS
 ##   XXX
@@ -146,56 +169,6 @@ sub serialize_value ($$) {
 
   if ($value->[0] eq 'PAGE') {
     return $value->[1];
-  } elsif ($value->[0] eq 'DECORATION') {
-    my @v = ();
-    push @v, 'underline' if $value->[1];
-    push @v, 'overline' if $value->[2];
-    push @v, 'line-through' if $value->[3];
-    push @v, 'blink' if $value->[4];
-    return 'none' unless @v;
-    return join ' ', @v;
-  } elsif ($value->[0] eq 'QUOTES') {
-    return join ' ', map {'"'.$_.'"'} map {$_->[0], $_->[1]} @{$value->[1]};
-    ## NOTE: The result string might not be a <'quotes'> if it contains
-    ## e.g. '"'.  In addition, it might not be a <'quotes'> if 
-    ## @{$value->[1]} is empty (which is unlikely as long as the implementation
-    ## is not broken).
-  } elsif ($value->[0] eq 'CONTENT') {
-    return join ' ', map {
-      $_->[0] eq 'KEYWORD' ? $_->[1] :
-      $_->[0] eq 'STRING' ? '"' . $_->[1] . '"' :
-      $_->[0] eq 'URI' ? 'url(' . $_->[1] . ')' :
-      $_->[0] eq 'ATTR' ? do {
-        if (defined $_->[1]) {
-          # XXX
-          #my $rule = $self->parent_rule;
-          #if ($rule) {
-          #  my $ss = $rule->parent_style_sheet;
-          #  if ($ss) {
-              my $map = $self->{nsmap};
-              my $prefix = [grep { length } @{$map->{uri_to_prefixes}->{$_->[1]} or []}]->[0];
-              if (defined $prefix) {
-                'attr(' . $prefix . $_->[2] . ')';
-              } else {
-                ## Not serializable!
-                'attr(' . $_->[2] . ')';
-              }
-          #  } else {
-          #    ## Not serializable!
-          #    'attr(' . $_->[2] . ')';
-          #  }
-          #} else {
-          #  ## Not serializable!
-          #  'attr(' . $_->[2] . ')';
-          #}
-        } else {
-          'attr(' . $_->[2] . ')';
-        }
-      } :
-      $_->[0] eq 'COUNTER' ? 'counter(' . $_->[1] . ', ' . $_->[3] . ')' :
-      $_->[0] eq 'COUNTERS' ? 'counters(' . $_->[1] . ', "' . $_->[2] . '", ' . $_->[3] . ')' :
-      ''
-    } @{$value}[1..$#$value];
   } elsif ($value->[0] eq 'RECT') {
     ## NOTE: Four components are DIMENSIONs.
     return 'rect(' . $value->[1]->[1].$value->[1]->[2] . ', '

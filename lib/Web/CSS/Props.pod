@@ -30,6 +30,10 @@ CSS Cascading and Inheritance <http://dev.w3.org/csswg/css-cascade/>.
 
 CSS Values and Units <http://dev.w3.org/csswg/css-values/>.
 
+To serialize the 'attr()' function, whether the namespace prefix is
+specified or not and which namespace prefix is used, MUST be
+preserved.
+
 =item CSSCOLOR
 
 CSS Color <http://dev.w3.org/csswg/css-color/>.
@@ -220,6 +224,14 @@ CSS Writing Modes <http://dev.w3.org/csswg/css-writing-modes/>.
 
 CSS Lists and Counters <http://dev.w3.org/csswg/css-lists/>.
 
+The canonical order of the longhand sub-properties for the
+'list-style' property is: 'list-style-type', 'list-style-position',
+and then 'list-style-image'.  For the purpose of serialization of the
+'list-style' property, they have no initial value.
+
+To serialize the 'counter()' or 'counters()' function, <counter-style>
+MUST NOT be omitted.
+
 =item CSSCOUNTERSTYLES
 
 CSS Counter Styles <http://dev.w3.org/csswg/css-counter-styles/>.
@@ -249,6 +261,13 @@ surrounding <whitespace> tokens), it MUST be interpreted as <number>
 =item CSSTEXT
 
 CSS Text <http://dev.w3.org/csswg/css-text/>.
+
+=item CSSTEXTDECOR
+
+CSS Text Decoration <http://dev.w3.org/csswg/css-text-decor/>.
+
+When serialized, keywords in the 'text-decoration' MUST be sorted in
+the order: 'blink', 'underline', 'overline', and then 'line-through'.
 
 =item CSSFONTS
 

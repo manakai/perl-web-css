@@ -3522,234 +3522,137 @@ $Key->{content} = {
   compute => $compute_as_specified,
 }; # content
 
-# XXX---XXX
-
-$Attr->{counter_reset} =
-$Key->{counter_reset} =
-$Prop->{'counter-reset'} = {
+## <http://dev.w3.org/csswg/css-lists/#counter-properties> [CSSLISTS].
+$Key->{counter_reset} = {
   css => 'counter-reset',
   dom => 'counter_reset',
-  key => 'counter_reset',
-  ## NOTE: See <http://suika.fam.cx/gate/2005/sw/counter-reset>.
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    ## NOTE: For 'counter-increment' and 'counter-reset'.
-
-    my @v = ($prop_name eq 'counter-increment' ? 'ADDCOUNTER' : 'SETCOUNTER');
-    B: {
-      if ($t->{type} == IDENT_TOKEN) {
-        my $value = $t->{value};
-        my $lcvalue = lc $value; ## TODO: case
-        last B if $lcvalue ne 'inherit' and $lcvalue ne 'none';
-        
-        $t = $tt->get_next_token;
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ($t->{type} == IDENT_TOKEN) {
-          push @v, [$value, $prop_name eq 'counter-increment' ? 1 : 0];
-        } elsif ($t->{type} == NUMBER_TOKEN) {
-          push @v, [$value, int $t->{number}];
-          $t = $tt->get_next_token;
-        } elsif ($t->{type} == PLUS_TOKEN) {
-          $t = $tt->get_next_token;
-          if ($t->{type} == NUMBER_TOKEN) {
-            push @v, [$value, int $t->{number}];
-            $t = $tt->get_next_token;
-          } else {
-            $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
-            return ($t, undef);
-          }
-        } elsif ($t->{type} == MINUS_TOKEN) {
-          $t = $tt->get_next_token;
-          if ($t->{type} == NUMBER_TOKEN) {
-            push @v, [$value, -int $t->{number}];
-            $t = $tt->get_next_token;
-          } else {
-            $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                       level => 'm',
-                       uri => $self->context->urlref,
-                       token => $t);
-            return ($t, undef);
-          }
-        } else {
-          if ($lcvalue eq 'none') {
-            return ($t, {$prop_name => ['KEYWORD', $lcvalue]});
-          } elsif ($lcvalue eq 'inherit') {
-            return ($t, {$prop_name => ['INHERIT']});
-          } else {
-            last B;
-          }
-        }
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-      } else {
-        $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                   level => 'm',
-                   uri => $self->context->urlref,
-                   token => $t);
-        return ($t, undef);
-      }
-    } # B
-
-    A: {
-      if ($t->{type} == IDENT_TOKEN) {
-        my $value = $t->{value};
-        $t = $tt->get_next_token;
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ($t->{type} == NUMBER_TOKEN) {
-          push @v, [$value, int $t->{number}];
-          $t = $tt->get_next_token;
-          $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        } elsif ($t->{type} == MINUS_TOKEN) {
-          $t = $tt->get_next_token;
-          if ($t->{type} == NUMBER_TOKEN) {
-            push @v, [$value, -int $t->{number}];
-            $t = $tt->get_next_token;
-            $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-          } else {
-            last A;
-          }
-        } elsif ($t->{type} == PLUS_TOKEN) {
-          $t = $tt->get_next_token;
-          if ($t->{type} == NUMBER_TOKEN) {
-            push @v, [$value, int $t->{number}];
-            $t = $tt->get_next_token;
-            $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-          } else {
-            last A;
-          }
-        } else {
-          push @v, [$value, $prop_name eq 'counter-increment' ? 1 : 0];
-        }
-        redo A;
-      } else {
-        return ($t, {$prop_name => \@v});
-      }
-    } # A
-    
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
   initial => ['KEYWORD', 'none'],
   #inherited => 0,
   compute => $compute_as_specified,
-};
+}; # counter-reset
 
-$Attr->{counter_increment} =
-$Key->{counter_increment} =
-$Prop->{'counter-increment'} = {
+## <http://dev.w3.org/csswg/css-lists/#counter-properties> [CSSLISTS].
+$Key->{counter_increment} = {
   css => 'counter-increment',
   dom => 'counter_increment',
-  key => 'counter_increment',
-  parse => $Prop->{'counter-reset'}->{parse},
   initial => ['KEYWORD', 'none'],
   #inherited => 0,
   compute => $compute_as_specified,
-};
+}; # counter-increment
 
-$Attr->{clip} =
-$Key->{clip} =
-$Prop->{clip} = {
-  css => 'clip',
-  dom => 'clip',
-  key => 'clip',
-  ## NOTE: See <http://suika.fam.cx/gate/2005/sw/clip>.
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    if ($t->{type} == FUNCTION_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($value eq 'rect') {
-        $t = $tt->get_next_token;
-        my $prop_value = ['RECT'];
-
-        A: {
-          $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-          
-          my $has_sign;
-          my $sign = 1;
-          if ($t->{type} == MINUS_TOKEN) {
-            $sign = -1;
-            $has_sign = 1;
-            $t = $tt->get_next_token;
-          } elsif ($t->{type} == PLUS_TOKEN) {
-            $has_sign = 1;
-            $t = $tt->get_next_token;
-          }
-          if ($t->{type} == DIMENSION_TOKEN) {
-            my $value = $t->{number} * $sign;
-            my $unit = lc $t->{value}; ## TODO: case
-            if ($length_unit->{$unit}) {
-              $t = $tt->get_next_token;
-              push @$prop_value, ['DIMENSION', $value, $unit];
+for my $key (qw(counter_reset counter_increment)) {
+  my $default = $key eq 'counter_reset' ? 0 : 1;
+  $Key->{$key}->{parse_longhand} = sub {
+    my ($self, $us) = @_;
+    my $t = shift @$us;
+    if ($t->{type} == IDENT_TOKEN) {
+      my $value = $t->{value};
+      my $value_l = $value;
+      $value_l =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($value_l eq 'none') {
+        $t = shift @$us;
+        if ($t->{type} == EOF_TOKEN) {
+          return ['KEYWORD', $value_l];
+        }
+      } elsif ($Web::CSS::Values::CSSWideKeywords->{$value_l}) {
+        #
+      } else {
+        my $data = ['COUNTERDELTAS'];
+        $t = shift @$us;
+        $t = shift @$us while $t->{type} == S_TOKEN;
+        {
+          if ($t->{type} == NUMBER_TOKEN) {
+            if ($t->{number} =~ /\A[+-]?[0-9]+\z/) {
+              push @$data, [$value, 0+$t->{number}];
+              $t = shift @$us;
+              $t = shift @$us while $t->{type} == S_TOKEN;
             } else {
-              $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                         level => 'm',
-                         uri => $self->context->urlref,
-                         token => $t);
-              return ($t, undef);
-            }
-          } elsif ($t->{type} == NUMBER_TOKEN and
-                   ($self->context->quirks or $t->{number} == 0)) {
-            my $value = $t->{number} * $sign;
-            $t = $tt->get_next_token;
-            push @$prop_value, ['DIMENSION', $value, 'px'];
-          } elsif (not $has_sign and $t->{type} == IDENT_TOKEN) {
-            my $value = lc $t->{value}; ## TODO: case
-            if ($value eq 'auto') {
-              push @$prop_value, ['KEYWORD', 'auto'];
-              $t = $tt->get_next_token;
-            } else {
-              last A;
+              last;
             }
           } else {
-            if ($has_sign) {
-              $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-                         level => 'm',
-                         uri => $self->context->urlref,
-                         token => $t);
-              return ($t, undef);
-            } else {
-              last A;
-            }
+            push @$data, [$value, $default];
           }
-        
-          $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-          if ($#$prop_value == 4) {
-            if ($t->{type} == RPAREN_TOKEN) {
-              $t = $tt->get_next_token;
-              return ($t, {$prop_name => $prop_value});
-            } else {
-              last A;
-            }
+          if ($t->{type} == IDENT_TOKEN) {
+            $value = $t->{value};
+            $t = shift @$us;
+            $t = shift @$us while $t->{type} == S_TOKEN;
+            redo;
+          } elsif ($t->{type} == EOF_TOKEN) {
+            return $data;
           } else {
-            $t = $tt->get_next_token if $t->{type} == COMMA_TOKEN;
-            redo A;
+            last;
           }
-        } # A
-      }
-    } elsif ($t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($value eq 'auto') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['KEYWORD', 'auto']});
-      } elsif ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
+        }
       }
     }
 
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
+    $self->onerror->(type => 'css:counter set:syntax error', # XXX
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $t);
+    return undef;
+  }; # parse_longhand
+}
+
+## <http://dev.w3.org/csswg/css-position/#clip-property>
+## [CSSPOSITION],
+## <http://quirks.spec.whatwg.org/#the-unitless-length-quirk>
+## [QUIRKS].
+$Key->{clip} = {
+  css => 'clip',
+  dom => 'clip',
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    my $t = shift @$us;
+    if ($t->{type} == IDENT_TOKEN) {
+      my $value = $t->{value};
+      $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($value eq 'auto') {
+        $t = shift @$us;
+        if ($t->{type} == EOF_TOKEN) {
+          return ['KEYWORD', $value];
+        }
+      }
+    } elsif ($t->{type} == FUNCTION_CONSTRUCT) {
+      my $name = $t->{name}->{value};
+      $name =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+      if ($name eq 'rect') {
+        my $tokens = [grep { $_->{type} != S_TOKEN } @{$t->{value}},
+                      {type => EOF_TOKEN,
+                       line => $t->{end_line},
+                       column => $t->{end_column}}];
+        if ((@$tokens == 8 and
+             $tokens->[1]->{type} == COMMA_TOKEN and
+             $tokens->[3]->{type} == COMMA_TOKEN and
+             $tokens->[5]->{type} == COMMA_TOKEN) or
+            @$tokens == 5) {
+          $tokens = [grep { $_->{type} != COMMA_TOKEN } @$tokens];
+          my $result = ['RECT'];
+          for (0, 1, 2, 3) {
+            my $value = $tokens->[$_]->{value};
+            $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+            if ($value eq 'auto') {
+              push @$result, ['KEYWORD', $value];
+            } else {
+              my $r = $Web::CSS::Values::LengthOrQuirkyLengthParser->($self, [$tokens->[$_], $tokens->[$_ + 1]]); # or undef
+              return undef unless defined $r;
+              push @$result, $r;
+            }
+          }
+          $t = shift @$us;
+          if ($t->{type} == EOF_TOKEN) {
+            return $result;
+          }
+        }
+      } # rect()
+    }
+
+    $self->onerror->(type => 'CSS syntax error', text => q['clip'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $t);
+    return undef;
+  }, # parse_longhand
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
   compute => sub {
@@ -3765,141 +3668,97 @@ $Prop->{clip} = {
 
     return $specified_value;
   },
-};
+}; # clip
 
-$Attr->{marks} =
-$Key->{marks} =
-$Prop->{marks} = {
+## <http://dev.w3.org/csswg/css-gcpm/#page-marks-and-bleed-area>
+## [CSSGCPM].
+$Key->{marks} = {
   css => 'marks',
   dom => 'marks',
-  key => 'marks',
-  keyword => {crop => 1, cross => 1},
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    if ($t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($value eq 'crop' and $self->{prop_value}->{$prop_name}->{$value}) {
-        $t = $tt->get_next_token;
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ($t->{type} == IDENT_TOKEN) {
-          my $value = lc $t->{value}; ## TODO: case
-          if ($value eq 'cross' and
-              $self->{prop_value}->{$prop_name}->{$value}) {
-            $t = $tt->get_next_token;
-            return ($t, {$prop_name => ['MARKS', 1, 1]});
-          }
-        }
-        return ($t, {$prop_name => ['MARKS', 1, 0]});
-      } elsif ($value eq 'cross' and
-               $self->{prop_value}->{$prop_name}->{$value}) {
-        $t = $tt->get_next_token;
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        if ($t->{type} == IDENT_TOKEN) {
-          my $value = lc $t->{value}; ## TODO: case
-          if ($value eq 'crop' and
-              $self->{prop_value}->{$prop_name}->{$value}) {
-            $t = $tt->get_next_token;
-            return ($t, {$prop_name => ['MARKS', 1, 1]});
-          }
-        }
-        return ($t, {$prop_name => ['MARKS', 0, 1]});
-      } elsif ($value eq 'none') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['MARKS']});
-      } elsif ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
-      }
-    }
-
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
+  keyword => { # For MediaResolver
+    crop => 1, cross => 1,
   },
-  initial => ['MARKS', 0, 0],
-  #inherited => 0,
-  compute => $compute_as_specified,
-};
-
-$Attr->{size} =
-$Key->{size} =
-$Prop->{size} = {
-  css => 'size',
-  dom => 'size',
-  key => 'size',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    if ($t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ({
-           auto => 1, portrait => 1, landscape => 1,
-          }->{$value}) {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['KEYWORD', $value]});
-      } elsif ($value eq 'inherit') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['INHERIT']});
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    my $t = shift @$us;
+    my $values = {};
+    {
+      if ($t->{type} == IDENT_TOKEN) {
+        my $value = $t->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'crop' or $value eq 'cross') {
+          if ($self->media_resolver->{prop_value}->{marks}->{$value}) {
+            last if defined $values->{$value};
+            $values->{$value} = 1;
+          } else {
+            last;
+          }
+        } elsif ($value eq 'none') {
+          last if keys %$values;
+        } else {
+          last;
+        }
+      } else {
+        last;
       }
+      $t = shift @$us;
+      $t = shift @$us while $t->{type} == S_TOKEN;
+      if ($t->{type} == EOF_TOKEN) {
+        if (keys %$values) {
+          return ['KEYWORDSET', $values];
+        } else {
+          return ['KEYWORD', 'none'];
+        }
+      }
+      last unless keys %$values;
+      redo;
     }
 
-    my $prop_value = ['SIZE'];
-    A: {
-      my $has_sign;
-      my $sign = 1;
-      if ($t->{type} == MINUS_TOKEN) {
-        $has_sign = 1;
-        $sign = -1;
-        $t = $tt->get_next_token;
-      } elsif ($t->{type} == PLUS_TOKEN) {
-        $has_sign = 1;
-        $t = $tt->get_next_token;
-      }
-      
-      if ($t->{type} == DIMENSION_TOKEN) {
-        my $value = $t->{number} * $sign;
-        my $unit = lc $t->{value}; ## TODO: case
-        if ($length_unit->{$unit}) {
-          $t = $tt->get_next_token;
-          push @$prop_value, ['DIMENSION', $value, $unit];
-        } else {
-          $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
+    $self->onerror->(type => 'CSS syntax error', text => q['marks'],
                      level => 'm',
                      uri => $self->context->urlref,
                      token => $t);
-          return ($t, undef);
-        }
-      } elsif ($t->{type} == NUMBER_TOKEN and
-               ($self->context->quirks or $t->{number} == 0)) {
-        my $value = $t->{number} * $sign;
-        $t = $tt->get_next_token;
-        push @$prop_value, ['DIMENSION', $value, 'px'];
-      } else {
-        if (@$prop_value == 2) {
-          $prop_value->[2] = $prop_value->[1];
-          return ($t, {$prop_name => $prop_value});
-        } else {
-          last A;
-        }
-      }
+    return undef;
+  }, # parse_longhand
+  initial => ['KEYWORD', 'none'],
+  #inherited => 0,
+  compute => $compute_as_specified,
+}; # marks
 
-      if (@$prop_value == 3) {
-        return ($t, {$prop_name => $prop_value});
+## <http://dev.w3.org/csswg/css-page/#page-size-prop> [CSSPAGE].
+$Key->{size} = {
+  css => 'size',
+  dom => 'size',
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    $us = [grep { $_->{type} != S_TOKEN } @$us];
+    if (@$us == 2) {
+      if ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        $value =~ tr/A-Z/a-z/; ## ASCII case-insensitive.
+        if ($value eq 'auto' or
+            $value eq 'portrait' or
+            $value eq 'landscape') {
+          return ['KEYWORD', $value];
+        }
       } else {
-        $t = $tt->get_next_token while $t->{type} == S_TOKEN;
-        redo A;
+        my $v1 = $Web::CSS::Values::NNLengthParser->($self, $us); # or undef
+        return undef unless defined $v1;
+        return ['DIMENSION', $v1, $v1];
       }
-    } # A
+    } elsif (@$us == 3) {
+      my $v1 = $Web::CSS::Values::NNLengthParser->($self, [$us->[0], _to_eof_token $us->[1]]);
+      my $v2 = defined $v1 ? $Web::CSS::Values::NNLengthParser->($self, [$us->[1], $us->[2]]) : undef;
+      return undef unless defined $v2;
+      return ['DIMENSION', $v1, $v2];
+    }
 
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
+    $self->onerror->(type => 'CSS syntax error', text => q['size'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   initial => ['KEYWORD', 'auto'],
   #inherited => 0,
   compute => sub {
@@ -3915,39 +3774,35 @@ $Prop->{size} = {
 
     return $specified_value;
   },
-};
+}; # size
 
-$Attr->{page} =
-$Key->{page} =
-$Prop->{page} = {
+## <http://dev.w3.org/csswg/css-page/#using-named-pages> [CSSPAGE].
+$Key->{page} = {
   css => 'page',
   dom => 'page',
-  key => 'page',
-  parse => sub {
-    my ($self, $prop_name, $tt, $t, $onerror) = @_;
-
-    if ($t->{type} == IDENT_TOKEN) {
-      my $value = lc $t->{value}; ## TODO: case
-      if ($value eq 'auto') {
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['KEYWORD', 'auto']});
-      } else {
-        $value = $t->{value};
-        $t = $tt->get_next_token;
-        return ($t, {$prop_name => ['PAGE', $value]});
+  parse_longhand => sub {
+    my ($self, $us) = @_;
+    if (@$us == 2) {
+      if ($us->[0]->{type} == IDENT_TOKEN) {
+        my $value = $us->[0]->{value};
+        if ($value =~ /\A[Aa][Uu][Tt][Oo]\z/) {
+          return ['KEYWORD', 'auto'];
+        } else {
+          return ['CUSTOMID', $value];
+        }
       }
     }
 
-    $onerror->(type => 'CSS syntax error', text => qq['$prop_name'],
-               level => 'm',
-               uri => $self->context->urlref,
-               token => $t);
-    return ($t, undef);
-  },
+    $self->onerror->(type => 'CSS syntax error', text => q['page'],
+                     level => 'm',
+                     uri => $self->context->urlref,
+                     token => $us->[0]);
+    return undef;
+  }, # parse_longhand
   initial => ['KEYWORD', 'auto'],
-  inherited => 1,
+  inherited => 0,
   compute => $compute_as_specified,
-};
+}; # page
 
 for my $key (keys %$Key) {
   my $def = $Key->{$key};

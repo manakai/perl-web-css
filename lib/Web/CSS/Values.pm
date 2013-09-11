@@ -11,6 +11,8 @@ use Web::CSS::Colors;
 ##
 ## KEYWORD - Keyword
 ##   1: Keyword in lowercase
+## CUSTOMID - <author-ident>
+##   1: Value as Perl character string
 ## STRING - String
 ##   1: Value as Perl character string
 ## URL - URL
@@ -69,18 +71,17 @@ use Web::CSS::Colors;
 ##   1: Counter name as Perl character string
 ##   2: Separator string as Perl character string
 ##   3: <list-style-type> as value
-## SETCOUNTER
-##   XXX
-## ADDCOUNTER
-##   XXX
-## RECT
-##   XXX
-## PAGE
-##   XXX
-## MARKS
-##   XXX
-## SIZE
-##   XXX
+## COUNTERDELTAS - Counter values
+##   1...: Arrayref of counter name as Perl character string and
+##         exact or delta value as Perl number
+## RECT - rect()
+##   1: <top> as value
+##   2: <right> as value
+##   3: <bottom> as value
+##   4: <left> as value
+## DIMENSION - width and height
+##   1: width as value
+##   2: height as value
 
 ## CSS-wide keywords
 ## <http://dev.w3.org/csswg/css-values/#common-keywords>,

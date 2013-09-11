@@ -198,6 +198,12 @@ serialize four edge values with 'padding-top', 'padding-right',
 
 CSS Positioned Layout <http://dev.w3.org/csswg/css-position/>.
 
+If the comma character is not used within the 'rect()' functional
+notation, any sequence of zero or more <whitespace> tokens between
+other tokens within the function's argument MUST be considered as a
+separator.  For the purpose of serialization of the functional
+notation, the separator MUST be considered as a comma.
+
 =item CSSOVERFLOW
 
 CSS Overflow <http://dev.w3.org/csswg/css-overflow/>.
@@ -211,6 +217,14 @@ To serialize the 'overflow' property value, follow these steps:
      serialization of 'overflow-y', return one of them.
 
   3. Otherwise, it is not serializable.  Return null.
+
+=item CSSPAGE
+
+CSS Paged Media <http://dev.w3.org/csswg/css-page/>.
+
+If the 'size' property contains two <length>s and their serializations
+are equal, it MUST be serialized as a <length> whose value is equal to
+them.
 
 =item CSSBREAK
 
@@ -249,6 +263,14 @@ The 'hand' keyword in the 'cursor' property MUST be replaced by
 
 Keywords 'grab' and 'grabbing' MUST be allowed as a keyword in the
 'cursor' property.
+
+=item CSSGCPM
+
+CSS Generated Content for Paged Media
+<http://dev.w3.org/csswg/css-gcpm/>.
+
+When serialized, keywords in the 'marks' propery MUST be sorted in
+order: 'crop' and then 'cross'.
 
 =item CSSINLINE
 

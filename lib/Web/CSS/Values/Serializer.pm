@@ -62,16 +62,20 @@ sub _ident ($) {
 } # _ident
 
 my $KeywordSetOrder = {
-  blink => 1,
-  underline => 2,
-  overline => 3,
-  'line-through' => 4,
+  # 'text-decoration'
+  blink => 1, underline => 2, overline => 3, 'line-through' => 4,
+
+  # 'marks'
+  crop => 1, cross => 2,
 };
 
 my $ValueSerializer = {
   KEYWORD => sub {
     ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>.
     return $_[0]->[1];
+  },
+  CUSTOMID => sub {
+    return _ident $_[0]->[1];
   },
   NUMBER => sub {
     ## <http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value>
@@ -142,19 +146,21 @@ my $ValueSerializer = {
   COUNTERS => sub {
     return 'counters(' . (_ident $_->[1]) . ', ' . (_string $_->[2]) . ', ' . __PACKAGE__->serialize_value ($_->[3]) . ')';
   },
-
-## SETCOUNTER
-##   XXX
-## ADDCOUNTER
-##   XXX
-## RECT
-##   XXX
-## PAGE
-##   XXX
-## MARKS
-##   XXX
-## SIZE
-##   XXX
+  COUNTERDELTAS => sub {
+    return join ' ', map { (_ident $_->[0]) . ' ' . (_number $_->[1]) } @{$_[0]}[1..$#{$_[0]}];
+  },
+  RECT => sub {
+    return 'rect(' . (join ', ', map { __PACKAGE__->serialize_value ($_) } @{$_[0]}[1..4]) . ')';
+  },
+  DIMENSION => sub {
+    my $v1 = __PACKAGE__->serialize_value ($_[0]->[1]);
+    my $v2 = __PACKAGE__->serialize_value ($_[0]->[2]);
+    if ($v1 eq $v2) {
+      return $v1;
+    } else {
+      return "$v1 $v2";
+    }
+  },
 }; # $ValueSerializer
 
 $ValueSerializer->{$_} = sub {
@@ -166,40 +172,6 @@ $ValueSerializer->{$_} = sub {
 sub serialize_value ($$) {
   my ($self, $value) = @_;
   return ($ValueSerializer->{$value->[0]} || sub { die "Serializer for |$value->[0]| not implemented" })->($value);
-
-  if ($value->[0] eq 'PAGE') {
-    return $value->[1];
-  } elsif ($value->[0] eq 'RECT') {
-    ## NOTE: Four components are DIMENSIONs.
-    return 'rect(' . $value->[1]->[1].$value->[1]->[2] . ', '
-          . $value->[2]->[1].$value->[2]->[2] . ', '
-          . $value->[3]->[1].$value->[3]->[2] . ', '
-          . $value->[4]->[1].$value->[4]->[2] . ')';
-  } elsif ($value->[0] eq 'SETCOUNTER' or $value->[0] eq 'ADDCOUNTER') {
-    return join ' ', map {$_->[0], $_->[1]} @$value[1..$#$value];
-  } elsif ($value->[0] eq 'MARKS') {
-    if ($value->[1]) {
-      if ($value->[2]) {
-        return 'crop cross';
-      } else {
-        return 'crop';
-      }
-    } elsif ($value->[2]) {
-      return 'cross';
-    } else {
-      return 'none';
-    }
-  } elsif ($value->[0] eq 'SIZE') {
-    my $s1 = $value->[1]->[1] . $value->[1]->[2]; ## NOTE: They should be 
-    my $s2 = $value->[2]->[1] . $value->[2]->[2]; ## 'DIMENSION's.
-    if ($s1 eq $s2) {
-      return $s1;
-    } else {
-      return $s1 . ' ' . $s2;
-    }
-  } else {
-    return undef;
-  }
 } # serialize_value
 
 1;

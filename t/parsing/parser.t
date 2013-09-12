@@ -367,7 +367,7 @@ sub get_css_text ($) {
   $css =~ s/\{ /\{\n  /g;
   $css =~ s/; /;\n  /g;
   $css =~ s/\n  \}/\n}/g;
-  $css .= "\n" unless $css =~ /\n$/;
+  $css .= "\n" if length $css and not $css =~ /\n$/;
   return $css;
 } # get_css_text
 

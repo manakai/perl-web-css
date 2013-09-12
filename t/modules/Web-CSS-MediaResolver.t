@@ -13,29 +13,6 @@ test {
   my $c = shift;
   my $ctx = Web::CSS::MediaResolver->new;
 
-  my $value = ['RGBA', 1000, -24, 40.5, 10.2];
-  my $value2 = $ctx->clip_color ($value);
-  isnt $value2, $value;
-  eq_or_diff $value2, ['RGBA', 255, 0, 40.5, 10.2];
-
-  done $c;
-} n => 2, name => 'clip_color';
-
-test {
-  my $c = shift;
-  my $ctx = Web::CSS::MediaResolver->new;
-
-  my $value = ['notRGBA', 1000, -24, 40.5, 10.2];
-  my $value2 = $ctx->clip_color ($value);
-  is $value2, $value;
-
-  done $c;
-} n => 1, name => 'clip_color not rgba';
-
-test {
-  my $c = shift;
-  my $ctx = Web::CSS::MediaResolver->new;
-
   my $value = {hoge => 'abc'};
   my $value2 = $ctx->get_system_font ($value);
   is $value, $value;
@@ -66,7 +43,7 @@ test {
     letter-spacing line-height
     list-style-image list-style-position list-style-type
     margin-bottom margin-left margin-right margin-top marker-offset
-    marks max-height max-width min-height min-width opacity -moz-opacity
+    marks max-height max-width min-height min-width opacity
     orphans outline-color outline-style outline-width overflow-x overflow-y
     padding-bottom padding-left padding-right padding-top
     page page-break-after page-break-before page-break-inside
@@ -83,7 +60,7 @@ test {
   /;
 
   for (@longhand, @shorthand) {
-    ok $mr->{prop}->{$_};
+    ok $mr->{prop}->{$_}, $_;
   }
   
   done $c;
@@ -94,7 +71,7 @@ test {
   my $mr = Web::CSS::MediaResolver->new;
   $mr->set_supported (all => 1);
 
-  ok $mr->{prop_value}->{display}->{$_} for qw/
+  ok $mr->{prop_value}->{display}->{$_}, ['display', $_] for qw/
     block inline inline-block inline-table list-item none
     table table-caption table-cell table-column table-column-group
     table-header-group table-footer-group table-row table-row-group
@@ -103,10 +80,8 @@ test {
   ok $mr->{prop_value}->{position}->{$_} for qw/
     absolute fixed relative static
   /;
-  for (qw/-moz-max-content -moz-min-content -moz-fit-content -moz-available/) {
+  for (qw/max-content min-content fit-content available/) {
     ok $mr->{prop_value}->{width}->{$_};
-    ok $mr->{prop_value}->{'min-width'}->{$_};
-    ok $mr->{prop_value}->{'max-width'}->{$_};
   }
   ok $mr->{prop_value}->{float}->{$_} for qw/
     left right none
@@ -121,9 +96,9 @@ test {
   ok $mr->{prop_value}->{'unicode-bidi'}->{$_} for qw/
     normal bidi-override embed
   /;
-  for my $prop_name (qw/overflow overflow-x overflow-y/) {
+  for my $prop_name (qw/overflow-x overflow-y/) {
     ok $mr->{prop_value}->{$prop_name}->{$_} for qw/
-      visible hidden scroll auto -webkit-marquee -moz-hidden-unscrollable
+      visible hidden scroll auto -moz-hidden-unscrollable
     /;
   }
   ok $mr->{prop_value}->{visibility}->{$_} for qw/
@@ -151,28 +126,23 @@ test {
   /;
   ok $mr->{prop_value}->{'background-attachment'}->{scroll};
   ok $mr->{prop_value}->{'background-attachment'}->{fixed};
-  ok $mr->{prop_value}->{'font-size'}->{$_} for qw/
-    xx-small x-small small medium large x-large xx-large
-    -manakai-xxx-large -webkit-xxx-large
-    larger smaller
-  /;
   ok $mr->{prop_value}->{'font-style'}->{normal};
   ok $mr->{prop_value}->{'font-style'}->{italic};
   ok $mr->{prop_value}->{'font-style'}->{oblique};
   ok $mr->{prop_value}->{'font-variant'}->{normal};
   ok $mr->{prop_value}->{'font-variant'}->{'small-caps'};
-  ok $mr->{prop_value}->{'font-stretch'}->{$_} for
+  ok $mr->{prop_value}->{'font-stretch'}->{$_}, ['font-stretch', $_] for
       qw/normal wider narrower ultra-condensed extra-condensed
         condensed semi-condensed semi-expanded expanded
         extra-expanded ultra-expanded/;
-  ok $mr->{prop_value}->{'text-align'}->{$_} for qw/
-    left right center justify begin end
+  ok $mr->{prop_value}->{'text-align'}->{$_}, ['text-align', $_] for qw/
+    left right center justify start end
   /;
   ok $mr->{prop_value}->{'text-transform'}->{$_} for qw/
     capitalize uppercase lowercase none
   /;
   ok $mr->{prop_value}->{'white-space'}->{$_}, ['white-space', $_] for qw/
-    normal pre nowrap pre-line pre-wrap -moz-pre-wrap
+    normal pre nowrap pre-line pre-wrap
   /;
   ok $mr->{prop_value}->{'writing-mode'}->{$_} for qw/
     lr rl tb lr-tb rl-tb tb-rl
@@ -190,7 +160,7 @@ test {
     mathematical
   /;
   ok $mr->{prop_value}->{'text-decoration'}->{$_} for qw/
-    none blink underline overline line-through
+    blink underline overline line-through
   /;
   ok $mr->{prop_value}->{'caption-side'}->{$_} for qw/
     top bottom left right
@@ -216,15 +186,9 @@ test {
       none dotted dashed solid double groove ridge inset outset
     /;
   }
-  for my $prop (qw/color background-color
-                   border-bottom-color border-left-color border-right-color
-                   border-top-color/) {
-    ok $mr->{prop_value}->{$prop}->{transparent};
-    ok $mr->{prop_value}->{$prop}->{flavor};
-    ok $mr->{prop_value}->{$prop}->{'-manakai-default'};
-  }
+  ok $mr->{prop_value}->{color}->{transparent};
+  ok $mr->{prop_value}->{color}->{flavor};
   ok $mr->{prop_value}->{'outline-color'}->{invert};
-  ok $mr->{prop_value}->{'outline-color'}->{'-manakai-invert-or-currentcolor'};
   done $c;
 } name => 'set_supported prop values';
 

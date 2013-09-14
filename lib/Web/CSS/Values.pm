@@ -235,6 +235,9 @@ our $LengthOrQuirkyLengthParser = sub {
       if ($us->[0]->{number} == 0) {
         return ['LENGTH', 0, 'px'];
       } elsif ($self->context->quirks) {
+        $self->onerror->(type => 'css:value:quirky-length', # XXX
+                         level => 'm',
+                         token => $us->[0]);
         return ['LENGTH', 0+$us->[0]->{number}, 'px'];
       }
     }
@@ -282,6 +285,9 @@ our $NNLengthOrQuirkyLengthParser = sub {
       if ($us->[0]->{number} == 0) {
         return ['LENGTH', 0, 'px'];
       } elsif ($us->[0]->{number} > 0 and $self->context->quirks) {
+        $self->onerror->(type => 'css:value:quirky-length', # XXX
+                         level => 'm',
+                         token => $us->[0]);
         return ['LENGTH', 0+$us->[0]->{number}, 'px'];
       }
     }
@@ -311,6 +317,9 @@ our $LineWidthQuirkyParser = sub {
       if ($us->[0]->{number} == 0) {
         return ['LENGTH', 0, 'px'];
       } elsif ($us->[0]->{number} > 0 and $self->context->quirks) {
+        $self->onerror->(type => 'css:value:quirky-length', # XXX
+                         level => 'm',
+                         token => $us->[0]);
         return ['LENGTH', 0+$us->[0]->{number}, 'px'];
       }
     } elsif ($us->[0]->{type} == IDENT_TOKEN) {

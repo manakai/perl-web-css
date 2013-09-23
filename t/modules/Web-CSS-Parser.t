@@ -8,6 +8,7 @@ use Test::X1;
 use Web::CSS::Parser;
 use Test::More;
 use Test::Differences;
+use Encode;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
 use Web::DOM::Document;
@@ -789,6 +790,61 @@ test {
 
   done $c;
 } n => 1, name => 'context->url';
+
+for my $test (
+  {in => "", out => {rules => [SS []], input_encoding => 'utf-8'}},
+  {in => "", in_charset => ' us-ascii ', out => {rules => [SS []], input_encoding => 'windows-1252'}},
+  {in => "", in_charset => 'un know n', out => {rules => [SS []], input_encoding => 'utf-8'}},
+  {in => "", in_charset => 'UTF-16', out => {rules => [SS []], input_encoding => 'utf-16'}},
+  {in => "", parent_charset => 'utf-16BE', out => {rules => [SS []], input_encoding => 'utf-16be'}},
+  {in => qq[\@charset "EUC-jp";], out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'euc-jp'}},
+  {in => qq[\@charset "EUC-j\\p";], out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'utf-8'}, errors => ['1;1;w;css:charset:token error;;']},
+  {in => qq[\@charset "u\\tf-8";], out => {rules => [SS [1], CHARSET(0=>1, 'utf-8')], input_encoding => 'utf-8'}, errors => ['1;1;w;css:charset:token error;;']},
+  {in => qq[\@charset "EUC-j\\p";], in_charset => 'iso-2022-JP', out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'iso-2022-jp'}, errors => ['1;1;w;css:charset:token error;;']},
+  {in => qq[\@charset "EUC-jp";], in_charset => 'koi8', out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'koi8-r'}},
+  {in => qq[\@charset "EUC-jp";], in_charset => 'michi', out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'euc-jp'}},
+  {in => qq[\@charset "EUC-jp";], parent_charset => 'koi8', out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'euc-jp'}},
+  {in => qq[\@charset "EUC-not-jp";], out => {rules => [SS [1], CHARSET(0=>1, 'EUC-not-jp')], input_encoding => 'utf-8'}},
+  {in => qq[], parent_charset => 'koi8', out => {rules => [SS []], input_encoding => 'koi8-r'}},
+  {in => qq[], parent_charset => 'coi8', out => {rules => [SS []], input_encoding => 'utf-8'}},
+  {in => qq[\@CHARSET "EUC-jp";], out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'utf-8'}, errors => ['1;1;w;css:charset:token error;;']},
+  {in => qq[\@charset 'EUC-jp';], out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'utf-8'}, errors => ['1;1;w;css:charset:token error;;']},
+  {in => qq[\@charset"EUC-jp";], out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'utf-8'}, errors => ['1;1;w;css:charset:token error;;']},
+  {in => qq[ \@charset "EUC-jp";], out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'utf-8'}, errors => ['1;2;w;css:charset:token error;;']},
+  {in => qq[\@char\\set "EUC-jp";], out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'utf-8'}, errors => ['1;1;w;css:charset:token error;;']},
+  {in => qq[\@charset "EUC-jp"], out => {rules => [SS [1], CHARSET(0=>1, 'EUC-jp')], input_encoding => 'utf-8'}, errors => ['1;18;w;css:at-rule:eof;;', '1;1;w;css:charset:token error;;']},
+  {in => qq[\@charset "utf-16";], out => {rules => [SS [1], CHARSET(0=>1, 'utf-16')], input_encoding => 'utf-8'}},
+  {in => qq[\@charset "UTF-16be";], out => {rules => [SS [1], CHARSET(0=>1, 'UTF-16be')], input_encoding => 'utf-8'}},
+  {in => qq{p{content:"\x81\x40"}}, out => {rules => [SS [1], S(0=>1, 'p', ['content'], {content => ['SEQ', ['STRING', "\x{FFFD}\x40"]]}, {})], input_encoding => 'utf-8'}},
+  {in => qq{p{content:"\x81\x40"}}, in_charset => 'shift-jis', out => {rules => [SS [1], S(0=>1, 'p', ['content'], {content => ['SEQ', ['STRING', "\x{3000}"]]}, {})], input_encoding => 'shift_jis'}},
+  {in => (encode 'utf8', qq[\@charset "\x{4000}\x{FFFF}\x{D800}";]), out => {rules => [SS [1], CHARSET(0=>1, "\x{4000}\x{FFFD}\x{FFFD}")], input_encoding => 'utf-8'}},
+) {
+  test {
+    my $c = shift;
+    
+    my $parser = Web::CSS::Parser->new;
+    $parser->media_resolver->{prop}->{content} = 1;
+    my @error;
+    $parser->onerror (sub {
+      my %args = @_;
+      push @error, join ';',
+          $args{line} // $args{token}->{line},
+          $args{column} // $args{token}->{column},
+          $args{level},
+          $args{type},
+          $args{text} // '',
+          $args{value} // '';
+    });
+    my $parsed = $parser->parse_byte_string_as_ss
+        ($test->{in},
+         transport_encoding_name => $test->{in_charset},
+         parent_encoding_name => $test->{parent_charset});
+    eq_or_diff $parsed, $test->{out};
+    eq_or_diff \@error, $test->{errors} || [];
+    
+    done $c;
+  } n => 2, name => ['parse_byte_string', $test->{in}];
+}
 
 run_tests;
 

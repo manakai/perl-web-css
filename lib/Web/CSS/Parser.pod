@@ -66,45 +66,90 @@ intended to invoke parsing methods multiple times, this method should
 be invoked before any subsequent parser invocations to clear internal
 states.
 
-=item $mq = $p->parse_char_string_as_mq ($string)
-
-Parse the input string as a media query and return the parsed
-structure.  See also L<Web::CSS::MediaQueries::Parser>.
-
-=item $mq_list = $p->parse_char_string_as_mq_list ($string)
-
-Parse the input string as a list of media queries and return the
-parsed structure.  See also L<Web::CSS::MediaQueries::Parser>.
-
-=item $props = $p->parse_char_string_as_prop_decls ($string)
-
-Parse the input string as a list of declarations, where each
-declaration is a property specification, and return the parsed
-structure.
-
-=item $props = $p->parse_char_string_as_prop_value ($prop_name, $string)
-
-Parse the input string as a property value of the specified property
-and return the parsed structure.  If the specified property is not
-supported, it returns C<undef>.  If the property value is not valid,
-an empty property list is returned.
-
-=item $ss = $p->parse_char_string_as_rule ($string)
+=item $ss = $p->parse_byte_string_as_rule ($string, OPTIONS)
 
 Parse the input string as a rule.  The result is returned as the
 parsed style sheet struct, where at most one rule is contained
 directly by the style sheet.  If there is not exactly one rule, or the
 only rule is invalid, an empty style sheet struct is returned.
 
+The input string is interpreted as a byte sequence.  As described in
+the CSS specification [CSSSYNTAX], the C<charset> parameter and any
+C<@charset> rule is taken into account for determining the character
+encoding.  Following name/value pairs can be specified as I<OPTIONS>
+arguments:
+
+=over 4
+
+=item transport_encoding_name => $name
+
+The encoding name or alias, as specified in the C<charset> parameter
+in the C<Content-Type:> HTTP header field (or equivalent).  If no
+C<charset> metadata is available, this option has to be left
+unspecified (or C<undef>).
+
+=item parent_encoding_name => $name
+
+The encoding name or alias, provided by the context in which the
+reference to the style sheet appears.  If the style sheet is
+referenced by a C<link> element or C<xml-stylseheet> processing
+instruction, its C<charset> attribute value should be specified here.
+Otherwise, the character encoding of the document referencing the
+style sheet directly or indirectly should be specified here.  See the
+CSS specification [CSSSYNTAX] for details.  If no such contextual
+character encoding metadata is available, this option has to be left
+undefined (or C<undef>).
+
+=back
+
+If the style sheet is provided by a non-HTTP data source and you know
+the encoding name a priori, it should be specified as
+C<transport_encoding_name>.
+
+The encoding name acutally used to parse the CSS style sheet is
+available as C<< $ss->{input_encoding} >>.  (If the style sheet is
+created from a character string by one of following methods, this
+field is left unspecified.)
+
+=item $mq = $p->parse_char_string_as_mq ($string)
+
+Parse the input character string as a media query and return the
+parsed structure.  See also L<Web::CSS::MediaQueries::Parser>.
+
+=item $mq_list = $p->parse_char_string_as_mq_list ($string)
+
+Parse the input character string as a list of media queries and return
+the parsed structure.  See also L<Web::CSS::MediaQueries::Parser>.
+
+=item $props = $p->parse_char_string_as_prop_decls ($string)
+
+Parse the input character string as a list of declarations, where each
+declaration is a property specification, and return the parsed
+structure.
+
+=item $props = $p->parse_char_string_as_prop_value ($prop_name, $string)
+
+Parse the input character string as a property value of the specified
+property and return the parsed structure.  If the specified property
+is not supported, it returns C<undef>.  If the property value is not
+valid, an empty property list is returned.
+
+=item $ss = $p->parse_char_string_as_rule ($string)
+
+Parse the input character string as a rule.  The result is returned as
+the parsed style sheet struct, where at most one rule is contained
+directly by the style sheet.  If there is not exactly one rule, or the
+only rule is invalid, an empty style sheet struct is returned.
+
 =item $selectors = $p->parse_char_string_as_selectors ($string)
 
-Parse the input string as a list of selectors and return the parsed
-structure.  See also L<Web::CSS::Selectors::Parser>.
+Parse the input character string as a list of selectors and return the
+parsed structure.  See also L<Web::CSS::Selectors::Parser>.
 
 =item $ss = $p->parse_char_string_as_ss ($string)
 
-Parse the input string as a style sheet and return the parsed
-structure.
+Parse the input character string as a style sheet and return the
+parsed structure.
 
 =back
 
@@ -132,6 +177,10 @@ IDL attribute.  The argument MUST be a L<Web::DOM::Element> object
 representing the C<style> element.
 
 =back
+
+=head1 DEPENDENCY
+
+See L<Web::CSS/"DEPENDENCY">.
 
 =head1 SPECIFICATIONS
 

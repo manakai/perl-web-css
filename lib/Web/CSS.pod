@@ -1,0 +1,55 @@
+=head1 NAME
+
+Web::CSS - CSS, Selectors, and Media Queries
+
+=head1 MODULES
+
+L<Web::CSS::Parser>, L<Web::CSS::Serializer> - CSS syntax
+
+L<Web::CSS::Values>, L<Web::CSS::Colors>, L<Web::CSS::Props> - CSS
+definitions and microsyntax implementations
+
+L<Web::CSS::Selectors::Parser>, L<Web::CSS::Selectors::Serializer> -
+Selectors syntax
+
+L<Web::CSS::Selectors::API> - Selectors API implementation
+
+L<Web::CSS::MediaQueries::Parser>,
+L<Web::CSS::MediaQueries::Serializer> - Media Queries syntax
+
+L<Web::CSS::MediaQueries::Features> - Media Queries feature
+definitions
+
+L<Web::CSS::Context>, L<Web::CSS::MediaResolver> - Support modules
+
+Unless you are trying to develop a Web browser, you should not use
+these modules directly.  The perl-web-dom package
+<https://github.com/manakai/perl-web-dom> contains an implementation
+of the standard CSSOM API and Selectors API using these modules.
+
+=head1 DEPENDENCY
+
+These modules require Perl 5.8 or later.
+
+The C<parse_byte_string> method in the L<Web::CSS::Parser> module
+requires the perl-web-encodings package
+<https://github.com/manakai/perl-web-encodings>.
+
+=head1 SPECIFICATIONS
+
+For the list of supported features and relevant specifications, see
+the documentation of the modules.  In general, they support latest
+CSS, Selectors, and/or Media Queries standards.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

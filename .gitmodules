@@ -16,3 +16,6 @@
 [submodule "t_deps/modules/web-markup"]
 	path = t_deps/modules/web-markup
 	url = git://github.com/manakai/perl-web-markup
+[submodule "t_deps/modules/web-encodings"]
+	path = t_deps/modules/web-encodings
+	url = git://github.com/manakai/perl-web-encodings

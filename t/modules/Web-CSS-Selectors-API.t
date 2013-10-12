@@ -235,12 +235,13 @@ test {
   $api->return_all (1);
 
   my @node = @{$api->get_elements};
-  is scalar @node, 1;
+  is scalar @node, 2;
   is $node[0], $el1;
+  is $node[1], $el2;
   ok not defined $api->selectors_has_ns_error;
   
   done $c;
-} n => 3, name => 'nsresolver undef';
+} n => 4, name => 'nsresolver undef';
 
 test {
   my $c = shift;
@@ -257,12 +258,13 @@ test {
   $api->return_all (1);
 
   my @node = @{$api->get_elements};
-  is scalar @node, 1;
+  is scalar @node, 2;
   is $node[0], $el1;
+  is $node[1], $el2;
   ok not defined $api->selectors_has_ns_error;
   
   done $c;
-} n => 3, name => 'nsresolver empty';
+} n => 4, name => 'nsresolver empty';
 
 test {
   my $c = shift;

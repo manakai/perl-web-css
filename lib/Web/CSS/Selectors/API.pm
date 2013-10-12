@@ -56,20 +56,16 @@ sub set_selectors ($$$;%) {
   } else {
     my $p = Web::CSS::Selectors::Parser->new;
     my $ns_error;
-    if (defined $resolver) { # resolver must be CODE or can(lookup_namespace_uri)
-      if (UNIVERSAL::can ($_[2], 'lookup_namespace_uri')) {
-        my $obj = $resolver;
-        $resolver = sub { $obj->lookup_namespace_uri ($_[0]) }; # or throw
-      }
+    if (defined $resolver) {
       if ($args{nsresolver}) {
         $p->context (Web::CSS::Context->new_from_nscallback (sub {
-          my $result = $resolver->(defined $_[0] ? $_[0] : ''); # or throw
+          my $result = $resolver->($resolver, defined $_[0] ? $_[0] : ''); # or throw
           $result = defined $result ? ''.$result : ''; # WebIDL DOMString
           if (defined $_[0] and length $_[0]) {
             $ns_error = $_[0] if $result eq '';
             return length $result ? $result : undef;
           } else {
-            return length $result ? $result : '';
+            return length $result ? $result : undef;
           }
         }));
       } else {

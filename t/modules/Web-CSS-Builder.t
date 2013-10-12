@@ -318,6 +318,7 @@ for my $test (
     eq_or_diff $b->{parsed_construct}, $test->[2], 'tree';
     eq_or_diff $errors, $test->[3] || [], 'errors';
 
+    delete $b->{chars_pull_next};
     done $c;
   } name => ['tree building', $test->[0], @{$test->[1]}], n => 2;
 } # $test

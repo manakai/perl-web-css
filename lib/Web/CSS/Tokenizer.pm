@@ -1852,6 +1852,14 @@ sub normalize_surrogate {
   }ge if defined $_[1];
 } # _normalize_surrogate
 
+sub DESTROY ($) {
+  {
+    local $@;
+    eval { die };
+    warn "Potential memory leak detected" if $@ =~ /during global destruction/;
+  }
+} # DESTROY
+
 1;
 
 =head1 LICENSE

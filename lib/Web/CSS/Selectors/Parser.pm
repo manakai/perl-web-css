@@ -176,7 +176,7 @@ sub parse_constructs_as_selectors ($$) {
                 next A;
               }
               # hoge|* or hoge|fuga
-              $sss->[0]->[1] = $url; # nsurl
+              $sss->[0]->[1] = $url; # nsurl # XXX should be ref?
               $sss->[0]->[3] = $t1->{value}; # prefix
             } else {
               # *|* or *|hoge
@@ -869,7 +869,9 @@ sub parse_constructs_as_selectors ($$) {
       return undef;
     }
   }; # $process_tokens
-  return $process_tokens->($tt);
+  my $result = $process_tokens->($tt);
+  undef $process_tokens;
+  return $result;
 } # parse_constructs_as_selectors
 
 # XXX move to some other module?

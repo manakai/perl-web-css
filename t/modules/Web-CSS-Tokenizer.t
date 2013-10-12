@@ -527,6 +527,7 @@ for my $test (
     }
     eq_or_diff $tokens, $test->[1];
 
+    delete $tt->{chars_pull_next};
     done $c;
   } n => 1, name => [@{$test->[0]}];
 }

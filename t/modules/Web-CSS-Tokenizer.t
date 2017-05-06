@@ -468,7 +468,7 @@ for my $test (
     $_ = {line => ref $_->[0] ? $_->[0]->[0] : 1,
           column => ref $_->[0] ? $_->[0]->[1] : $_->[0],
           type => $_->[1], value => $_->[2]};
-    delete $_->{line} if $_->{type} == ABORT_TOKEN;
+    delete $_->{line}, delete $_->{column} if $_->{type} == ABORT_TOKEN;
     delete $_->{value} unless defined $_->{value};
     if ($_->{type} == HASH_TOKEN) {
       $_->{not_ident} = 1 if not $f;

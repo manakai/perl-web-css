@@ -140,7 +140,7 @@ for my $test (
   ['stylesheet', [':hoge(ab { ) cd }) 2 {}'], Rules(1,0=>1,24,Q(1,1=>1,23,Colon(1,1),F(1,2=>1,18,'hoge',ID(1,7,'ab'),S(1,9),Block(1,10=>1,17,S(1,11),RParen(1,12),S(1,13),ID(1,14,'cd'),S(1,16))),S(1,19),N(1,20,2),S(1,21),Block(1,22=>1,23)))],
   ['stylesheet', ['@ab{co{}}'], Rules(1,0=>1,10,At(1,1=>1,9,'ab',Block(1,4=>1,9,ID(1,5,'co'),Block(1,7=>1,8))))],
   ['stylesheet', ['@media{co{}}'], Rules(1,0=>1,13,At(1,1=>1,12,'media',Block(1,7=>1,12,Q(1,8=>1,11,ID(1,8,'co'),Block(1,10=>1,11)))))],
-  ['stylesheet', ['@media{co{}'], Rules(1,0=>1,12,At(1,1=>1,12,'media',Block(1,7=>1,12,Q(1,8=>1,11,ID(1,8,'co'),Block(1,10=>1,11))))), '1;12;css:block:eof'],
+  ['stylesheet', ['@media{co{}'], Rules(1,0=>1,12,At(1,1=>1,12,'media',Block(1,7=>1,12,Q(1,8=>1,11,ID(1,8,'co'),Block(1,10=>1,11))))), ['1;12;css:block:eof']],
   ['stylesheet', ['@MedIA{co{}}'], Rules(1,0=>1,13,At(1,1=>1,12,'MedIA',Block(1,7=>1,12,Q(1,8=>1,11,ID(1,8,'co'),Block(1,10=>1,11)))))],
   ['stylesheet', ['@MedIA{@media{co{'], Rules(1,0=>1,18,At(1,1=>1,18,'MedIA',Block(1,7=>1,18,At(1,8=>1,18,'media',Block(1,14=>1,18,Q(1,15=>1,18,ID(1,15,'co'),Block(1,17=>1,18))))))), ['1;18;css:block:eof']],
   ['stylesheet', ['@MedIA{@media{co{}}'], Rules(1,0=>1,20,At(1,1=>1,20,'MedIA',Block(1,7=>1,20,At(1,8=>1,19,'media',Block(1,14=>1,19,Q(1,15=>1,18,ID(1,15,'co'),Block(1,17=>1,18))))))), ['1;20;css:block:eof']],

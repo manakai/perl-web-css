@@ -35,8 +35,8 @@ for my $file_name (qw(mq-1.dat mq-2.dat mq-3.dat)) {
         my (%opt) = @_;
         push @actual_error, join ';',
             '',
-            $opt{line} // $opt{token}->{line},
-            $opt{column} // $opt{token}->{column},
+            defined $opt{token} ? $opt{token}->{line} : $opt{line},
+            defined $opt{token} ? $opt{token}->{column} : $opt{column},
             $opt{level},
             $opt{type} . (defined $opt{value} ? ';'.$opt{value} : '');
       });
@@ -51,7 +51,7 @@ for my $file_name (qw(mq-1.dat mq-2.dat mq-3.dat)) {
 
       $chk->check_mq_list ($mq) if $mq;
 
-      eq_or_diff \@actual_error, $test->{errors}->[0] // [], "#result";
+      eq_or_diff \@actual_error, $test->{errors}->[0] || [], "#result";
 
       my $mt = $s->serialize_mq_list ($mq);
       eq_or_diff $mt, $test->{mediatext}->[0], "#mediatext";

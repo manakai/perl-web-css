@@ -94,12 +94,12 @@ for my $file_name (map { $data_d->file ($_)->stringify } qw(
       }
 
       my $lookup_ns = sub {
-        return $ns{$_[0] // ''};
+        return $ns{$_[0] || ''};
       }; # lookup_namespace_uri
       
       for my $result (@{$test->{result} or []}) {
         my $label = $result->[1]->[0];
-        my $root = $result->[1]->[1] // '/';
+        my $root = $result->[1]->[1] || '/';
         
         my $doc = $documents->{$label} or die "Test |$label| not found\n";
         my $root_node = get_node_by_path ($doc, $root);

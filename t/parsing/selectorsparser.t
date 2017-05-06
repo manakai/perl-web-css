@@ -122,8 +122,8 @@ sub _parse_char_string : Tests {
     $parser->onerror (sub {
       my %args = @_;
       push @error, join ';', map { defined $_ ? $_ : '' }
-          $args{token}->{line} // $args{line},
-          $args{token}->{column} // $args{column},
+          defined $args{token} ? $args{token}->{line} : $args{line},
+          defined $args{token} ? $args{token}->{column} : $args{column},
           $args{type},
           $args{text},
           $args{value},
@@ -147,7 +147,7 @@ sub _parse_char_string : Tests {
       }
     }
     $parser->context (Web::CSS::Context->new_from_nscallback (sub {
-      return $ns{$_[0] // ''};
+      return $ns{$_[0] || ''};
     }));
 
     my $selectors = $parser->parse_char_string_as_selectors

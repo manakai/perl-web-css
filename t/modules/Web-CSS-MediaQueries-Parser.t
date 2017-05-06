@@ -26,12 +26,12 @@ for my $test (
     $p->onerror (sub {
       my %args = @_;
       push @error, join ';',
-          $args{line} // $args{token}->{line},
-          $args{column} // $args{token}->{column},
+          defined $args{token} ? $args{token}->{line} : $args{line},
+          defined $args{token} ? $args{token}->{column} : $args{column},
           $args{level},
           $args{type},
-          $args{text} // '',
-          $args{value} // '';
+          defined $args{text} ? $args{text} : '',
+          defined $args{value} ? $args{value} : '';
     });
     my $parsed = $p->parse_char_string_as_mq_list ($test->{in});
     eq_or_diff $parsed, $test->{out};
@@ -59,12 +59,12 @@ for my $test (
     $p->onerror (sub {
       my %args = @_;
       push @error, join ';',
-          $args{line} // $args{token}->{line},
-          $args{column} // $args{token}->{column},
+          defined $args{token} ? $args{token}->{line} : $args{line},
+          defined $args{token} ? $args{token}->{column} : $args{column},
           $args{level},
           $args{type},
-          $args{text} // '',
-          $args{value} // '';
+          defined $args{text} ? $args{text} : '',
+          defined $args{value} ? $args{value} : '';
     });
     my $parsed = $p->parse_char_string_as_mq ($test->{in});
     eq_or_diff $parsed, $test->{out};

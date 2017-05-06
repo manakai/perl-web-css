@@ -466,12 +466,12 @@ for my $test (
     $p->onerror (sub {
       my %args = @_;
       push @error, join ';',
-          $args{line} // $args{token}->{line},
-          $args{column} // $args{token}->{column},
+          defined $args{token} ? $args{token}->{line} : $args{line},
+          defined $args{token} ? $args{token}->{column} : $args{column},
           $args{level},
           $args{type},
-          $args{text} // '',
-          $args{value} // '';
+          defined $args{text} ? $args{text} : '',
+          defined $args{value} ? $args{value} : '';
     });
 
     my $parsed = $p->parse_char_string_as_ss ($test->{in});
@@ -548,12 +548,12 @@ for my $test (
     $p->onerror (sub {
       my %args = @_;
       push @error, join ';',
-          $args{line} // $args{token}->{line},
-          $args{column} // $args{token}->{column},
+          defined $args{token} ? $args{token}->{line} : $args{line},
+          defined $args{token} ? $args{token}->{column} : $args{column},
           $args{level},
           $args{type},
-          $args{text} // '',
-          $args{value} // '';
+          defined $args{text} ? $args{text} : '',
+          defined $args{value} ? $args{value} : '';
     });
 
     my $parsed = $p->parse_char_string_as_rule ($test->{in});
@@ -615,12 +615,12 @@ for my $test (
     $parser->onerror (sub {
       my %args = @_;
       push @error, join ';',
-          $args{line} // $args{token}->{line},
-          $args{column} // $args{token}->{column},
+          defined $args{token} ? $args{token}->{line} : $args{line},
+          defined $args{token} ? $args{token}->{column} : $args{column},
           $args{level},
           $args{type},
-          $args{text} // '',
-          $args{value} // '';
+          defined $args{text} ? $args{text} : '',
+          defined $args{value} ? $args{value} : '';
     });
     
     my $parsed = $parser->parse_char_string_as_prop_decls ($test->{in});
@@ -673,12 +673,12 @@ for my $test (
     $parser->onerror (sub {
       my %args = @_;
       push @error, join ';',
-          $args{line} // $args{token}->{line},
-          $args{column} // $args{token}->{column},
+          defined $args{token} ? $args{token}->{line} : $args{line},
+          defined $args{token} ? $args{token}->{column} : $args{column},
           $args{level},
           $args{type},
-          $args{text} // '',
-          $args{value} // '';
+          defined $args{text} ? $args{text} : '',
+          defined $args{value} ? $args{value} : '';
     });
     
     my $parsed = $parser->parse_char_string_as_prop_value
@@ -828,12 +828,12 @@ for my $test (
     $parser->onerror (sub {
       my %args = @_;
       push @error, join ';',
-          $args{line} // $args{token}->{line},
-          $args{column} // $args{token}->{column},
+          defined $args{token} ? $args{token}->{line} : $args{line},
+          defined $args{token} ? $args{token}->{column} : $args{column},
           $args{level},
           $args{type},
-          $args{text} // '',
-          $args{value} // '';
+          defined $args{text} ? $args{text} : '',
+          defined $args{value} ? $args{value} : '';
     });
     my $parsed = $parser->parse_byte_string_as_ss
         ($test->{in},

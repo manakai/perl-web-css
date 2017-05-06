@@ -8,7 +8,6 @@ use Test::X1;
 use Web::CSS::Parser;
 use Test::More;
 use Test::Differences;
-use Encode;
 use Web::CSS::Selectors::Parser;
 use Web::CSS::MediaQueries::Parser;
 use Web::DOM::Document;
@@ -817,7 +816,7 @@ for my $test (
   {in => qq[\@charset "UTF-16be";], out => {rules => [SS [1], CHARSET(0=>1, 'UTF-16be')], input_encoding => 'utf-8'}},
   {in => qq{p{content:"\x81\x40"}}, out => {rules => [SS [1], S(0=>1, 'p', ['content'], {content => ['SEQ', ['STRING', "\x{FFFD}\x40"]]}, {})], input_encoding => 'utf-8'}},
   {in => qq{p{content:"\x81\x40"}}, in_charset => 'shift-jis', out => {rules => [SS [1], S(0=>1, 'p', ['content'], {content => ['SEQ', ['STRING', "\x{3000}"]]}, {})], input_encoding => 'shift_jis'}},
-  {in => (encode 'utf8', qq[\@charset "\x{4000}\x{FFFF}\x{D800}";]), out => {rules => [SS [1], CHARSET(0=>1, "\x{4000}\x{FFFF}\x{FFFD}\x{FFFD}\x{FFFD}")], input_encoding => 'utf-8'}},
+  {in => qq[\@charset "\xE4\xB8\x80\xE3\x81\x82\xE3\x81\x84";], out => {rules => [SS [1], CHARSET(0=>1, "\x{4E00}\x{3042}\x{3044}")], input_encoding => 'utf-8'}},
 ) {
   test {
     my $c = shift;

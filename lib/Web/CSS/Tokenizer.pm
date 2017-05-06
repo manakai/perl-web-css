@@ -1844,11 +1844,9 @@ sub _escaped_char ($) {
   }
 } # _escaped_char
 
-use Encode;
 sub normalize_surrogate {
-  ## XXX bad impl...
-  $_[1] =~ s{((?:[\x{D800}-\x{DBFF}][\x{DC00}-\x{DF00}])+)}{
-    decode 'utf-16be', join '', map { pack 'CC', int ((ord $_) / 0x100), ((ord $_) % 0x100) } split //, $1;
+  $_[1] =~ s{([\x{D800}-\x{DBFF}])([\x{DC00}-\x{DF00}])}{
+    chr (0x10000 + (((ord $1) - 0xD800) << 10) + (ord $2) - 0xDC00);
   }ge if defined $_[1];
 } # _normalize_surrogate
 
@@ -1864,7 +1862,7 @@ sub DESTROY ($) {
 
 =head1 LICENSE
 
-Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+Copyright 2007-2017 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

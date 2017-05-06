@@ -1,5 +1,3 @@
-Data::Dumper
-JSON::XS
 Path::Class
 Test::Class
 Test::Differences

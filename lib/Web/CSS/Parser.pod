@@ -88,28 +88,30 @@ in the C<Content-Type:> HTTP header field (or equivalent).  If no
 C<charset> metadata is available, this option has to be left
 unspecified (or C<undef>).
 
-=item parent_encoding_name => $name
+=item parent_encoding_name => $encoding_label
 
-The encoding name or alias, provided by the context in which the
-reference to the style sheet appears.  If the style sheet is
-referenced by a C<link> element or C<xml-stylseheet> processing
-instruction, its C<charset> attribute value should be specified here.
-Otherwise, the character encoding of the document referencing the
-style sheet directly or indirectly should be specified here.  See the
-CSS specification [CSSSYNTAX] for details.  If no such contextual
-character encoding metadata is available, this option has to be left
-undefined (or C<undef>).
+An encoding label, provided by the context in which the reference to
+the style sheet appears.  If the style sheet is referenced by a
+C<link> element or C<xml-stylseheet> processing instruction, its
+C<charset> attribute value should be specified here.  If no such
+contextual character encoding metadata is available, this option has
+to be left undefined (or C<undef>).
+
+=item embed_encoding_key => $encoding_key
+
+The encoding key (see L<Web::Encoding>), determined by the context in
+which the reference to the style sheet appears.  If the style sheet is
+referenced by an HTML C<link> element, it is the document's encoding.
+Otherwise, if the style sheet is referenced by a CSS C<@import> rule,
+it is the style sheet's encoding.  Otherwise, this option has to be
+left undefined (or C<undef>).
 
 =back
 
-If the style sheet is provided by a non-HTTP data source and you know
-the encoding name a priori, it should be specified as
-C<transport_encoding_name>.
-
-The encoding name acutally used to parse the CSS style sheet is
-available as C<< $ss->{input_encoding} >>.  (If the style sheet is
-created from a character string by one of following methods, this
-field is left unspecified.)
+The encoding key acutally used to parse the style sheet is available
+as C<< $ss->{input_encoding} >>.  (If the style sheet is created from
+a character string by one of following methods, this field is left
+unspecified.)
 
 =item $mq = $p->parse_char_string_as_mq ($string)
 
@@ -188,7 +190,7 @@ See L<Web::CSS/"DEPENDENCY">.
 
 =item CSSSYNTAX
 
-CSS Syntax <http://dev.w3.org/csswg/css-syntax/>.
+CSS Syntax Module <https://drafts.csswg.org/css-syntax/>.
 
 An invalid declaration MUST NOT be included in the style rule.
 
@@ -235,7 +237,7 @@ Wakaba <wakaba@suikawiki.org>.
 
 =head1 LICENSE
 
-Copyright 2007-2013 Wakaba <wakaba@suikawiki.org>.
+Copyright 2007-2017 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

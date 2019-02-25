@@ -14,10 +14,6 @@
 	path = t_deps/modules/web-dom
 	url = https://github.com/manakai/perl-web-dom
 	track = master
-[submodule "t_deps/modules/charclass"]
-	path = t_deps/modules/charclass
-	url = https://github.com/wakaba/perl-charclass
-	track = master
 [submodule "t_deps/modules/web-markup"]
 	path = t_deps/modules/web-markup
 	url = https://github.com/manakai/perl-web-markup

@@ -700,6 +700,7 @@ test {
 test {
   my $c = shift;
   my $doc = new Web::DOM::Document;
+  $doc->manakai_is_html (1);
   my $el = $doc->create_element ('style');
 
   my $parser = Web::CSS::Parser->new;
@@ -743,6 +744,7 @@ test {
 test {
   my $c = shift;
   my $doc = new Web::DOM::Document;
+  $doc->manakai_is_html (1);
   my $el = $doc->create_element ('style');
 
   my $parser = Web::CSS::Parser->new;
@@ -759,6 +761,7 @@ test {
 test {
   my $c = shift;
   my $doc = new Web::DOM::Document;
+  $doc->manakai_is_html (1);
   my $el = $doc->create_element ('style');
   $el->inner_html ('p{}');
 
@@ -849,7 +852,7 @@ run_tests;
 
 =head1 LICENSE
 
-Copyright 2013 Wakaba <wakaba@suikawiki.org>.
+Copyright 2013-2019 Wakaba <wakaba@suikawiki.org>.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
